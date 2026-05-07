@@ -19,13 +19,14 @@ public class StudyMaterialService {
 
     private final StudyMaterialRepository studyMaterialRepository;
     private final UserRepository userRepository;
+    private final GeminiService geminiService;
 
     public MaterialResponse uploadMaterial(String email, MaterialRequest request) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User tidak ditemukan"));
 
-        // Ringkasan sederhana (nanti bisa diganti Claude AI)
-        String summary = generateSummary(request.getOriginalText());
+        // Ringkasan menggunakan Gemini AI
+        String summary = geminiService.summarizeMaterial(request.getOriginalText());
 
         StudyMaterial material = StudyMaterial.builder()
                 .user(user)
@@ -70,11 +71,5 @@ public class StudyMaterialService {
                 material.getSummary(),
                 material.getUploadedAt().toString()
         );
-    }
-
-    private String generateSummary(String text) {
-        // Placeholder — nanti diganti Claude AI API
-        if (text.length() <= 300) return text;
-        return text.substring(0, 300) + "... [ringkasan AI akan diintegrasikan]";
     }
 }

@@ -21,4 +21,12 @@ public class UserProfile {
 
     @Column(nullable = false)
     private String nickname;
+
+    // Email user (bisa diakses juga via user.getEmail())
+    private String email;
+
+    // Untuk fitur change password
+    private String currentPassword;
+    private String newPassword;
+    private String confirmPassword;
 }

@@ -26,21 +26,18 @@ public class SecurityConfig {
             .headers(h -> h.frameOptions(f -> f.disable()))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-    .requestMatchers("/h2-console/**").permitAll()
-    .requestMatchers("/api/auth/**").permitAll()
-    .requestMatchers("/api/session/**").permitAll()
-    .requestMatchers("/api/flashcard/**").permitAll()
-    // Semua ini butuh login
-    .requestMatchers("/api/profile/**").hasAuthority("ROLE_USER")
-    .requestMatchers("/api/user/**").hasAuthority("ROLE_USER")
-    .requestMatchers("/api/material/**").hasAuthority("ROLE_USER")
-    .requestMatchers("/api/schedule/**").hasAuthority("ROLE_USER")
-    .requestMatchers("/api/streak/**").hasAuthority("ROLE_USER")
-    .requestMatchers("/api/stats/**").hasAuthority("ROLE_USER")
-    .requestMatchers("/api/generate/**").hasAuthority("ROLE_USER")
-    .requestMatchers("/api/files/**").hasAuthority("ROLE_USER")
-    .anyRequest().authenticated()
-)
+                .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/profile/**").hasAuthority("ROLE_USER")
+                .requestMatchers("/api/user/**").hasAuthority("ROLE_USER")
+                .requestMatchers("/api/material/**").hasAuthority("ROLE_USER")
+                .requestMatchers("/api/schedule/**").hasAuthority("ROLE_USER")
+                .requestMatchers("/api/streak/**").hasAuthority("ROLE_USER")
+                .requestMatchers("/api/stats/**").hasAuthority("ROLE_USER")
+                .requestMatchers("/api/quiz/**").hasAuthority("ROLE_USER")
+                .requestMatchers("/api/files/**").hasAuthority("ROLE_USER")
+                .anyRequest().authenticated()
+            )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

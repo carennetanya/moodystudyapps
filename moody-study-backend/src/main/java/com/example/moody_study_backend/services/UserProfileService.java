@@ -22,7 +22,10 @@ public class UserProfileService {
                 .orElseThrow(() -> new RuntimeException("User tidak ditemukan"));
 
         UserProfile profile = userProfileRepository.findByUser(user)
-                .orElse(UserProfile.builder().user(user).build());
+                .orElse(UserProfile.builder()
+                        .user(user)
+                        .nickname(user.getName()) // FIX: default nickname = nama user, bukan null
+                        .build());
 
         profile.setNickname(request.getNickname());
         userProfileRepository.save(profile);

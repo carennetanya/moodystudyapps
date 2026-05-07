@@ -23,11 +23,10 @@ public class Streak {
     @Column(nullable = false)
     private int currentStreak;
 
-    @Column(nullable = false)
-    private int longestStreak;
-
-    @Column(nullable = false)
-    private int generateQuota;
-
     private LocalDate lastStudyDate;
+    
+    // Life System: jumlah nyawa user
+    @Column(nullable = false)
+    @Builder.Default
+    private int life = 3;
 }

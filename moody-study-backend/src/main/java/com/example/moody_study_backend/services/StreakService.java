@@ -8,6 +8,7 @@ import com.example.moody_study_backend.entity.User;
 import com.example.moody_study_backend.repository.StreakRepository;
 import com.example.moody_study_backend.repository.StudySessionRepository;
 import com.example.moody_study_backend.repository.UserRepository;
+import com.example.moody_study_backend.enums.StreakLevel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,14 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class StreakService {
+
+    private StreakLevel mapLevel(int streak) {
+        if (streak >= 33) return StreakLevel.MASTER;
+        if (streak >= 22) return StreakLevel.EXPERT;
+        if (streak >= 13) return StreakLevel.PRACTITIONER;
+        if (streak >= 6) return StreakLevel.LEARNER;
+        return StreakLevel.BEGINNER;
+    }
 
     private final StreakRepository streakRepository;
     private final StudySessionRepository studySessionRepository;
@@ -30,16 +39,15 @@ public class StreakService {
                 .orElse(Streak.builder()
                         .user(user)
                         .currentStreak(0)
-                        .longestStreak(0)
-                        .generateQuota(1)
                         .lastStudyDate(null)
+                        .life(3)
                         .build());
 
         return new StreakResponse(
-                streak.getCurrentStreak(),
-                streak.getLongestStreak(),
-                streak.getGenerateQuota(),
-                streak.getLastStudyDate() != null ? streak.getLastStudyDate().toString() : null
+            streak.getCurrentStreak(),
+            streak.getLastStudyDate() != null ? streak.getLastStudyDate().toString() : null,
+            streak.getLife(),
+            mapLevel(streak.getCurrentStreak())
         );
     }
 
@@ -63,51 +71,54 @@ public class StreakService {
 
         // Update streak
         Streak streak = streakRepository.findByUser(user)
-                .orElse(Streak.builder()
-                        .user(user)
-                        .currentStreak(0)
-                        .longestStreak(0)
-                        .generateQuota(1)
-                        .lastStudyDate(null)
-                        .build());
+            .orElse(Streak.builder()
+                .user(user)
+                .currentStreak(0)
+                .lastStudyDate(null)
+                .life(3)
+                .build());
 
         LocalDate today = LocalDate.now();
         LocalDate last = streak.getLastStudyDate();
 
         if (last == null || last.isBefore(today.minusDays(1))) {
-            // Reset streak
-            streak.setCurrentStreak(1);
+            // User tidak belajar 1x24 jam: kurangi life
+            if (streak.getLife() > 0) {
+                streak.setLife(streak.getLife() - 1);
+            }
+
+            // Reset streak ke 1 HANYA jika life sudah habis (0) setelah dikurangi
+            if (streak.getLife() == 0) {
+                streak.setCurrentStreak(1);
+            } else {
+                // Masih ada life: streak dipertahankan, sesi ini dihitung lanjut
+                streak.setCurrentStreak(streak.getCurrentStreak() + 1);
+            }
         } else if (last.isEqual(today.minusDays(1))) {
-            // Lanjut streak
+            // Lanjut streak normal
             streak.setCurrentStreak(streak.getCurrentStreak() + 1);
         }
         // Kalau last == today, tidak update (sudah belajar hari ini)
 
-        // Update longest streak
-        if (streak.getCurrentStreak() > streak.getLongestStreak()) {
-            streak.setLongestStreak(streak.getCurrentStreak());
-        }
-
-        // Hitung generate quota sesuai proposal
-        int current = streak.getCurrentStreak();
-        int quota;
-        if (current <= 6) {
-            quota = current; // hari ke-1 = 1, ke-2 = 2, dst
-        } else if (current % 7 == 0) {
-            quota = current + 2; // bonus setiap 7 hari
-        } else {
-            quota = 6 + ((current / 7) * 2); // akumulasi bonus
-        }
-
-        streak.setGenerateQuota(quota);
         streak.setLastStudyDate(today);
+
+        // Pemulihan life: jika user menyelesaikan 2 sesi dalam sehari, tambah 1 life (maksimal 3)
+        long todaySessionCount = studySessionRepository.countByUserAndStartTimeBetween(
+            user,
+            today.atStartOfDay(),
+            today.plusDays(1).atStartOfDay()
+        );
+        if (todaySessionCount >= 2 && streak.getLife() < 3) {
+            streak.setLife(streak.getLife() + 1);
+        }
+
         streakRepository.save(streak);
 
         return new StreakResponse(
-                streak.getCurrentStreak(),
-                streak.getLongestStreak(),
-                streak.getGenerateQuota(),
-                streak.getLastStudyDate().toString()
+            streak.getCurrentStreak(),
+            streak.getLastStudyDate().toString(),
+            streak.getLife(),
+            mapLevel(streak.getCurrentStreak())
         );
     }
 }
