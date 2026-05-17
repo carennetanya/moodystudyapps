@@ -7,7 +7,7 @@ import '../widgets/now_playing_widget.dart';
 import '../widgets/music_visualizer_widget.dart';
 import '../widgets/name_form_overlay.dart';
 import 'theme_selector_screen.dart';
-import 'register_screen.dart';
+import 'login_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
   final AppTheme theme;
@@ -135,32 +135,38 @@ class _LoadingScreenState extends State<LoadingScreen>
   void _onStart() async {
     if (_started) return;
 
-    // If not coming from register, navigate to register screen first
+    setState(() {
+      _started = true;
+      _showMusicUI = true;
+      _isPlaying = true;
+      _showWarning = false;
+    });
+    _startedController.forward();
+
+    // Play music first regardless of flow
+    try {
+      await _audioPlayer.play(AssetSource(_audioFile));
+    } catch (e) {
+      debugPrint('Audio play error: $e');
+    }
+
+    if (!mounted) return;
+
     if (!widget.fromRegister) {
+      // Pass audioPlayer so music keeps playing across screen transition
       Navigator.of(context).push(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => RegisterScreen(theme: widget.theme),
+          pageBuilder: (_, __, ___) => AuthChoiceScreen(
+            theme: widget.theme,
+            audioPlayer: _audioPlayer,
+          ),
           transitionsBuilder: (_, anim, __, child) =>
               FadeTransition(opacity: anim, child: child),
           transitionDuration: const Duration(milliseconds: 400),
         ),
       );
-      return;
-    }
-
-    // Coming from register — start music and show name form
-    setState(() {
-      _started = true;
-      _showMusicUI = true;
-      _showNameForm = true;
-      _isPlaying = true;
-    });
-    _startedController.forward();
-
-    try {
-      await _audioPlayer.play(AssetSource(_audioFile));
-    } catch (e) {
-      debugPrint('Audio play error: $e');
+    } else {
+      setState(() => _showNameForm = true);
     }
   }
 
