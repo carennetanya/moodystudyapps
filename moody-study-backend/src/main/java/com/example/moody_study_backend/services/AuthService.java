@@ -25,6 +25,7 @@ public class AuthService {
         }
 
         User user = User.builder()
+                .username(request.getUsername())
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))

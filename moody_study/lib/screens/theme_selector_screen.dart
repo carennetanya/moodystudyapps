@@ -3,6 +3,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'loading_screen.dart';
 import 'register_screen.dart';
 import 'login_screen.dart';
+import '../widgets/music_visualizer_widget.dart';
+import '../widgets/now_playing_widget.dart';
 
 class ThemeSelectorScreen extends StatefulWidget {
   const ThemeSelectorScreen({super.key});
@@ -110,7 +112,7 @@ class _ThemeSelectorScreenState extends State<ThemeSelectorScreen>
 
                     // Green Theme Button
                     _ThemeButton(
-                      label: 'Green Mode',
+                      label: 'Light Mode',
                       dotColor: const Color(0xFF1EE86F),
                       bgColor: Colors.white,
                       textColor: const Color(0xFF111111),
@@ -244,6 +246,11 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen>
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideIn;
 
+  bool _isPlaying = true;
+
+  static const String _songName = 'Good Days - SZA';
+  static const String _audioFile = 'audio/SZA - Good Days (Audio).mp3';
+
   @override
   void initState() {
     super.initState();
@@ -267,15 +274,28 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen>
   @override
   void dispose() {
     _controller.dispose();
-    // Only stop music when navigating away (pause so it can be resumed if needed)
-    widget.audioPlayer?.pause();
+    // Do NOT pause music here — let it keep playing into login/register screens
     super.dispose();
+  }
+
+  void _onMusicToggle() async {
+    final newState = !_isPlaying;
+    setState(() => _isPlaying = newState);
+    try {
+      if (newState) {
+        await widget.audioPlayer?.play(AssetSource(_audioFile));
+      } else {
+        await widget.audioPlayer?.pause();
+      }
+    } catch (e) {
+      debugPrint('Audio toggle error: $e');
+    }
   }
 
   void _goToSignUp() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => RegisterScreen(theme: widget.theme),
+        pageBuilder: (_, __, ___) => RegisterScreen(theme: widget.theme, audioPlayer: widget.audioPlayer),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 400),
@@ -286,7 +306,7 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen>
   void _goToLogin() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => LoginScreen(theme: widget.theme),
+        pageBuilder: (_, __, ___) => LoginScreen(theme: widget.theme, audioPlayer: widget.audioPlayer),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 400),
@@ -302,11 +322,13 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen>
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
-        child: Center(
-          child: FadeTransition(
-            opacity: _fadeIn,
-            child: SlideTransition(
-              position: _slideIn,
+        child: Stack(
+          children: [
+            Center(
+              child: FadeTransition(
+                opacity: _fadeIn,
+                child: SlideTransition(
+                  position: _slideIn,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Column(
@@ -387,6 +409,21 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen>
               ),
             ),
           ),
+        ),
+            if (widget.audioPlayer != null) ...[
+              NowPlayingWidget(
+                show: true,
+                songName: _songName,
+                isPlaying: _isPlaying,
+              ),
+              MusicVisualizerWidget(
+                show: true,
+                isPlaying: _isPlaying,
+                isDark: isDark,
+                onToggle: _onMusicToggle,
+              ),
+            ],
+          ],
         ),
       ),
     );

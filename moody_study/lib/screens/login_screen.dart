@@ -4,11 +4,15 @@ import 'loading_screen.dart';
 import 'character_intro_screen.dart';
 import 'theme_selector_screen.dart';
 import 'register_screen.dart';
+import '../widgets/music_visualizer_widget.dart';
+import '../widgets/now_playing_widget.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class LoginScreen extends StatefulWidget {
   final AppTheme theme;
+  final AudioPlayer? audioPlayer;
 
-  const LoginScreen({super.key, this.theme = AppTheme.green});
+  const LoginScreen({super.key, this.theme = AppTheme.green, this.audioPlayer});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -25,6 +29,10 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscurePassword = true;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isPlaying = true;
+
+  static const String _songName = 'Good Days - SZA';
+  static const String _audioFile = 'audio/SZA - Good Days (Audio).mp3';
 
   late AnimationController _fadeController;
   late Animation<double> _fadeIn;
@@ -143,11 +151,13 @@ class _LoginScreenState extends State<LoginScreen>
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeIn,
-          child: SlideTransition(
-            position: _slideIn,
-            child: SingleChildScrollView(
+        child: Stack(
+          children: [
+            FadeTransition(
+              opacity: _fadeIn,
+              child: SlideTransition(
+                position: _slideIn,
+                child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               child: Column(
                 children: [
@@ -299,10 +309,39 @@ class _LoginScreenState extends State<LoginScreen>
                 ],
               ),
             ),
-          ),
+              ),
+            ),
+            if (widget.audioPlayer != null) ...[
+              NowPlayingWidget(
+                show: true,
+                songName: _songName,
+                isPlaying: _isPlaying,
+              ),
+              MusicVisualizerWidget(
+                show: true,
+                isPlaying: _isPlaying,
+                isDark: isDark,
+                onToggle: _onMusicToggle,
+              ),
+            ],
+          ],
         ),
       ),
     );
+  }
+
+  void _onMusicToggle() async {
+    final newState = !_isPlaying;
+    setState(() => _isPlaying = newState);
+    try {
+      if (newState) {
+        await widget.audioPlayer?.play(AssetSource(_audioFile));
+      } else {
+        await widget.audioPlayer?.pause();
+      }
+    } catch (e) {
+      debugPrint('Audio toggle error: $e');
+    }
   }
 
   Widget _buildHeader(bool isDark) {
