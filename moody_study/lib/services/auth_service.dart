@@ -13,13 +13,11 @@ class AuthException implements Exception {
 }
 
 class AuthService {
-  // Gunakan URL yang benar berdasarkan platform.
-  // Android emulator menggunakan 10.0.2.2 untuk host machine,
-  // web dan desktop menggunakan localhost.
   static String get baseUrl => kIsWeb ? 'http://localhost:8081' : 'http://10.0.2.2:8081';
 
   static Future<Map<String, dynamic>> register({
     required String name,
+    required String username,
     required String email,
     required String password,
   }) async {
@@ -29,12 +27,13 @@ class AuthService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'name': name,
+        'username': username,
         'email': email,
         'password': password,
       }),
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
 
@@ -43,12 +42,12 @@ class AuthService {
       if (body is Map<String, dynamic> && body['message'] is String) {
         throw AuthException(body['message'] as String);
       }
-    } catch (_) {
-      // fallback to plain text response
+    } catch (e) {
+      if (e is AuthException) rethrow;
     }
 
     throw AuthException(
-      'Register failed. Kode: ${response.statusCode}. Cek backend atau jaringan.',
+      'Register failed. Kode: ${response.statusCode}.',
     );
   }
 
@@ -66,7 +65,7 @@ class AuthService {
       }),
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
 
@@ -75,12 +74,12 @@ class AuthService {
       if (body is Map<String, dynamic> && body['message'] is String) {
         throw AuthException(body['message'] as String);
       }
-    } catch (_) {
-      // fallback to plain text response
+    } catch (e) {
+      if (e is AuthException) rethrow;
     }
 
     throw AuthException(
-      'Login failed. Kode: ${response.statusCode}. Cek backend atau jaringan.',
+      'Login failed. Kode: ${response.statusCode}.',
     );
   }
 }

@@ -101,10 +101,6 @@ class _LoginScreenState extends State<LoginScreen>
           pageBuilder: (_, __, ___) => CharacterIntroScreen(
             userName: userName,
             theme: widget.theme,
-            onMoodSelected: (mood) {
-              // TODO: navigate to main app with mood
-              debugPrint('Mood selected: $mood');
-            },
           ),
           transitionsBuilder: (_, anim, __, child) =>
               FadeTransition(opacity: anim, child: child),
