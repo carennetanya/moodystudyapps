@@ -100,7 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   void _navigateToLogin() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => LoginScreen(theme: widget.theme),
+        pageBuilder: (_, __, ___) => LoginScreen(theme: widget.theme, audioPlayer: widget.audioPlayer),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 400),

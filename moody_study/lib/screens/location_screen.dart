@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'theme_selector_screen.dart';
 import 'upload_screen.dart';
 
@@ -6,12 +7,14 @@ class LocationScreen extends StatefulWidget {
   final String mood;
   final String userName;
   final AppTheme theme;
+  final AudioPlayer? audioPlayer;
 
   const LocationScreen({
     super.key,
     required this.mood,
     this.userName = 'Friend',
     this.theme = AppTheme.green,
+    this.audioPlayer,
   });
 
   @override
@@ -105,6 +108,9 @@ class _LocationScreenState extends State<LocationScreen>
     });
     _bannerController.forward(from: 0);
 
+    // Start fading out background music if available
+    _fadeOutAudio();
+
     // Auto-hide banner setelah 3 detik
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
@@ -126,6 +132,7 @@ class _LocationScreenState extends State<LocationScreen>
             location: location,
             userName: widget.userName,
             theme: widget.theme,
+            // audio is already faded/paused by this point
           ),
           transitionsBuilder: (_, anim, __, child) =>
               FadeTransition(opacity: anim, child: child),
@@ -133,6 +140,24 @@ class _LocationScreenState extends State<LocationScreen>
         ),
       );
     });
+  }
+
+  Future<void> _fadeOutAudio({int durationMs = 700}) async {
+    final player = widget.audioPlayer;
+    if (player == null) return;
+    try {
+      const steps = 8;
+      final stepDur = Duration(milliseconds: (durationMs / steps).round());
+      for (var i = 0; i < steps; i++) {
+        final vol = (1.0 - ((i + 1) / steps)).clamp(0.0, 1.0);
+        await player.setVolume(vol);
+        await Future.delayed(stepDur);
+      }
+      await player.pause();
+      await player.setVolume(1.0);
+    } catch (e) {
+      debugPrint('Audio fade error: $e');
+    }
   }
 
   @override

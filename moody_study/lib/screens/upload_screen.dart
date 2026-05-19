@@ -82,8 +82,10 @@ class _UploadScreenState extends State<UploadScreen>
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => StudySession(
           mood: widget.mood,
+          location: widget.location,
           userName: widget.userName,
           theme: widget.theme,
+          files: _files,
         ),
         transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 400),
@@ -285,6 +287,7 @@ class _UploadBoxState extends State<_UploadBox> {
         allowMultiple: true,
         type: FileType.custom,
         allowedExtensions: ['pdf', 'docx', 'txt'],
+        withData: true,   // ← wajib agar file.bytes tersedia untuk preview
       );
       if (result != null && result.files.isNotEmpty) {
         final merged = [...widget.files];

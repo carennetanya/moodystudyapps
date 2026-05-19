@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'theme_selector_screen.dart';
 import 'mood_screen.dart';
 import 'location_screen.dart';
@@ -6,11 +7,13 @@ import 'location_screen.dart';
 class CharacterIntroScreen extends StatefulWidget {
   final String userName;
   final AppTheme theme;
+  final AudioPlayer? audioPlayer;
 
   const CharacterIntroScreen({
     super.key,
     this.userName = 'Friend',
     this.theme = AppTheme.green,
+    this.audioPlayer,
   });
 
   @override
@@ -21,22 +24,9 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
     with TickerProviderStateMixin {
 
   bool _showLandingPage = false;
-  bool _eyesVisible = false;
-  String _eyeLook = 'center';
   String _greetingText = '';
   int _greetingPhase = 1;
   bool _showGreeting = false;
-  bool _isJumping = false;
-  bool _characterVisible = false;
-
-  // Drop animation (circle falls from top)
-  late AnimationController _dropController;
-  late Animation<double> _dropY;
-
-  // jumpAndGrow: circle jumps 3x then expands to fill screen
-  late AnimationController _jumpController;
-  late Animation<double> _circleSize;
-  late Animation<double> _jumpY;
 
   // Greeting pop
   late AnimationController _greetingController;
@@ -55,78 +45,6 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
   }
 
   void _initAnimations() {
-    // Drop from top (bouncy landing)
-    _dropController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _dropY = Tween<double>(begin: -300.0, end: 0.0).animate(
-      CurvedAnimation(parent: _dropController, curve: Curves.bounceOut),
-    );
-
-    // jumpAndGrow total 3800ms — matches Vue's jumpAndGrow keyframes
-    _jumpController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3800),
-    );
-
-    // Circle size: stays 40 during jumps (0–55%), then expands massively
-    _circleSize = TweenSequence<double>([
-      TweenSequenceItem(tween: ConstantTween(40.0), weight: 55),
-      TweenSequenceItem(
-          tween: Tween(begin: 40.0, end: 80.0)
-              .chain(CurveTween(curve: Curves.easeIn)),
-          weight: 5),
-      TweenSequenceItem(
-          tween: Tween(begin: 80.0, end: 200.0)
-              .chain(CurveTween(curve: Curves.easeIn)),
-          weight: 10),
-      TweenSequenceItem(
-          tween: Tween(begin: 200.0, end: 1200.0)
-              .chain(CurveTween(curve: Curves.easeIn)),
-          weight: 15),
-      TweenSequenceItem(
-          tween: Tween(begin: 1200.0, end: 5000.0)
-              .chain(CurveTween(curve: Curves.easeIn)),
-          weight: 15),
-    ]).animate(_jumpController);
-
-    // 3 small jumps (translateY) during the small-circle phase
-    _jumpY = TweenSequence<double>([
-      // Jump 1 up (0–7%)
-      TweenSequenceItem(
-          tween: Tween(begin: 0.0, end: -20.0)
-              .chain(CurveTween(curve: Curves.easeOut)),
-          weight: 7),
-      // Jump 1 down (7–13%)
-      TweenSequenceItem(
-          tween: Tween(begin: -20.0, end: 0.0)
-              .chain(CurveTween(curve: Curves.easeIn)),
-          weight: 6),
-      // Jump 2 up (13–20%)
-      TweenSequenceItem(
-          tween: Tween(begin: 0.0, end: -20.0)
-              .chain(CurveTween(curve: Curves.easeOut)),
-          weight: 7),
-      // Jump 2 down (20–26%)
-      TweenSequenceItem(
-          tween: Tween(begin: -20.0, end: 0.0)
-              .chain(CurveTween(curve: Curves.easeIn)),
-          weight: 6),
-      // Jump 3 up (26–33%)
-      TweenSequenceItem(
-          tween: Tween(begin: 0.0, end: -20.0)
-              .chain(CurveTween(curve: Curves.easeOut)),
-          weight: 7),
-      // Jump 3 down (33–40%)
-      TweenSequenceItem(
-          tween: Tween(begin: -20.0, end: 0.0)
-              .chain(CurveTween(curve: Curves.easeIn)),
-          weight: 7),
-      // Rest at 0 (40–100%)
-      TweenSequenceItem(tween: ConstantTween(0.0), weight: 60),
-    ]).animate(_jumpController);
-
     // Greeting pop-in
     _greetingController = AnimationController(
       vsync: this,
@@ -151,54 +69,17 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
     );
   }
 
-  // Timeline matches Vue:
-  // characterShow @1500, eyesVisible @3200, isJumping @3700,
-  // phase1 @6000, phase2 @6200, phase3 @6900,
-  // bgYellow @7630, showLanding @8900
   void _startSequence() async {
-    // Drop circle
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (!mounted) return;
-    setState(() => _characterVisible = true);
-    _dropController.forward();
-
-    // Eyes appear
-    await Future.delayed(const Duration(milliseconds: 1700));
-    if (!mounted) return;
-    setState(() => _eyesVisible = true);
-
-    // Eye wander
-    await Future.delayed(const Duration(milliseconds: 400));
-    if (!mounted) return;
-    setState(() => _eyeLook = 'left');
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    setState(() => _eyeLook = 'right');
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    setState(() => _eyeLook = 'center');
-
-    // Start jumpAndGrow — eyes hide
-    await Future.delayed(const Duration(milliseconds: 200));
-    if (!mounted) return;
-    setState(() {
-      _eyesVisible = false;
-      _isJumping = true;
-    });
-    _jumpController.forward();
-
-    // Phase 1: "Hi [name]" — ~2300ms after jump starts (Vue: 6000-3700=2300)
-    await Future.delayed(const Duration(milliseconds: 2300));
+    await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
     setState(() {
       _greetingPhase = 1;
-      _greetingText = 'Hi ${widget.userName}';
+      _greetingText = 'Hello ${widget.userName}';
       _showGreeting = true;
     });
     _greetingController.forward(from: 0);
 
-    // Phase 2: "and" — 200ms later
-    await Future.delayed(const Duration(milliseconds: 200));
+    await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
     setState(() {
       _greetingPhase = 2;
@@ -206,8 +87,7 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
     });
     _greetingController.forward(from: 0);
 
-    // Phase 3: "I'm your Oddy!" — 700ms later
-    await Future.delayed(const Duration(milliseconds: 700));
+    await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     setState(() {
       _greetingPhase = 3;
@@ -215,25 +95,17 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
     });
     _greetingController.forward(from: 0);
 
-    // Circle finishes expanding, hide greeting/character
-    await Future.delayed(const Duration(milliseconds: 1930));
+    await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
     setState(() {
       _showGreeting = false;
-      _characterVisible = false;
+      _showLandingPage = true;
     });
-
-    // Show landing page (yellow circle is now full screen)
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    setState(() => _showLandingPage = true);
     _landingFadeController.forward();
   }
 
   @override
   void dispose() {
-    _dropController.dispose();
-    _jumpController.dispose();
     _greetingController.dispose();
     _landingFadeController.dispose();
     super.dispose();
@@ -250,10 +122,11 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
             Navigator.of(context).push(
               PageRouteBuilder(
                 pageBuilder: (_, __, ___) => LocationScreen(
-                  mood: mood,
-                  userName: widget.userName,
-                  theme: widget.theme,
-                ),
+                    mood: mood,
+                    userName: widget.userName,
+                    theme: widget.theme,
+                    audioPlayer: widget.audioPlayer,
+                  ),
                 transitionsBuilder: (_, anim, __, child) =>
                     FadeTransition(opacity: anim, child: child),
                 transitionDuration: const Duration(milliseconds: 400),
@@ -284,7 +157,6 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Landing page fades in over the full-screen yellow circle
           if (_showLandingPage)
             FadeTransition(
               opacity: _landingFadeAnim,
@@ -295,125 +167,30 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
                 ),
               ),
             ),
-
-          // Pre-landing: yellow circle + greeting
-          if (!_showLandingPage) ...[
-            if (_characterVisible)
-              AnimatedBuilder(
-                animation:
-                    Listenable.merge([_dropController, _jumpController]),
-                builder: (context, _) {
-                  final circleSize =
-                      _isJumping ? _circleSize.value : 40.0;
-                  final dropOffset =
-                      _dropController.isCompleted ? 0.0 : _dropY.value;
-                  final jumpOffset =
-                      _isJumping ? _jumpY.value : 0.0;
-                  final totalY = dropOffset + jumpOffset;
-
-                  double eyeOffset = 0;
-                  if (_eyeLook == 'left') eyeOffset = -3;
-                  if (_eyeLook == 'right') eyeOffset = 3;
-                  final showEyes = _eyesVisible && circleSize < 80;
-
-                  return Center(
-                    child: Transform.translate(
-                      offset: Offset(0, totalY),
-                      child: Container(
-                        width: circleSize,
-                        height: circleSize,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE5E81E),
-                          shape: BoxShape.circle,
-                          border: circleSize < 80
-                              ? Border.all(
-                                  color: const Color(0xFF111111),
-                                  width: 3)
-                              : null,
-                        ),
-                        child: circleSize < 80
-                            ? Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.center,
-                                children: [
-                                  _Eye(
-                                      visible: showEyes,
-                                      pupilOffset: eyeOffset),
-                                  const SizedBox(width: 6),
-                                  _Eye(
-                                      visible: showEyes,
-                                      pupilOffset: eyeOffset),
-                                ],
-                              )
-                            : null,
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-            // Greeting text — appears while circle is growing
-            if (_showGreeting && _greetingText.isNotEmpty)
-              Center(
-                child: AnimatedBuilder(
-                  animation: _greetingController,
-                  builder: (context, child) => Opacity(
-                    opacity: _greetingOpacity.value,
-                    child: Transform.scale(
-                      scale: _greetingScale.value,
-                      child: child,
-                    ),
+          if (!_showLandingPage && _showGreeting && _greetingText.isNotEmpty)
+            Center(
+              child: AnimatedBuilder(
+                animation: _greetingController,
+                builder: (context, child) => Opacity(
+                  opacity: _greetingOpacity.value,
+                  child: Transform.scale(
+                    scale: _greetingScale.value,
+                    child: child,
                   ),
-                  child: Text(
-                    _greetingText,
-                    style: TextStyle(
-                      fontFamily: 'BlackHanSans',
-                      fontSize: _greetingFontSize,
-                      color: const Color(0xFF642D05),
-                      letterSpacing: 1,
-                    ),
+                ),
+                child: Text(
+                  _greetingText,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'BlackHanSans',
+                    fontSize: _greetingFontSize,
+                    color: Colors.white,
+                    letterSpacing: 1,
                   ),
                 ),
               ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ── Eye widget ────────────────────────────────────────────────────
-class _Eye extends StatelessWidget {
-  final bool visible;
-  final double pupilOffset;
-  const _Eye({required this.visible, required this.pupilOffset});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      width: 10,
-      height: 10,
-      decoration: BoxDecoration(
-        color: visible ? const Color(0xFF915119) : Colors.transparent,
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Center(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          transform:
-              Matrix4.translationValues(visible ? pupilOffset : 0, 0, 0),
-          child: Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: visible
-                  ? const Color(0xFF111111)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(3),
             ),
-          ),
-        ),
+        ],
       ),
     );
   }

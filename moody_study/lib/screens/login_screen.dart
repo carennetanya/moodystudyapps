@@ -109,6 +109,7 @@ class _LoginScreenState extends State<LoginScreen>
           pageBuilder: (_, __, ___) => CharacterIntroScreen(
             userName: userName,
             theme: widget.theme,
+            audioPlayer: widget.audioPlayer,
           ),
           transitionsBuilder: (_, anim, __, child) =>
               FadeTransition(opacity: anim, child: child),
@@ -133,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen>
   void _navigateToSignUp() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => RegisterScreen(theme: widget.theme),
+        pageBuilder: (_, __, ___) => RegisterScreen(theme: widget.theme, audioPlayer: widget.audioPlayer),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 400),
