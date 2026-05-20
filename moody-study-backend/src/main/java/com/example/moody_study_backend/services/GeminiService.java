@@ -55,7 +55,14 @@ public class GeminiService {
                 %s
                 """.formatted(perFileInstructions, truncate(originalText, 8000));
 
-        return callGemini(prompt);
+        try {
+            return callGemini(prompt);
+        } catch (Exception e) {
+            // Log and return a safe fallback summary to avoid propagating raw errors
+            System.err.println("Gemini summarize failed: " + e.getMessage());
+            String fallback = "Ringkasan sementara (fallback):\n" + truncate(originalText, 1200);
+            return fallback;
+        }
     }
 
     public String generateQuiz(String materialText, String quizType,
@@ -71,14 +78,16 @@ public class GeminiService {
         };
 
         String prompt = """
-                Kamu adalah guru yang membuat soal latihan berkualitas tinggi.
-                Berdasarkan materi berikut:
+                You are a teacher who creates high-quality practice questions.
+                Based on the material below:
 
                 %s
 
-                Buat %d soal %s dengan tingkat kesulitan %s.
+                Create %d %s with difficulty %s.
 
-                Format output WAJIB seperti ini (JSON array):
+                Use the same language as the material for the questions, answers, and explanations. If the material is in English, output in English. If the material is in Indonesian, output in Indonesian. If it is in another language, use that language.
+
+                The output MUST follow this format exactly (JSON array):
                 [
                   {
                     "number": 1,
@@ -91,8 +100,8 @@ public class GeminiService {
                   }
                 ]
 
-                Untuk soal esai, kosongkan "options" dan isi "answer" dengan contoh jawaban ideal.
-                Pastikan output hanya JSON array, tanpa teks tambahan apapun.
+                For essay questions, leave "options" empty and fill "answer" with an ideal sample answer.
+                Return only the JSON array, with no extra text.
                 """.formatted(
                 truncate(materialText, 8000),
                 questionCount, typeDesc, diffDesc,
@@ -151,24 +160,44 @@ public class GeminiService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+        final int maxAttempts = 3;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
 
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                List<?> candidates = (List<?>) response.getBody().get("candidates");
-                if (candidates != null && !candidates.isEmpty()) {
-                    Map<?, ?> candidate  = (Map<?, ?>) candidates.get(0);
-                    Map<?, ?> contentMap = (Map<?, ?>) candidate.get("content");
-                    List<?> parts        = (List<?>) contentMap.get("parts");
-                    Map<?, ?> firstPart  = (Map<?, ?>) parts.get(0);
-                    return (String) firstPart.get("text");
+                if (response.getStatusCodeValue() == HttpStatus.OK.value() && response.getBody() != null) {
+                    List<?> candidates = (List<?>) response.getBody().get("candidates");
+                    if (candidates != null && !candidates.isEmpty()) {
+                        Map<?, ?> candidate  = (Map<?, ?>) candidates.get(0);
+                        Map<?, ?> contentMap = (Map<?, ?>) candidate.get("content");
+                        List<?> parts        = (List<?>) contentMap.get("parts");
+                        Map<?, ?> firstPart  = (Map<?, ?>) parts.get(0);
+                        return (String) firstPart.get("text");
+                    }
                 }
+
+                int statusCode = response.getStatusCodeValue();
+                if ((statusCode >= 500 || statusCode == 429)) {
+                    if (attempt < maxAttempts) {
+                        long backoff = 500L * attempt;
+                        try { Thread.sleep(backoff); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                        continue;
+                    } else {
+                        throw new RuntimeException("Gemini returned HTTP " + statusCode);
+                    }
+                }
+
+            } catch (Exception e) {
+                if (attempt < maxAttempts) {
+                    long backoff = 500L * attempt;
+                    try { Thread.sleep(backoff); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                    continue;
+                }
+                throw new RuntimeException("Gagal menghubungi Gemini AI: " + e.getMessage());
             }
-        } catch (Exception e) {
-            throw new RuntimeException("Gagal menghubungi Gemini AI: " + e.getMessage());
         }
 
-        throw new RuntimeException("Gemini AI tidak menghasilkan respons");
+        throw new RuntimeException("Gemini AI tidak menghasilkan respons setelah beberapa percobaan");
     }
 
     private String truncate(String text, int maxChars) {
