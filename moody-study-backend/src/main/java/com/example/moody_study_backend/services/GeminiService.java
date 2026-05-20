@@ -1,12 +1,17 @@
 package com.example.moody_study_backend.services;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.*;
 
 @Service
 public class GeminiService {
@@ -24,20 +29,31 @@ public class GeminiService {
         this.restTemplate = restTemplate;
     }
 
-    public String summarizeMaterial(String originalText) {
+    public String summarizeMaterial(String originalText, String fileName) {
+        String perFileInstructions = "Gunakan nama file '" + fileName + "' sebagai header dan pisahkan setiap file jika ada lebih dari satu.";
         String prompt = """
-                Kamu adalah asisten belajar cerdas. Berikut adalah materi belajar:
+                Kamu adalah asisten belajar ahli. Buat ringkasan belajar LENGKAP dan MENDALAM dalam Bahasa Indonesia.
 
+                ATURAN KETAT — WAJIB DIIKUTI:
+                1. PISAHKAN ringkasan tiap file dengan header nama file yang jelas
+                2. KEDALAMAN ringkasan WAJIB sesuai panjang materi:
                 %s
+                3. SEMUA konsep penting, definisi, fungsi, nama komponen, penjelasan teknis WAJIB ada di ringkasan
+                4. Buang hanya: sapaan, basa-basi, pengulangan identik
+                5. Setiap poin: tulis NAMA konsep lalu jelaskan dengan kalimat lengkap
+                6. Jika materi berisi kode/struktur/komponen: jelaskan SETIAP item satu per satu
 
-                Tugas kamu:
-                1. Buat ringkasan yang padat dan mudah dipahami (maksimal 300 kata).
-                2. Tulis dalam Bahasa Indonesia.
-                3. Gunakan poin-poin singkat jika perlu.
-                4. Fokus pada konsep utama dan kata kunci penting.
-
-                Langsung tulis ringkasannya saja tanpa pembuka atau penutup.
-                """.formatted(truncate(originalText, 8000));
+                FORMAT WAJIB per file:
+                ## 📄 [Nama File]
+                ### 📌 Gambaran Umum
+                3-5 kalimat gambaran keseluruhan.
+                ### 🔑 Poin Penting
+                **[Nama Konsep]**: penjelasan 2-5 kalimat.
+                ### ✅ Kesimpulan
+                3-5 kalimat takeaway.
+                ---
+                %s
+                """.formatted(perFileInstructions, truncate(originalText, 8000));
 
         return callGemini(prompt);
     }

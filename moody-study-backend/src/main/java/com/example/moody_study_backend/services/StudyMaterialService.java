@@ -1,17 +1,19 @@
 package com.example.moody_study_backend.services;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+
 import com.example.moody_study_backend.dto.MaterialRequest;
 import com.example.moody_study_backend.dto.MaterialResponse;
 import com.example.moody_study_backend.entity.StudyMaterial;
 import com.example.moody_study_backend.entity.User;
 import com.example.moody_study_backend.repository.StudyMaterialRepository;
 import com.example.moody_study_backend.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +28,7 @@ public class StudyMaterialService {
                 .orElseThrow(() -> new RuntimeException("User tidak ditemukan"));
 
         // Ringkasan menggunakan Gemini AI
-        String summary = geminiService.summarizeMaterial(request.getOriginalText());
+        String summary = geminiService.summarizeMaterial(request.getOriginalText(), request.getFileName());
 
         StudyMaterial material = StudyMaterial.builder()
                 .user(user)

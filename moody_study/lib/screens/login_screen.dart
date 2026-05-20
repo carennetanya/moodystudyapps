@@ -5,7 +5,6 @@ import 'character_intro_screen.dart';
 import 'theme_selector_screen.dart';
 import 'register_screen.dart';
 import '../widgets/music_visualizer_widget.dart';
-import '../widgets/now_playing_widget.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -151,10 +150,11 @@ class _LoginScreenState extends State<LoginScreen>
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            FadeTransition(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          SafeArea(
+            child: FadeTransition(
               opacity: _fadeIn,
               child: SlideTransition(
                 position: _slideIn,
@@ -312,21 +312,15 @@ class _LoginScreenState extends State<LoginScreen>
             ),
               ),
             ),
-            if (widget.audioPlayer != null) ...[
-              NowPlayingWidget(
-                show: true,
-                songName: _songName,
-                isPlaying: _isPlaying,
-              ),
-              MusicVisualizerWidget(
-                show: true,
-                isPlaying: _isPlaying,
-                isDark: isDark,
-                onToggle: _onMusicToggle,
-              ),
-            ],
-          ],
-        ),
+          ),
+          if (widget.audioPlayer != null)
+            MusicVisualizerWidget(
+              show: true,
+              isPlaying: _isPlaying,
+              isDark: isDark,
+              onToggle: _onMusicToggle,
+            ),
+        ],
       ),
     );
   }

@@ -5,7 +5,6 @@ import 'loading_screen.dart';
 import 'theme_selector_screen.dart';
 import 'login_screen.dart';
 import '../widgets/music_visualizer_widget.dart';
-import '../widgets/now_playing_widget.dart';
 
 class RegisterScreen extends StatefulWidget {
   final AppTheme theme;
@@ -177,10 +176,11 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            FadeTransition(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          SafeArea(
+            child: FadeTransition(
               opacity: _fadeIn,
               child: SlideTransition(
                 position: _slideIn,
@@ -395,21 +395,15 @@ class _RegisterScreenState extends State<RegisterScreen>
             ),
               ),
             ),
-            if (widget.audioPlayer != null) ...[
-              NowPlayingWidget(
-                show: true,
-                songName: _songName,
-                isPlaying: _isPlaying,
-              ),
-              MusicVisualizerWidget(
-                show: true,
-                isPlaying: _isPlaying,
-                isDark: isDark,
-                onToggle: _onMusicToggle,
-              ),
-            ],
-          ],
-        ),
+          ),
+          if (widget.audioPlayer != null)
+            MusicVisualizerWidget(
+              show: true,
+              isPlaying: _isPlaying,
+              isDark: isDark,
+              onToggle: _onMusicToggle,
+            ),
+        ],
       ),
     );
   }

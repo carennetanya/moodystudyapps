@@ -1,6 +1,12 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:moody_study/services/material_service.dart';
+
 import 'theme_selector_screen.dart';
 
 class ActiveStudySession extends StatefulWidget {
@@ -31,6 +37,13 @@ class _ActiveStudySessionState extends State<ActiveStudySession> {
   bool _running = false;
   String _summary = '';
   bool _loadingSummary = true;
+  String? _summaryError;
+
+  int get _totalSeconds => widget.initialMinutes * 60;
+  double get _progress {
+    if (_totalSeconds == 0) return 0;
+    return (_remaining.inSeconds / _totalSeconds).clamp(0.0, 1.0);
+  }
 
   @override
   void initState() {
@@ -40,34 +53,55 @@ class _ActiveStudySessionState extends State<ActiveStudySession> {
   }
 
   Future<void> _loadSummary() async {
-    // For now, show a placeholder summary
-    // In real implementation, fetch from backend API
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) {
+    if (!mounted) return;
+    setState(() {
+      _loadingSummary = true;
+      _summaryError = null;
+    });
+
+    if (widget.files.isEmpty) {
+      if (!mounted) return;
       setState(() {
         _loadingSummary = false;
-        _summary = widget.files.isNotEmpty
-            ? '''📚 **${widget.files.first.name}**
+        _summary = 'Tidak ada materi untuk dirangkum.';
+      });
+      return;
+    }
 
-Ringkasan Materi:
-• Konsep utama telah diidentifikasi dan dijelaskan
-• Poin-poin penting sudah disarikan dengan baik
-• Struktur materi terorganisir dengan jelas
-• Siap untuk pembelajaran mendalam
+    final file = widget.files.first;
+    final originalText = await _extractTextFromFile(file);
+    if (originalText.trim().isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _loadingSummary = false;
+        _summary = 'Tidak dapat membaca materi dari file ${file.name}.';
+      });
+      return;
+    }
 
-Fokus belajar: Pahami konsep dasar terlebih dahulu, lalu berlanjut ke aplikasi praktis.'''
-            : 'Tidak ada materi untuk dirangkum.';
+    try {
+      final summary = await MaterialService.summarizeMaterial(
+        fileName: file.name,
+        originalText: originalText,
+      );
+      if (!mounted) return;
+      setState(() {
+        _loadingSummary = false;
+        _summary = summary;
+      });
+      _startTimer();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingSummary = false;
+        _summaryError = e.toString();
+        _summary = 'Ringkasan gagal dimuat. ${_summaryError ?? ''}';
       });
     }
   }
 
-  void _toggleRunning() {
-    if (_running) {
-      _timer?.cancel();
-      setState(() => _running = false);
-      return;
-    }
-
+  void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
       setState(() {
@@ -83,6 +117,16 @@ Fokus belajar: Pahami konsep dasar terlebih dahulu, lalu berlanjut ke aplikasi p
       });
     });
     setState(() => _running = true);
+  }
+
+  void _toggleRunning() {
+    if (_running) {
+      _timer?.cancel();
+      setState(() => _running = false);
+      return;
+    }
+
+    _startTimer();
   }
 
   void _showSessionComplete() {
@@ -112,6 +156,98 @@ Fokus belajar: Pahami konsep dasar terlebih dahulu, lalu berlanjut ke aplikasi p
       return '$hh:$mm:$ss';
     }
     return '$mm:$ss';
+  }
+
+  Future<String> _extractTextFromFile(PlatformFile file) async {
+    final extension = file.extension?.toLowerCase() ?? '';
+
+    if (extension == 'txt' || extension == 'md' || extension == 'csv') {
+      final raw = file.bytes ??
+          (file.path != null ? await File(file.path!).readAsBytes() : null);
+      if (raw != null) {
+        return _decodeUtf8(raw);
+      }
+      return '';
+    }
+
+    if (extension == 'docx') {
+      final preview = await _extractDocxText(file);
+      return preview?.trim() ?? '';
+    }
+
+    if (extension == 'pdf') {
+      return ''; // PDF extraction not supported in this version.
+    }
+
+    return '';
+  }
+
+  String _decodeUtf8(List<int> bytes) {
+    try {
+      return utf8.decode(bytes, allowMalformed: true);
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<String?> _extractDocxText(PlatformFile file) async {
+    try {
+      final bytes = file.bytes ??
+          (file.path != null ? await File(file.path!).readAsBytes() : null);
+      if (bytes == null) return null;
+
+      final archive = ZipDecoder().decodeBytes(bytes);
+      ArchiveFile? documentEntry;
+      for (final entry in archive.files) {
+        if (entry.name == 'word/document.xml') {
+          documentEntry = entry;
+          break;
+        }
+      }
+
+      if (documentEntry == null || documentEntry.content == null) {
+        return null;
+      }
+
+      final xml = utf8.decode(
+        documentEntry.content as List<int>,
+        allowMalformed: true,
+      );
+      final text = _stripXmlText(xml).trim();
+      return text.isEmpty ? null : text;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _stripXmlText(String xml) {
+    var text = xml.replaceAll(RegExp(r'\r\n|\r'), '\n');
+    text = text.replaceAll(RegExp(r'</w:p>', caseSensitive: false), '\n');
+    text = text.replaceAll(RegExp(r'<w:t[^>]*>'), '\x02');
+    text = text.replaceAll(RegExp(r'</w:t>', caseSensitive: false), '\x03');
+    text = text.replaceAll(RegExp(r'<[^>]*>', dotAll: true), '');
+
+    final buffer = StringBuffer();
+    bool inRun = false;
+    for (var i = 0; i < text.length; i++) {
+      final c = text[i];
+      if (c == '\x02') {
+        inRun = true;
+      } else if (c == '\x03') {
+        inRun = false;
+        buffer.write(' ');
+      } else if (inRun) {
+        buffer.write(c);
+      } else if (c == '\n') {
+        buffer.write('\n');
+      }
+    }
+
+    var result = buffer.toString();
+    result = result.replaceAll(RegExp(r' {2,}'), ' ');
+    result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    result = result.replaceAll(RegExp(r'^ +', multiLine: true), '');
+    return result.trim();
   }
 
   Color get _bgColor {
@@ -187,41 +323,72 @@ Fokus belajar: Pahami konsep dasar terlebih dahulu, lalu berlanjut ke aplikasi p
                     const SizedBox(height: 24),
 
                     // Timer circle
-                    Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFF1EE86F),
-                          width: 4,
-                        ),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              _formatDuration(_remaining),
-                              style: const TextStyle(
-                                fontFamily: 'BlackHanSans',
-                                fontSize: 48,
-                                color: Color(0xFF111111),
-                                height: 1,
+                    SizedBox(
+                      width: 190,
+                      height: 190,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            value: _loadingSummary ? null : _progress,
+                            strokeWidth: 18,
+                            color: const Color(0xFF1EE86F),
+                            backgroundColor: Colors.white.withOpacity(0.18),
+                          ),
+                          Container(
+                            width: 160,
+                            height: 160,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: widget.mood == 'okay' ? Colors.white : Colors.transparent,
+                            ),
+                            child: Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      _formatDuration(_remaining),
+                                      style: TextStyle(
+                                        fontFamily: 'BlackHanSans',
+                                        fontSize: 52,
+                                        color: widget.mood == 'okay' ? Colors.black : Colors.white,
+                                        height: 1,
+                                        shadows: const [
+                                          Shadow(
+                                            color: Colors.black26,
+                                            offset: Offset(1, 1),
+                                            blurRadius: 2,
+                                          ),
+                                        ],
+                                      ),
+                                      softWrap: false,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'REMAINING',
+                                      style: TextStyle(
+                                        fontFamily: 'Nunito',
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: widget.mood == 'okay' ? Colors.black54 : Colors.white,
+                                        letterSpacing: 1.5,
+                                        shadows: const [
+                                          Shadow(
+                                            color: Colors.black26,
+                                            offset: Offset(1, 1),
+                                            blurRadius: 1,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            const Text(
-                              'REMAINING',
-                              style: TextStyle(
-                                fontFamily: 'Nunito',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFAAAAAA),
-                                letterSpacing: 1,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 28),
@@ -353,9 +520,9 @@ Fokus belajar: Pahami konsep dasar terlebih dahulu, lalu berlanjut ke aplikasi p
                                   ),
                                 )
                               else
-                                const Text(
-                                  'Summarizing..',
-                                  style: TextStyle(
+                                Text(
+                                  _summaryError == null ? 'Ready' : 'Error',
+                                  style: const TextStyle(
                                     fontFamily: 'Nunito',
                                     fontSize: 12,
                                     color: Color(0xFFAAAAAA),

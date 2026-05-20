@@ -13,6 +13,8 @@ class AuthException implements Exception {
 }
 
 class AuthService {
+  static String? token;
+
   static String get baseUrl => kIsWeb ? 'http://localhost:8081' : 'http://10.0.2.2:8081';
 
   static Future<Map<String, dynamic>> register({
@@ -34,7 +36,12 @@ class AuthService {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final receivedToken = body['token'] as String?;
+      if (receivedToken != null) {
+        token = receivedToken;
+      }
+      return body;
     }
 
     try {
@@ -66,7 +73,12 @@ class AuthService {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final receivedToken = body['token'] as String?;
+      if (receivedToken != null) {
+        token = receivedToken;
+      }
+      return body;
     }
 
     try {
