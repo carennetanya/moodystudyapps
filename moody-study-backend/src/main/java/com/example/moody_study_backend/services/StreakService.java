@@ -1,19 +1,21 @@
 package com.example.moody_study_backend.services;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import org.springframework.stereotype.Service;
+
 import com.example.moody_study_backend.dto.StreakResponse;
 import com.example.moody_study_backend.dto.StudySessionRequest;
 import com.example.moody_study_backend.entity.Streak;
 import com.example.moody_study_backend.entity.StudySession;
 import com.example.moody_study_backend.entity.User;
+import com.example.moody_study_backend.enums.StreakLevel;
 import com.example.moody_study_backend.repository.StreakRepository;
 import com.example.moody_study_backend.repository.StudySessionRepository;
 import com.example.moody_study_backend.repository.UserRepository;
-import com.example.moody_study_backend.enums.StreakLevel;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -81,22 +83,18 @@ public class StreakService {
         LocalDate today = LocalDate.now();
         LocalDate last = streak.getLastStudyDate();
 
-        if (last == null || last.isBefore(today.minusDays(1))) {
-            // User tidak belajar 1x24 jam: kurangi life
-            if (streak.getLife() > 0) {
-                streak.setLife(streak.getLife() - 1);
-            }
-
-            // Reset streak ke 1 HANYA jika life sudah habis (0) setelah dikurangi
+        if (last == null) {
+            // First recorded study session: mulai streak tanpa mengurangi life.
+            streak.setCurrentStreak(1);
+        } else if (last.isEqual(today.minusDays(1))) {
+            // Lanjut streak normal hari berikutnya.
+            streak.setCurrentStreak(streak.getCurrentStreak() + 1);
+        } else if (last.isBefore(today.minusDays(1))) {
+            // User melewatkan satu hari atau lebih.
+            // Jika masih ada life, streak tetap sama sampai life habis.
             if (streak.getLife() == 0) {
                 streak.setCurrentStreak(1);
-            } else {
-                // Masih ada life: streak dipertahankan, sesi ini dihitung lanjut
-                streak.setCurrentStreak(streak.getCurrentStreak() + 1);
             }
-        } else if (last.isEqual(today.minusDays(1))) {
-            // Lanjut streak normal
-            streak.setCurrentStreak(streak.getCurrentStreak() + 1);
         }
         // Kalau last == today, tidak update (sudah belajar hari ini)
 

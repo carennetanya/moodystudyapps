@@ -6,6 +6,7 @@ import '../widgets/sound_warning.dart';
 import '../widgets/now_playing_widget.dart';
 import '../widgets/music_visualizer_widget.dart';
 import '../widgets/name_form_overlay.dart';
+import 'character_intro_screen.dart';
 import 'theme_selector_screen.dart';
 import 'login_screen.dart';
 
@@ -186,6 +187,20 @@ class _LoadingScreenState extends State<LoadingScreen>
 
   void _onNameSubmit(String name) {
     setState(() => _showNameForm = false);
+
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => CharacterIntroScreen(
+          userName: name,
+          theme: widget.theme,
+          audioPlayer: _audioPlayer,
+        ),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'theme_selector_screen.dart';
 import 'mood_screen.dart';
 import 'location_screen.dart';
+import 'package:moody_study/services/streak_service.dart';
 
 class CharacterIntroScreen extends StatefulWidget {
   final String userName;
@@ -218,14 +219,12 @@ class _LandingPage extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.only(
                     left: 16, right: 16, top: 6, bottom: 2),
-                child: Stack(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Align(
-                        alignment: Alignment.topLeft,
-                        child: _BookLanguageBadge()),
-                    const Align(
-                        alignment: Alignment.topRight,
-                        child: _LogoBadge()),
+                    const _StatsBadge(),
+                    const Spacer(),
+                    const _LivesBox(),
                   ],
                 ),
               ),
@@ -497,46 +496,528 @@ class _LogoBadge extends StatelessWidget {
   }
 }
 
-// ── Book + Language Badge ─────────────────────────────────────────
-class _BookLanguageBadge extends StatelessWidget {
+// ── Stats Badge (Level badge + Streak pill) ───────────────────────
+class _StatsBadge extends StatefulWidget {
+  const _StatsBadge();
+
+  @override
+  State<_StatsBadge> createState() => _StatsBadgeState();
+}
+
+class _StatsBadgeState extends State<_StatsBadge> {
+  late final Future<StreakInfo> _streakFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _streakFuture = StreakService.fetchStreak();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        border: Border.all(color: const Color(0xFF111111), width: 2),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0xFF111111),
-              offset: Offset(2, 2),
-              blurRadius: 0),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-                color: Color(0xFF111111), shape: BoxShape.circle),
-            child: const Center(
-                child: Icon(Icons.book, size: 18, color: Colors.white)),
+    return FutureBuilder<StreakInfo>(
+      future: _streakFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: const [
+              _LevelBadge(level: 1),
+              SizedBox(width: 8),
+              _StatPill(icon: '🔥', label: 'Streak', value: '0'),
+            ],
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: const [
+              _LevelBadge(level: 1),
+              SizedBox(width: 8),
+              _StatPill(icon: '🔥', label: 'Streak', value: '0'),
+            ],
+          );
+        }
+
+        final info = snapshot.data;
+        final level = info?.level ?? 1;
+        final streakValue = info?.currentStreak ?? 0;
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _LevelBadge(level: level),
+            const SizedBox(width: 8),
+            _StatPill(icon: '🔥', label: 'Streak', value: streakValue.toString()),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ── Level Badge (crown style, interactive) ────────────────────────
+class _LevelBadge extends StatefulWidget {
+  final int level;
+  const _LevelBadge({required this.level});
+
+  @override
+  State<_LevelBadge> createState() => _LevelBadgeState();
+}
+
+class _LevelBadgeState extends State<_LevelBadge>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+
+  // Level configs: [bgColor, shimmerColor, accentColor, starColor, wingColor]
+  static const _levelConfigs = [
+    {'bg': Color(0xFFB8A8E8), 'shimmer': Color(0xFFD4C8F5), 'accent': Color(0xFF7B6DB5), 'ribbon': Color(0xFF8A7DC8), 'label': '1'},
+    {'bg': Color(0xFFCC88EE), 'shimmer': Color(0xFFE4AAFF), 'accent': Color(0xFF9944BB), 'ribbon': Color(0xFFAA55CC), 'label': '2'},
+    {'bg': Color(0xFF66CCEE), 'shimmer': Color(0xFF99DDFF), 'accent': Color(0xFF2299BB), 'ribbon': Color(0xFF44AACC), 'label': '3'},
+    {'bg': Color(0xFFFF9900), 'shimmer': Color(0xFFFFBB44), 'accent': Color(0xFFBB5500), 'ribbon': Color(0xFFDD7700), 'label': '4'},
+    {'bg': Color(0xFFFF7766), 'shimmer': Color(0xFFFFAA99), 'accent': Color(0xFFCC3322), 'ribbon': Color(0xFFEE5544), 'label': '5'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.88).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTap() async {
+    await _controller.forward();
+    await _controller.reverse();
+    if (!mounted) return;
+    _showLevelDialog();
+  }
+
+  void _showLevelDialog() {
+    final cfg = _levelConfigs[(widget.level - 1).clamp(0, 4)];
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF111111), width: 2),
+            boxShadow: const [
+              BoxShadow(color: Color(0xFF111111), offset: Offset(4, 4), blurRadius: 0),
+            ],
           ),
-          const SizedBox(height: 8),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-                color: Color(0xFF111111), shape: BoxShape.circle),
-            child: const Center(
-                child: Icon(Icons.translate,
-                    size: 18, color: Colors.white)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LevelBadgePainter(level: widget.level, size: 100),
+              const SizedBox(height: 16),
+              Text(
+                'Level ${widget.level}',
+                style: const TextStyle(
+                  fontFamily: 'BlackHanSans',
+                  fontSize: 22,
+                  color: Color(0xFF111111),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _levelName(widget.level),
+                style: TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: cfg['bg'] as Color,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: 0.65,
+                  minHeight: 12,
+                  backgroundColor: const Color(0xFFEEEEEE),
+                  valueColor: AlwaysStoppedAnimation<Color>(cfg['bg'] as Color),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '650 / 1000 XP',
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF888888),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
+    );
+  }
+
+  String _levelName(int level) {
+    switch (level) {
+      case 1: return 'Rookie Scholar';
+      case 2: return 'Rising Mind';
+      case 3: return 'Bright Thinker';
+      case 4: return 'Gold Studier';
+      case 5: return 'Oddy Master';
+      default: return 'Scholar';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _onTap,
+      child: ScaleTransition(
+        scale: _scaleAnim,
+        child: _LevelBadgePainter(level: widget.level, size: 52),
+      ),
+    );
+  }
+}
+
+// ── Level Badge Painter ───────────────────────────────────────────
+class _LevelBadgePainter extends StatelessWidget {
+  final int level;
+  final double size;
+  const _LevelBadgePainter({required this.level, required this.size});
+
+  static const _levelConfigs = [
+    {'bg': Color(0xFFB8A8E8), 'shimmer': Color(0xFFD4C8F5), 'dark': Color(0xFF7B6DB5), 'ribbon': Color(0xFF8A7DC8)},
+    {'bg': Color(0xFFCC88EE), 'shimmer': Color(0xFFE4AAFF), 'dark': Color(0xFF9944BB), 'ribbon': Color(0xFFAA55CC)},
+    {'bg': Color(0xFF66CCEE), 'shimmer': Color(0xFF99DDFF), 'dark': Color(0xFF2299BB), 'ribbon': Color(0xFF44AACC)},
+    {'bg': Color(0xFFFF9900), 'shimmer': Color(0xFFFFBB44), 'dark': Color(0xFFBB5500), 'ribbon': Color(0xFFDD7700)},
+    {'bg': Color(0xFFFF7766), 'shimmer': Color(0xFFFFAA99), 'dark': Color(0xFFCC3322), 'ribbon': Color(0xFFEE5544)},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final cfg = _levelConfigs[(level - 1).clamp(0, 4)];
+    final bg = cfg['bg'] as Color;
+    final shimmer = cfg['shimmer'] as Color;
+    final dark = cfg['dark'] as Color;
+    final ribbon = cfg['ribbon'] as Color;
+    final starCount = level.clamp(1, 5);
+    final hasWings = level >= 3;
+    final hasCrown = level == 5;
+
+    return SizedBox(
+      width: size,
+      height: size * 1.15,
+      child: CustomPaint(
+        painter: _BadgePainter(
+          bg: bg,
+          shimmer: shimmer,
+          dark: dark,
+          ribbon: ribbon,
+          level: level,
+          starCount: starCount,
+          hasWings: hasWings,
+          hasCrown: hasCrown,
+        ),
+      ),
+    );
+  }
+}
+
+
+// u2500u2500 Badge Outline Painter u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500
+class _BadgeOutlinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final cx = w / 2;
+    final outlinePaint = Paint()
+      ..color = Colors.black.withOpacity(0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawCircle(Offset(cx, h * 0.34), w * 0.36, outlinePaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(cx - w * 0.42, h * 0.54, w * 0.84, h * 0.22),
+        const Radius.circular(6),
+      ),
+      outlinePaint,
+    );
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _BadgePainter extends CustomPainter {
+  final Color bg, shimmer, dark, ribbon;
+  final int level, starCount;
+  final bool hasWings, hasCrown;
+
+  const _BadgePainter({
+    required this.bg, required this.shimmer, required this.dark,
+    required this.ribbon, required this.level, required this.starCount,
+    required this.hasWings, required this.hasCrown,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final cx = w / 2;
+
+    final bodyPaint = Paint()..color = bg..style = PaintingStyle.fill;
+    final darkPaint = Paint()..color = dark..style = PaintingStyle.fill;
+    final shimmerPaint = Paint()..color = shimmer..style = PaintingStyle.fill;
+    final ribbonPaint = Paint()..color = ribbon..style = PaintingStyle.fill;
+    final whitePaint = Paint()..color = Colors.white..style = PaintingStyle.fill;
+    final shadowPaint = Paint()..color = Colors.black.withOpacity(0.15)..style = PaintingStyle.fill;
+
+    // Wings (level 3+)
+    if (hasWings) {
+      final wingColor = level == 3 ? const Color(0xFF88DDFF) : const Color(0xFFFFEE88);
+      final wingPaint = Paint()..color = wingColor..style = PaintingStyle.fill;
+      // left wing
+      final leftWing = Path()
+        ..moveTo(cx - w * 0.28, h * 0.38)
+        ..cubicTo(cx - w * 0.55, h * 0.20, cx - w * 0.62, h * 0.38, cx - w * 0.50, h * 0.52)
+        ..cubicTo(cx - w * 0.42, h * 0.46, cx - w * 0.33, h * 0.44, cx - w * 0.28, h * 0.46)
+        ..close();
+      canvas.drawPath(leftWing, wingPaint);
+      // right wing
+      final rightWing = Path()
+        ..moveTo(cx + w * 0.28, h * 0.38)
+        ..cubicTo(cx + w * 0.55, h * 0.20, cx + w * 0.62, h * 0.38, cx + w * 0.50, h * 0.52)
+        ..cubicTo(cx + w * 0.42, h * 0.46, cx + w * 0.33, h * 0.44, cx + w * 0.28, h * 0.46)
+        ..close();
+      canvas.drawPath(rightWing, wingPaint);
+      // wing outline
+      final wingOutline = Paint()..color = wingColor.withOpacity(0.6)..style = PaintingStyle.stroke..strokeWidth = 1;
+      canvas.drawPath(leftWing, wingOutline);
+      canvas.drawPath(rightWing, wingOutline);
+    }
+
+    // Crown spikes (level 5)
+    if (hasCrown) {
+      final crownPaint = Paint()..color = dark..style = PaintingStyle.fill;
+      for (int i = 0; i < 5; i++) {
+        final angle = -90 + (i - 2) * 30.0;
+        final rad = angle * 3.14159 / 180;
+        final tipR = w * 0.38;
+        final baseR = w * 0.28;
+        final tx = cx + tipR * cos(rad);
+        final ty = h * 0.18 + tipR * sin(rad);
+        final b1x = cx + baseR * cos((angle - 10) * 3.14159 / 180);
+        final b1y = h * 0.18 + baseR * sin((angle - 10) * 3.14159 / 180);
+        final b2x = cx + baseR * cos((angle + 10) * 3.14159 / 180);
+        final b2y = h * 0.18 + baseR * sin((angle + 10) * 3.14159 / 180);
+        final spike = Path()..moveTo(b1x, b1y)..lineTo(tx, ty)..lineTo(b2x, b2y)..close();
+        canvas.drawPath(spike, crownPaint);
+      }
+    }
+
+    // Main dome shadow
+    canvas.drawCircle(Offset(cx, h * 0.36), w * 0.36, shadowPaint);
+
+    // Main dome
+    canvas.drawCircle(Offset(cx, h * 0.34), w * 0.36, bodyPaint);
+
+    // Shimmer highlight on dome
+    final shimmerPath = Path()
+      ..addOval(Rect.fromCenter(
+        center: Offset(cx - w * 0.06, h * 0.18),
+        width: w * 0.28,
+        height: w * 0.22,
+      ));
+    canvas.drawPath(shimmerPath, shimmerPaint..color = shimmer.withOpacity(0.7));
+
+    // Small white glint
+    canvas.drawCircle(Offset(cx - w * 0.10, h * 0.14), w * 0.05, whitePaint..color = Colors.white.withOpacity(0.9));
+
+    // Ribbon/banner
+    final ribbonRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(cx - w * 0.42, h * 0.54, w * 0.84, h * 0.22),
+      const Radius.circular(6),
+    );
+    canvas.drawRRect(ribbonRect, ribbonPaint);
+
+    // Ribbon dark accent top
+    final ribbonTop = Paint()..color = dark.withOpacity(0.3)..style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.42, h * 0.54, w * 0.84, h * 0.04), const Radius.circular(6)),
+      ribbonTop,
+    );
+
+    // Stars on ribbon
+    final starY = h * 0.655;
+    final starSize = w * 0.095;
+    final starSpacing = w * 0.22;
+    final totalStarW = starCount * starSize * 2 + (starCount - 1) * (starSpacing - starSize * 2);
+    final starStartX = cx - totalStarW / 2 + starSize;
+    for (int i = 0; i < starCount; i++) {
+      final sx = starStartX + i * starSpacing;
+      _drawStar(canvas, Offset(sx, starY), starSize, const Color(0xFFFFDD44), const Color(0xFFFFAA00));
+    }
+
+    // Level number
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: '$level',
+        style: TextStyle(
+          fontSize: w * 0.32,
+          fontWeight: FontWeight.w900,
+          color: Colors.white,
+          shadows: [
+            Shadow(color: dark, offset: const Offset(0, 2), blurRadius: 3),
+          ],
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(cx - textPainter.width / 2, h * 0.14));
+  }
+
+  void _drawStar(Canvas canvas, Offset center, double r, Color fill, Color stroke) {
+    final path = Path();
+    for (int i = 0; i < 10; i++) {
+      final angle = (i * 36 - 90) * 3.14159 / 180;
+      final radius = i.isEven ? r : r * 0.45;
+      final x = center.dx + radius * cos(angle);
+      final y = center.dy + radius * sin(angle);
+      if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+    }
+    path.close();
+    canvas.drawPath(path, Paint()..color = fill..style = PaintingStyle.fill);
+    canvas.drawPath(path, Paint()..color = stroke..style = PaintingStyle.stroke..strokeWidth = 0.8);
+  }
+
+  double cos(double rad) => _cos(rad);
+  double sin(double rad) => _sin(rad);
+
+  static double _cos(double x) {
+    double result = 1, term = 1;
+    for (int i = 1; i <= 8; i++) {
+      term *= -x * x / ((2 * i - 1) * (2 * i));
+      result += term;
+    }
+    return result;
+  }
+
+  static double _sin(double x) {
+    double result = x, term = x;
+    for (int i = 1; i <= 8; i++) {
+      term *= -x * x / ((2 * i) * (2 * i + 1));
+      result += term;
+    }
+    return result;
+  }
+
+  @override
+  bool shouldRepaint(covariant _BadgePainter old) =>
+      old.level != level || old.bg != bg;
+}
+
+// ── Streak Pill ───────────────────────────────────────────────────
+class _StatPill extends StatelessWidget {
+  final String icon;
+  final String label;
+  final String value;
+  const _StatPill({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.local_fire_department,
+          size: 20,
+          color: Colors.white,
+          shadows: const [
+            Shadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
+          ],
+        ),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            height: 1.0,
+            shadows: [
+              Shadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Lives Box (fetches life count and renders hearts) ───────────
+class _LivesBox extends StatelessWidget {
+  const _LivesBox();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<int>(
+      future: StreakService.fetchLife(),
+      builder: (context, snapshot) {
+        final int life = snapshot.data ?? 3;
+
+        List<Widget> hearts = List.generate(3, (i) {
+          if (i < life) {
+            return const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Icon(Icons.favorite, color: Color(0xFFFF3B5C), size: 22),
+            );
+          }
+          return const Padding(
+            padding: EdgeInsets.only(right: 4),
+            child: Icon(Icons.favorite_border, color: Color(0xFFBBBBBB), size: 22),
+          );
+        });
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: const Color(0xFF111111), width: 2.0),
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: const [
+              BoxShadow(
+                  color: Color(0xFF111111),
+                  offset: Offset(3, 3),
+                  blurRadius: 0),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: hearts,
+          ),
+        );
+      },
     );
   }
 }
