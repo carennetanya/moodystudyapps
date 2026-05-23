@@ -5,6 +5,7 @@ import 'character_intro_screen.dart';
 import 'theme_selector_screen.dart';
 import 'register_screen.dart';
 import '../widgets/music_visualizer_widget.dart';
+import '../utils/app_localizations.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -75,14 +76,15 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _onLogin() async {
+    final l = AppLocalizations.of(context);
     if (!_isFormValid) {
       setState(() {
         if (_emailController.text.trim().isEmpty) {
-          _errorMessage = 'Email is required!';
+          _errorMessage = l.loginEmailRequired;
         } else if (!_emailController.text.contains('@')) {
-          _errorMessage = 'Invalid email!';
+          _errorMessage = l.loginInvalidEmail;
         } else if (_passwordController.text.length < 6) {
-          _errorMessage = 'Password must be at least 6 characters!';
+          _errorMessage = l.loginPasswordShort;
         }
       });
       return;
@@ -143,6 +145,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final isDark = widget.theme == AppTheme.dark;
     final bgColor = isDark ? const Color(0xFF1a1a2e) : const Color(0xFF1EE86F);
     final cardBg = Colors.white;
@@ -189,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen>
                       children: [
                         // Subtitle
                         Text(
-                          'Welcome back',
+                          l.loginWelcomeBack,
                           style: TextStyle(
                             fontFamily: 'Nunito',
                             fontSize: 15,
@@ -201,12 +204,12 @@ class _LoginScreenState extends State<LoginScreen>
                         const SizedBox(height: 24),
 
                         // Email field
-                        _buildLabel('Email'),
+                        _buildLabel(l.loginEmail),
                         const SizedBox(height: 6),
                         _LoginInput(
                           controller: _emailController,
                           focusNode: _emailFocus,
-                          hintText: 'email@example.com',
+                          hintText: l.loginEmailHint,
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           onSubmitted: (_) => FocusScope.of(context)
@@ -217,12 +220,12 @@ class _LoginScreenState extends State<LoginScreen>
                         const SizedBox(height: 18),
 
                         // Password field
-                        _buildLabel('Password'),
+                        _buildLabel(l.loginPassword),
                         const SizedBox(height: 6),
                         _LoginInput(
                           controller: _passwordController,
                           focusNode: _passwordFocus,
-                          hintText: 'min. 6 characters',
+                          hintText: l.loginPasswordHint,
                           obscureText: _obscurePassword,
                           textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _onLogin(),
@@ -282,6 +285,7 @@ class _LoginScreenState extends State<LoginScreen>
                             enabled: _isFormValid && !_isLoading,
                             isLoading: _isLoading,
                             onTap: _onLogin,
+                            label: l.loginSignIn,
                           ),
                         ),
                       ],
@@ -294,7 +298,7 @@ class _LoginScreenState extends State<LoginScreen>
                   GestureDetector(
                     onTap: _navigateToSignUp,
                     child: Text(
-                      'Don\'t have an account? Sign up',
+                      l.loginNoAccount,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: 15,
@@ -340,6 +344,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildHeader(bool isDark) {
+    final l = AppLocalizations.of(context);
     final textColor =
         isDark ? const Color(0xFFE2E8F0) : const Color(0xFF111111);
     final strokeColor =
@@ -350,7 +355,7 @@ class _LoginScreenState extends State<LoginScreen>
         Stack(
           children: [
             Text(
-              'Login',
+              l.loginButton,
               style: TextStyle(
                 fontFamily: 'BlackHanSans',
                 fontSize: 52,
@@ -363,7 +368,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
             Text(
-              'Login',
+              l.loginButton,
               style: TextStyle(
                 fontFamily: 'BlackHanSans',
                 fontSize: 52,
@@ -382,7 +387,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: 6),
         Text(
-          'to Moody Study',
+          l.isId ? 'ke Moody Study' : 'to Moody Study',
           style: TextStyle(
             fontFamily: 'Nunito',
             fontSize: 18,
@@ -507,11 +512,13 @@ class _LoginButton extends StatefulWidget {
   final bool enabled;
   final bool isLoading;
   final VoidCallback onTap;
+  final String label;
 
   const _LoginButton({
     required this.enabled,
     required this.isLoading,
     required this.onTap,
+    required this.label,
   });
 
   @override
@@ -582,7 +589,7 @@ class _LoginButtonState extends State<_LoginButton> {
                   ),
                 )
               : Text(
-                  'SIGN IN NOW',
+                  widget.label,
                   style: TextStyle(
                     fontFamily: 'BlackHanSans',
                     fontSize: 20,

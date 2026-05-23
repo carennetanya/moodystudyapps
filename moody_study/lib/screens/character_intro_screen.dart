@@ -1,9 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'theme_selector_screen.dart';
 import 'mood_screen.dart';
 import 'location_screen.dart';
+import 'your_files_screen.dart';
+import 'oddy_flashcard_screen.dart';
+import 'daily_quest_screen.dart';
 import 'package:moody_study/services/streak_service.dart';
+import 'package:moody_study/services/daily_quest_service.dart';
+import 'package:moody_study/utils/app_localizations.dart';
 
 class CharacterIntroScreen extends StatefulWidget {
   final String userName;
@@ -46,7 +53,6 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
   }
 
   void _initAnimations() {
-    // Greeting pop-in
     _greetingController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
@@ -60,7 +66,6 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
       CurvedAnimation(parent: _greetingController, curve: Curves.easeIn),
     );
 
-    // Landing fade in
     _landingFadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -166,6 +171,9 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
                   userName: widget.userName,
                   onStartNow: _onStartNow,
                 ),
+                userName: widget.userName,
+                theme: widget.theme,
+                audioPlayer: widget.audioPlayer,
               ),
             ),
           if (!_showLandingPage && _showGreeting && _greetingText.isNotEmpty)
@@ -198,9 +206,92 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
 }
 
 // ── Landing Page ──────────────────────────────────────────────────
-class _LandingPage extends StatelessWidget {
+class _LandingPage extends StatefulWidget {
   final Widget heroContent;
-  const _LandingPage({required this.heroContent});
+  final String userName;
+  final AppTheme theme;
+  final AudioPlayer? audioPlayer;
+
+  const _LandingPage({
+    required this.heroContent,
+    required this.userName,
+    required this.theme,
+    this.audioPlayer,
+  });
+
+  @override
+  State<_LandingPage> createState() => _LandingPageState();
+}
+
+class _LandingPageState extends State<_LandingPage> {
+  int _selectedNav = 0; // 0 = Home
+
+  void _onNavTap(BuildContext context, int index) {
+    if (index == 0) {
+      // Home: sudah di sini
+      setState(() => _selectedNav = 0);
+      return;
+    }
+
+    setState(() => _selectedNav = index);
+
+    switch (index) {
+      case 1: // Daily Quest
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const DailyQuestScreen(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        ).then((_) => setState(() => _selectedNav = 0));
+        break;
+      case 2: // Your Files
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const YourFilesScreen(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        ).then((_) => setState(() => _selectedNav = 0));
+        break;
+      case 3: // Quiz
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const _QuizPlaceholderScreen(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        ).then((_) => setState(() => _selectedNav = 0));
+        break;
+      case 4: // Statistik
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const _StatPlaceholderScreen(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        ).then((_) {
+          // Tandai quest Review Stats selesai saat user buka statistik
+          DailyQuestService.completeReviewStats().catchError((_) {});
+          setState(() => _selectedNav = 0);
+        });
+        break;
+      case 5: // Settings
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const _SettingsPlaceholderScreen(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        ).then((_) => setState(() => _selectedNav = 0));
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -210,28 +301,196 @@ class _LandingPage extends StatelessWidget {
       height: double.infinity,
       child: Stack(
         children: [
-          CustomPaint(
-              size: Size.infinite, painter: _DiagonalStripePainter()),
+          CustomPaint(size: Size.infinite, painter: _DiagonalStripePainter()),
+
+          // Main content
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Expanded(child: widget.heroContent),
+              ],
+            ),
+          ),
+
+          // Top bar (level badge + streak + lives)
           Positioned(
             top: 0, left: 0, right: 0,
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.only(
-                    left: 16, right: 16, top: 6, bottom: 2),
+                padding: const EdgeInsets.only(left: 16, right: 16, top: 6, bottom: 2),
                 child: Row(
+                  mainAxisSize: MainAxisSize.max,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const _StatsBadge(),
                     const Spacer(),
+                    _GlobeButton(),
+                    const SizedBox(width: 8),
                     const _LivesBox(),
                   ],
                 ),
               ),
             ),
           ),
-          SafeArea(child: heroContent),
+
+          // Bottom Navigation Bar
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: _BottomNavBar(
+              selectedIndex: _selectedNav,
+              onTap: (i) => _onNavTap(context, i),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Bottom Navigation Bar ─────────────────────────────────────────
+class _BottomNavBar extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+
+  const _BottomNavBar({required this.selectedIndex, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final items = [
+      _NavItem(icon: Icons.home_rounded, label: l.navHome),
+      _NavItem(icon: Icons.task_alt_rounded, label: l.navQuest),
+      _NavItem(icon: Icons.folder_rounded, label: l.navFiles),
+      _NavItem(icon: Icons.quiz_rounded, label: l.navQuiz),
+      _NavItem(icon: Icons.bar_chart_rounded, label: l.navStats),
+      _NavItem(icon: Icons.settings_rounded, label: l.navSettings),
+    ];
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Color(0xFF111111), width: 2.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 12,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(items.length, (i) {
+              final item = items[i];
+              final selected = selectedIndex == i;
+              return _NavButton(
+                icon: item.icon,
+                label: item.label,
+                selected: selected,
+                onTap: () => onTap(i),
+                // Daily Quest punya badge khusus
+                showQuestBadge: i == 1,
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem {
+  final IconData icon;
+  final String label;
+  const _NavItem({required this.icon, required this.label});
+}
+
+class _NavButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool showQuestBadge;
+
+  const _NavButton({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.showQuestBadge = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: selected
+            ? BoxDecoration(
+                color: const Color(0xFFF2EA05),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF111111), width: 2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0xFF111111),
+                    offset: Offset(2, 2),
+                    blurRadius: 0,
+                  ),
+                ],
+              )
+            : null,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  icon,
+                  size: 24,
+                  color: selected ? const Color(0xFF111111) : const Color(0xFF888888),
+                ),
+                // Quest badge: titik kuning jika belum semua selesai
+                if (showQuestBadge && !selected)
+                  Positioned(
+                    top: -2,
+                    right: -4,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF3B5C),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Color(0x44000000), blurRadius: 2),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: selected ? const Color(0xFF111111) : const Color(0xFF888888),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -247,19 +506,20 @@ class _HeroContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final isSmall = size.width < 400;
-    final imgH = (size.height * 0.28).clamp(120.0, 220.0);
+    final imgH = (size.height * 0.26).clamp(110.0, 200.0);
 
     return SizedBox.expand(
       child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 160, 24, 40),
+          // Extra bottom padding untuk bottom nav bar
+          padding: const EdgeInsets.fromLTRB(24, 155, 24, 100),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                'study anytime anywhere',
+                AppLocalizations.of(context).homeTagline,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Nunito',
@@ -288,7 +548,7 @@ class _HeroContent extends StatelessWidget {
               _HeadlineText(isSmall: isSmall),
               const SizedBox(height: 14),
               Text(
-                "good mood or not,\nlet's keep studying with oddy!",
+                AppLocalizations.of(context).homeSubtitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Nunito',
@@ -415,82 +675,22 @@ class _StartNowButtonState extends State<_StartNowButton> {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Text(
-              'start now',
-              style: TextStyle(
+              AppLocalizations.of(context).homeStartNow,
+              style: const TextStyle(
                 fontFamily: 'BlackHanSans',
                 fontSize: 16,
                 letterSpacing: 2,
                 color: Color(0xFFE5E81E),
               ),
             ),
-            SizedBox(width: 6),
-            Text('♪',
+            const SizedBox(width: 6),
+            const Text('♪',
                 style: TextStyle(
                     fontSize: 16, color: Color(0xFFE5E81E))),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Logo Badge ────────────────────────────────────────────────────
-class _LogoBadge extends StatelessWidget {
-  const _LogoBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFF111111), width: 2.0),
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0xFF111111),
-              offset: Offset(3, 3),
-              blurRadius: 0),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()..scale(-1.0, 1.0),
-            child: Image.asset(
-              'assets/images/logo.png',
-              width: 28,
-              height: 28,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const Text('🎓', style: TextStyle(fontSize: 22)),
-            ),
-          ),
-          const SizedBox(width: 4),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('moody',
-                  style: TextStyle(
-                      fontFamily: 'BlackHanSans',
-                      fontSize: 14,
-                      color: Color(0xFF111111),
-                      height: 1.1)),
-              Text('study',
-                  style: TextStyle(
-                      fontFamily: 'BlackHanSans',
-                      fontSize: 10,
-                      color: Color(0xFF555555),
-                      letterSpacing: 1.5,
-                      height: 1.1)),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -518,26 +718,15 @@ class _StatsBadgeState extends State<_StatsBadge> {
     return FutureBuilder<StreakInfo>(
       future: _streakFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting ||
+            snapshot.hasError) {
           return Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: const [
-              _LevelBadge(level: 1),
-              SizedBox(width: 8),
-              _StatPill(icon: '🔥', label: 'Streak', value: '0'),
-            ],
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: const [
-              _LevelBadge(level: 1),
-              SizedBox(width: 8),
-              _StatPill(icon: '🔥', label: 'Streak', value: '0'),
+            children: [
+              _LevelBadge(level: 1, totalSessions: 0, sessionsToNextLevel: 6, nextLevelName: 'LEARNER'),
+              const SizedBox(width: 8),
+              const _StatPill(icon: '🔥', label: 'Streak', value: '0'),
             ],
           );
         }
@@ -545,12 +734,13 @@ class _StatsBadgeState extends State<_StatsBadge> {
         final info = snapshot.data;
         final level = info?.level ?? 1;
         final streakValue = info?.currentStreak ?? 0;
+        final totalSessions = info?.totalSessions ?? 0;
 
         return Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _LevelBadge(level: level),
+            _LevelBadge(level: level, totalSessions: totalSessions, sessionsToNextLevel: info?.sessionsToNextLevel ?? 0, nextLevelName: info?.nextLevelName),
             const SizedBox(width: 8),
             _StatPill(icon: '🔥', label: 'Streak', value: streakValue.toString()),
           ],
@@ -563,7 +753,16 @@ class _StatsBadgeState extends State<_StatsBadge> {
 // ── Level Badge (crown style, interactive) ────────────────────────
 class _LevelBadge extends StatefulWidget {
   final int level;
-  const _LevelBadge({required this.level});
+  final int totalSessions;
+  final int sessionsToNextLevel;
+  final String? nextLevelName;
+
+  const _LevelBadge({
+    required this.level,
+    required this.totalSessions,
+    required this.sessionsToNextLevel,
+    this.nextLevelName,
+  });
 
   @override
   State<_LevelBadge> createState() => _LevelBadgeState();
@@ -574,7 +773,6 @@ class _LevelBadgeState extends State<_LevelBadge>
   late AnimationController _controller;
   late Animation<double> _scaleAnim;
 
-  // Level configs: [bgColor, shimmerColor, accentColor, starColor, wingColor]
   static const _levelConfigs = [
     {'bg': Color(0xFFB8A8E8), 'shimmer': Color(0xFFD4C8F5), 'accent': Color(0xFF7B6DB5), 'ribbon': Color(0xFF8A7DC8), 'label': '1'},
     {'bg': Color(0xFFCC88EE), 'shimmer': Color(0xFFE4AAFF), 'accent': Color(0xFF9944BB), 'ribbon': Color(0xFFAA55CC), 'label': '2'},
@@ -602,16 +800,55 @@ class _LevelBadgeState extends State<_LevelBadge>
   }
 
   void _onTap() async {
+    final ctx = context;
     await _controller.forward();
     await _controller.reverse();
     if (!mounted) return;
-    _showLevelDialog();
+    _showLevelDialog(ctx);
   }
 
-  void _showLevelDialog() {
+  int _levelMinSessions(int level) {
+    return switch (level) {
+      1 => 0, 2 => 6, 3 => 13, 4 => 22, 5 => 33, _ => 0,
+    };
+  }
+
+  int _nextLevelThreshold(int level) {
+    return switch (level) {
+      1 => 6, 2 => 13, 3 => 22, 4 => 33, _ => 33,
+    };
+  }
+
+  String _levelName(int level) {
+    switch (level) {
+      case 1: return 'Beginner';
+      case 2: return 'Learner';
+      case 3: return 'Practitioner';
+      case 4: return 'Expert';
+      case 5: return 'Master';
+      default: return 'Beginner';
+    }
+  }
+
+  void _showLevelDialog(BuildContext ctx) {
     final cfg = _levelConfigs[(widget.level - 1).clamp(0, 4)];
+    final nextLevel = (widget.level < 5 ? widget.level + 1 : 5);
+    final nextLevelName = _levelName(nextLevel);
+    final bool isMax = widget.level >= 5;
+    final int currentMin = _levelMinSessions(widget.level);
+    final int threshold = _nextLevelThreshold(widget.level);
+    final int sessionsNeeded = isMax ? 0 : math.max(0, threshold - widget.totalSessions);
+    final int levelProgressTotal = isMax ? 1 : (threshold - currentMin);
+    final int levelProgressCurrent = isMax
+        ? levelProgressTotal
+        : math.max(0, widget.totalSessions - currentMin);
+    final double progress = isMax || levelProgressTotal == 0
+        ? 1.0
+        : (levelProgressCurrent / levelProgressTotal).clamp(0.0, 1.0);
+    final String currentLevelName = _levelName(widget.level);
+
     showDialog(
-      context: context,
+      context: ctx,
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
@@ -626,32 +863,54 @@ class _LevelBadgeState extends State<_LevelBadge>
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _LevelBadgePainter(level: widget.level, size: 100),
+              Center(child: _LevelBadgePainter(level: widget.level, size: 100)),
               const SizedBox(height: 16),
-              Text(
-                'Level ${widget.level}',
-                style: const TextStyle(
-                  fontFamily: 'BlackHanSans',
-                  fontSize: 22,
-                  color: Color(0xFF111111),
+              Center(
+                child: Text(
+                  'Level ${widget.level} · $currentLevelName',
+                  style: const TextStyle(
+                    fontFamily: 'BlackHanSans',
+                    fontSize: 22,
+                    color: Color(0xFF111111),
+                  ),
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
-                _levelName(widget.level),
-                style: TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: cfg['bg'] as Color,
+              Center(
+                child: Text(
+                  isMax ? 'Highest rank' : 'Next: Level $nextLevel ($nextLevelName)',
+                  style: TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: cfg['bg'] as Color,
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
+              Text(
+                'Total sessions: ${widget.totalSessions}',
+                style: const TextStyle(
+                  fontFamily: 'Nunito', fontSize: 14, fontWeight: FontWeight.w600,
+                  color: Color(0xFF111111),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                isMax
+                    ? 'You have reached the highest level. Keep it up!'
+                    : 'Need $sessionsNeeded more session${sessionsNeeded == 1 ? '' : 's'} to reach Level $nextLevel ($nextLevelName).',
+                style: const TextStyle(
+                  fontFamily: 'Nunito', fontSize: 13, color: Color(0xFF555555),
+                ),
+              ),
+              const SizedBox(height: 14),
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
-                  value: 0.65,
+                  value: progress,
                   minHeight: 12,
                   backgroundColor: const Color(0xFFEEEEEE),
                   valueColor: AlwaysStoppedAnimation<Color>(cfg['bg'] as Color),
@@ -659,11 +918,11 @@ class _LevelBadgeState extends State<_LevelBadge>
               ),
               const SizedBox(height: 6),
               Text(
-                '650 / 1000 XP',
+                isMax
+                    ? 'Max level achieved'
+                    : '$levelProgressCurrent / $levelProgressTotal sessions in this level',
                 style: const TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Nunito', fontSize: 12, fontWeight: FontWeight.w700,
                   color: Color(0xFF888888),
                 ),
               ),
@@ -674,24 +933,28 @@ class _LevelBadgeState extends State<_LevelBadge>
     );
   }
 
-  String _levelName(int level) {
-    switch (level) {
-      case 1: return 'Rookie Scholar';
-      case 2: return 'Rising Mind';
-      case 3: return 'Bright Thinker';
-      case 4: return 'Gold Studier';
-      case 5: return 'Oddy Master';
-      default: return 'Scholar';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _onTap,
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: _LevelBadgePainter(level: widget.level, size: 52),
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(6),
+            child: ScaleTransition(
+              scale: _scaleAnim,
+              child: _LevelBadgePainter(level: widget.level, size: 52),
+            ),
+          ),
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _onTap,
+              behavior: HitTestBehavior.opaque,
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -727,43 +990,12 @@ class _LevelBadgePainter extends StatelessWidget {
       height: size * 1.15,
       child: CustomPaint(
         painter: _BadgePainter(
-          bg: bg,
-          shimmer: shimmer,
-          dark: dark,
-          ribbon: ribbon,
-          level: level,
-          starCount: starCount,
-          hasWings: hasWings,
-          hasCrown: hasCrown,
+          bg: bg, shimmer: shimmer, dark: dark, ribbon: ribbon,
+          level: level, starCount: starCount, hasWings: hasWings, hasCrown: hasCrown,
         ),
       ),
     );
   }
-}
-
-
-// u2500u2500 Badge Outline Painter u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500
-class _BadgeOutlinePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final cx = w / 2;
-    final outlinePaint = Paint()
-      ..color = Colors.black.withOpacity(0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawCircle(Offset(cx, h * 0.34), w * 0.36, outlinePaint);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(cx - w * 0.42, h * 0.54, w * 0.84, h * 0.22),
-        const Radius.circular(6),
-      ),
-      outlinePaint,
-    );
-  }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _BadgePainter extends CustomPainter {
@@ -790,31 +1022,23 @@ class _BadgePainter extends CustomPainter {
     final whitePaint = Paint()..color = Colors.white..style = PaintingStyle.fill;
     final shadowPaint = Paint()..color = Colors.black.withOpacity(0.15)..style = PaintingStyle.fill;
 
-    // Wings (level 3+)
     if (hasWings) {
       final wingColor = level == 3 ? const Color(0xFF88DDFF) : const Color(0xFFFFEE88);
       final wingPaint = Paint()..color = wingColor..style = PaintingStyle.fill;
-      // left wing
       final leftWing = Path()
         ..moveTo(cx - w * 0.28, h * 0.38)
         ..cubicTo(cx - w * 0.55, h * 0.20, cx - w * 0.62, h * 0.38, cx - w * 0.50, h * 0.52)
         ..cubicTo(cx - w * 0.42, h * 0.46, cx - w * 0.33, h * 0.44, cx - w * 0.28, h * 0.46)
         ..close();
       canvas.drawPath(leftWing, wingPaint);
-      // right wing
       final rightWing = Path()
         ..moveTo(cx + w * 0.28, h * 0.38)
         ..cubicTo(cx + w * 0.55, h * 0.20, cx + w * 0.62, h * 0.38, cx + w * 0.50, h * 0.52)
         ..cubicTo(cx + w * 0.42, h * 0.46, cx + w * 0.33, h * 0.44, cx + w * 0.28, h * 0.46)
         ..close();
       canvas.drawPath(rightWing, wingPaint);
-      // wing outline
-      final wingOutline = Paint()..color = wingColor.withOpacity(0.6)..style = PaintingStyle.stroke..strokeWidth = 1;
-      canvas.drawPath(leftWing, wingOutline);
-      canvas.drawPath(rightWing, wingOutline);
     }
 
-    // Crown spikes (level 5)
     if (hasCrown) {
       final crownPaint = Paint()..color = dark..style = PaintingStyle.fill;
       for (int i = 0; i < 5; i++) {
@@ -822,50 +1046,40 @@ class _BadgePainter extends CustomPainter {
         final rad = angle * 3.14159 / 180;
         final tipR = w * 0.38;
         final baseR = w * 0.28;
-        final tx = cx + tipR * cos(rad);
-        final ty = h * 0.18 + tipR * sin(rad);
-        final b1x = cx + baseR * cos((angle - 10) * 3.14159 / 180);
-        final b1y = h * 0.18 + baseR * sin((angle - 10) * 3.14159 / 180);
-        final b2x = cx + baseR * cos((angle + 10) * 3.14159 / 180);
-        final b2y = h * 0.18 + baseR * sin((angle + 10) * 3.14159 / 180);
+        final tx = cx + tipR * _cos(rad);
+        final ty = h * 0.18 + tipR * _sin(rad);
+        final b1x = cx + baseR * _cos((angle - 10) * 3.14159 / 180);
+        final b1y = h * 0.18 + baseR * _sin((angle - 10) * 3.14159 / 180);
+        final b2x = cx + baseR * _cos((angle + 10) * 3.14159 / 180);
+        final b2y = h * 0.18 + baseR * _sin((angle + 10) * 3.14159 / 180);
         final spike = Path()..moveTo(b1x, b1y)..lineTo(tx, ty)..lineTo(b2x, b2y)..close();
         canvas.drawPath(spike, crownPaint);
       }
     }
 
-    // Main dome shadow
     canvas.drawCircle(Offset(cx, h * 0.36), w * 0.36, shadowPaint);
-
-    // Main dome
     canvas.drawCircle(Offset(cx, h * 0.34), w * 0.36, bodyPaint);
 
-    // Shimmer highlight on dome
     final shimmerPath = Path()
       ..addOval(Rect.fromCenter(
         center: Offset(cx - w * 0.06, h * 0.18),
-        width: w * 0.28,
-        height: w * 0.22,
+        width: w * 0.28, height: w * 0.22,
       ));
     canvas.drawPath(shimmerPath, shimmerPaint..color = shimmer.withOpacity(0.7));
-
-    // Small white glint
     canvas.drawCircle(Offset(cx - w * 0.10, h * 0.14), w * 0.05, whitePaint..color = Colors.white.withOpacity(0.9));
 
-    // Ribbon/banner
     final ribbonRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(cx - w * 0.42, h * 0.54, w * 0.84, h * 0.22),
       const Radius.circular(6),
     );
     canvas.drawRRect(ribbonRect, ribbonPaint);
 
-    // Ribbon dark accent top
     final ribbonTop = Paint()..color = dark.withOpacity(0.3)..style = PaintingStyle.fill;
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.42, h * 0.54, w * 0.84, h * 0.04), const Radius.circular(6)),
       ribbonTop,
     );
 
-    // Stars on ribbon
     final starY = h * 0.655;
     final starSize = w * 0.095;
     final starSpacing = w * 0.22;
@@ -876,7 +1090,6 @@ class _BadgePainter extends CustomPainter {
       _drawStar(canvas, Offset(sx, starY), starSize, const Color(0xFFFFDD44), const Color(0xFFFFAA00));
     }
 
-    // Level number
     final textPainter = TextPainter(
       text: TextSpan(
         text: '$level',
@@ -884,9 +1097,7 @@ class _BadgePainter extends CustomPainter {
           fontSize: w * 0.32,
           fontWeight: FontWeight.w900,
           color: Colors.white,
-          shadows: [
-            Shadow(color: dark, offset: const Offset(0, 2), blurRadius: 3),
-          ],
+          shadows: [Shadow(color: dark, offset: const Offset(0, 2), blurRadius: 3)],
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -900,17 +1111,14 @@ class _BadgePainter extends CustomPainter {
     for (int i = 0; i < 10; i++) {
       final angle = (i * 36 - 90) * 3.14159 / 180;
       final radius = i.isEven ? r : r * 0.45;
-      final x = center.dx + radius * cos(angle);
-      final y = center.dy + radius * sin(angle);
+      final x = center.dx + radius * _cos(angle);
+      final y = center.dy + radius * _sin(angle);
       if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
     }
     path.close();
     canvas.drawPath(path, Paint()..color = fill..style = PaintingStyle.fill);
     canvas.drawPath(path, Paint()..color = stroke..style = PaintingStyle.stroke..strokeWidth = 0.8);
   }
-
-  double cos(double rad) => _cos(rad);
-  double sin(double rad) => _sin(rad);
 
   static double _cos(double x) {
     double result = 1, term = 1;
@@ -948,13 +1156,11 @@ class _StatPill extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(
+        const Icon(
           Icons.local_fire_department,
           size: 20,
           color: Colors.white,
-          shadows: const [
-            Shadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
-          ],
+          shadows: [Shadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4)],
         ),
         const SizedBox(width: 4),
         Text(
@@ -965,9 +1171,7 @@ class _StatPill extends StatelessWidget {
             fontWeight: FontWeight.w900,
             color: Colors.white,
             height: 1.0,
-            shadows: [
-              Shadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4),
-            ],
+            shadows: [Shadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4)],
           ),
         ),
       ],
@@ -975,7 +1179,7 @@ class _StatPill extends StatelessWidget {
   }
 }
 
-// ── Lives Box (fetches life count and renders hearts) ───────────
+// ── Lives Box ─────────────────────────────────────────────────────
 class _LivesBox extends StatelessWidget {
   const _LivesBox();
 
@@ -985,7 +1189,6 @@ class _LivesBox extends StatelessWidget {
       future: StreakService.fetchLife(),
       builder: (context, snapshot) {
         final int life = snapshot.data ?? 3;
-
         List<Widget> hearts = List.generate(3, (i) {
           if (i < life) {
             return const Padding(
@@ -1006,16 +1209,10 @@ class _LivesBox extends StatelessWidget {
             border: Border.all(color: const Color(0xFF111111), width: 2.0),
             borderRadius: BorderRadius.circular(6),
             boxShadow: const [
-              BoxShadow(
-                  color: Color(0xFF111111),
-                  offset: Offset(3, 3),
-                  blurRadius: 0),
+              BoxShadow(color: Color(0xFF111111), offset: Offset(3, 3), blurRadius: 0),
             ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: hearts,
-          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: hearts),
         );
       },
     );
@@ -1033,11 +1230,147 @@ class _DiagonalStripePainter extends CustomPainter {
     const gap = 24.0;
     final total = size.width + size.height;
     for (double i = -size.height; i < total; i += gap) {
-      canvas.drawLine(
-          Offset(i, 0), Offset(i + size.height, size.height), paint);
+      canvas.drawLine(Offset(i, 0), Offset(i + size.height, size.height), paint);
     }
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ── Placeholder Screens (ganti dengan screen asli kalau sudah ada) ─
+
+// ── Globe Language Toggle Button ──────────────────────────────────
+class _GlobeButton extends StatelessWidget {
+  const _GlobeButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final notifier = LanguageNotifier.of(context);
+    final l = AppLocalizations.of(context);
+    return GestureDetector(
+      onTap: notifier?.onToggle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF111111), width: 2),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0xFF111111),
+              offset: Offset(2, 2),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.language, size: 14, color: Color(0xFF111111)),
+            const SizedBox(width: 4),
+            Text(
+              l.langButtonLabel,
+              style: const TextStyle(
+                fontFamily: 'BlackHanSans',
+                fontSize: 12,
+                color: Color(0xFF111111),
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatPlaceholderScreen extends StatelessWidget {
+  const _StatPlaceholderScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF2EA05),
+        elevation: 0,
+        leading: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: const Icon(Icons.arrow_back, color: Color(0xFF111111)),
+        ),
+        title: const Text(
+          'Statistik',
+          style: TextStyle(fontFamily: 'BlackHanSans', color: Color(0xFF111111)),
+        ),
+      ),
+      body: const Center(
+        child: Text(
+          '📊 Halaman statistik\nakan segera hadir!',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontFamily: 'Nunito', fontSize: 16, color: Color(0xFF555555)),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuizPlaceholderScreen extends StatelessWidget {
+  const _QuizPlaceholderScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF2EA05),
+        elevation: 0,
+        leading: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: const Icon(Icons.arrow_back, color: Color(0xFF111111)),
+        ),
+        title: const Text(
+          'Quiz',
+          style: TextStyle(fontFamily: 'BlackHanSans', color: Color(0xFF111111)),
+        ),
+      ),
+      body: const Center(
+        child: Text(
+          '🧠 Pilih materi dulu\nuntuk mulai quiz!',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontFamily: 'Nunito', fontSize: 16, color: Color(0xFF555555)),
+        ),
+      ),
+    );
+  }
+}
+class _SettingsPlaceholderScreen extends StatelessWidget {
+  const _SettingsPlaceholderScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF2EA05),
+        elevation: 0,
+        leading: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: const Icon(Icons.arrow_back, color: Color(0xFF111111)),
+        ),
+        title: Text(
+          l.navSettings,
+          style: const TextStyle(fontFamily: 'BlackHanSans', color: Color(0xFF111111)),
+        ),
+      ),
+      body: const Center(
+        child: Text(
+          '⚙️ Halaman setelan\nakan segera hadir!',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontFamily: 'Nunito', fontSize: 16, color: Color(0xFF555555)),
+        ),
+      ),
+    );
+  }
 }

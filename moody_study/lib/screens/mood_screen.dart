@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme_selector_screen.dart'; // for AppTheme
+import '../utils/app_localizations.dart';
 
 typedef MoodSelectedCallback = void Function(String mood);
 
@@ -75,11 +76,25 @@ class _MoodScreenState extends State<MoodScreen>
                   children: [
                     Align(
                       alignment: Alignment.topLeft,
-                      child: _BookLanguageBadge(),
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: const Color(0xFF111111), width: 2),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: const [
+                              BoxShadow(color: Color(0xFF111111), offset: Offset(2, 2), blurRadius: 0),
+                            ],
+                          ),
+                          child: const Icon(Icons.arrow_back, size: 20, color: Color(0xFF111111)),
+                        ),
+                      ),
                     ),
-                    Align(
+                    const Align(
                       alignment: Alignment.topRight,
-                      child: const _LogoBadge(),
+                      child: _LogoBadge(),
                     ),
                   ],
                 ),
@@ -107,7 +122,7 @@ class _MoodScreenState extends State<MoodScreen>
                         // Mood buttons
                         _MoodButton(
                           emoji: '😄',
-                          label: 'Happy',
+                          label: AppLocalizations.of(context).moodHappy,
                           mood: 'happy',
                           bgColor: const Color(0xFFFFF9C4),
                           onTap: widget.onMoodSelected,
@@ -115,7 +130,7 @@ class _MoodScreenState extends State<MoodScreen>
                         const SizedBox(height: 14),
                         _MoodButton(
                           emoji: '😐',
-                          label: 'Just okay',
+                          label: AppLocalizations.of(context).moodOkay,
                           mood: 'okay',
                           bgColor: Colors.white,
                           onTap: widget.onMoodSelected,
@@ -123,7 +138,7 @@ class _MoodScreenState extends State<MoodScreen>
                         const SizedBox(height: 14),
                         _MoodButton(
                           emoji: '😮‍💨',
-                          label: 'Tired',
+                          label: AppLocalizations.of(context).moodTired,
                           mood: 'tired',
                           bgColor: const Color(0xFFE8E8E8),
                           onTap: widget.onMoodSelected,
@@ -145,13 +160,14 @@ class _MoodScreenState extends State<MoodScreen>
 class _QuestionText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final w = MediaQuery.sizeOf(context).width;
     final fontSize = (w * 0.075).clamp(24.0, 38.0);
 
     return Column(
       children: [
         Text(
-          'So...',
+          l.moodSo,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'BlackHanSans',
@@ -169,7 +185,7 @@ class _QuestionText extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          "How's your mood today?",
+          l.moodQuestion,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'BlackHanSans',
@@ -331,52 +347,7 @@ class _LogoBadge extends StatelessWidget {
   }
 }
 
-// ── Book + Language Badge ─────────────────────────────────────────
-class _BookLanguageBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        border: Border.all(color: const Color(0xFF111111), width: 2),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0xFF111111), offset: Offset(2, 2), blurRadius: 0),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFF111111),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Icon(Icons.book, size: 18, color: Colors.white),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFF111111),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Icon(Icons.translate, size: 18, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+
 
 // ── Diagonal Stripe Painter ───────────────────────────────────────
 class _DiagonalStripePainter extends CustomPainter {

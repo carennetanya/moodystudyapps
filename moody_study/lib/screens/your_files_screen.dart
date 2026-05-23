@@ -190,10 +190,10 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F7),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF111111),
+        backgroundColor: const Color(0xFFF2EA05),
         title: const Text(
           'Your Files',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w700),
         ),
         centerTitle: true,
         elevation: 0,

@@ -2,15 +2,16 @@ package com.example.moody_study_backend.dto;
 
 public class AwardProgressResponse {
 
-    private long currentSummaryCount;
+    private long currentSessionCount; // total sesi belajar user saat ini
     private int nextLevel;
-    private int nextThreshold;
+    private int nextThreshold;        // jumlah sesi yang dibutuhkan untuk award berikutnya
     private int nextXpPoints;
     private boolean eligible;
     private int totalXp;
 
-    public AwardProgressResponse(long currentSummaryCount, int nextLevel, int nextThreshold, int nextXpPoints, boolean eligible, int totalXp) {
-        this.currentSummaryCount = currentSummaryCount;
+    public AwardProgressResponse(long currentSessionCount, int nextLevel, int nextThreshold,
+                                  int nextXpPoints, boolean eligible, int totalXp) {
+        this.currentSessionCount = currentSessionCount;
         this.nextLevel = nextLevel;
         this.nextThreshold = nextThreshold;
         this.nextXpPoints = nextXpPoints;
@@ -18,12 +19,12 @@ public class AwardProgressResponse {
         this.totalXp = totalXp;
     }
 
-    public long getCurrentSummaryCount() {
-        return currentSummaryCount;
+    public long getCurrentSessionCount() {
+        return currentSessionCount;
     }
 
-    public void setCurrentSummaryCount(long currentSummaryCount) {
-        this.currentSummaryCount = currentSummaryCount;
+    public void setCurrentSessionCount(long currentSessionCount) {
+        this.currentSessionCount = currentSessionCount;
     }
 
     public int getNextLevel() {

@@ -1,7 +1,5 @@
 package com.example.moody_study_backend.security;
 
-import com.example.moody_study_backend.security.jwt.JwtFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +13,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.example.moody_study_backend.security.jwt.JwtFilter;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
@@ -40,6 +42,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/stats/**").hasAuthority("ROLE_USER")
                 .requestMatchers("/api/quiz/**").hasAuthority("ROLE_USER")
                 .requestMatchers("/api/files/**").hasAuthority("ROLE_USER")
+                .requestMatchers("/api/quest/**").hasAuthority("ROLE_USER") // ← TAMBAHAN
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

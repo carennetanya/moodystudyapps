@@ -67,14 +67,30 @@ class StreakService {
         final life = body['life'];
         final level = body['level'];
 
+        final levelName = body['levelName'] is String
+            ? body['levelName']
+            : (level is String ? level : null);
         return StreakInfo(
           currentStreak: currentStreak is int ? currentStreak : (currentStreak is num ? currentStreak.toInt() : 0),
           life: life is int ? life : (life is num ? life.toInt() : 3),
           level: StreakInfo.parseLevel(level),
-          levelName: level is String ? level : null,
+          totalSessions: body['totalSessions'] is int
+              ? body['totalSessions']
+              : (body['totalSessions'] is num ? (body['totalSessions'] as num).toInt() : 0),
+          sessionsToNextLevel: body['sessionsToNextLevel'] is int
+              ? body['sessionsToNextLevel']
+              : (body['sessionsToNextLevel'] is num ? (body['sessionsToNextLevel'] as num).toInt() : 0),
+          levelName: levelName,
+          nextLevelName: body['nextLevelName'] is String ? body['nextLevelName'] : null,
         );
       }
-      return StreakInfo(currentStreak: 0, life: 3, level: 1);
+      return StreakInfo(
+        currentStreak: 0,
+        life: 3,
+        level: 1,
+        totalSessions: 0,
+        sessionsToNextLevel: 6,
+      );
     }
 
     if (response.statusCode == 401 || response.statusCode == 403) {
@@ -84,7 +100,7 @@ class StreakService {
     throw Exception('Gagal memuat data streak: ${response.statusCode}.');
   }
 
-  static Future<int> completeSession({
+  static Future<SessionResult> completeSession({
     required String mood,
     required String location,
     required int durationMinutes,
@@ -117,10 +133,26 @@ class StreakService {
       final body = jsonDecode(response.body);
       if (body is Map<String, dynamic>) {
         final life = body['life'];
-        if (life is int) return life;
-        if (life is num) return life.toInt();
+        final lifeInt = life is int ? life : (life is num ? life.toInt() : 3);
+
+        final prevLevel = StreakInfo.parseLevel(body['previousLevel']);
+        final newLevel = StreakInfo.parseLevel(body['level']);
+        final leveledUp = body['leveledUp'] == true || newLevel > prevLevel;
+
+        final totalXpInLevel = body['totalXpInLevel'] is int
+            ? body['totalXpInLevel'] as int
+            : (body['totalXpInLevel'] is num ? (body['totalXpInLevel'] as num).toInt() : 0);
+
+        return SessionResult(
+          life: lifeInt,
+          leveledUp: leveledUp,
+          previousLevel: prevLevel,
+          newLevel: newLevel,
+          newLevelName: body['levelName'] is String ? body['levelName'] : null,
+          xpEarnedInLevel: totalXpInLevel,
+        );
       }
-      return 3;
+      return SessionResult(life: 3, leveledUp: false, previousLevel: 1, newLevel: 1, xpEarnedInLevel: 0);
     }
 
     if (response.statusCode == 401 || response.statusCode == 403) {
@@ -131,17 +163,41 @@ class StreakService {
   }
 }
 
+class SessionResult {
+  final int life;
+  final bool leveledUp;
+  final int previousLevel;
+  final int newLevel;
+  final String? newLevelName;
+  final int xpEarnedInLevel;
+
+  SessionResult({
+    required this.life,
+    required this.leveledUp,
+    required this.previousLevel,
+    required this.newLevel,
+    this.newLevelName,
+    required this.xpEarnedInLevel,
+  });
+}
+
 class StreakInfo {
   final int currentStreak;
   final int life;
   final int level;
   final String? levelName;
+  final int totalSessions;
+  final int sessionsToNextLevel;
+  final String? nextLevelName;
 
   StreakInfo({
     required this.currentStreak,
     required this.life,
     required this.level,
+    required this.totalSessions,
+    required this.sessionsToNextLevel,
     this.levelName,
+    this.nextLevelName,
   });
 
   static int parseLevel(Object? value) {

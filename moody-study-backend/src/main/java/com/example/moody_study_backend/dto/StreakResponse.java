@@ -1,8 +1,9 @@
 package com.example.moody_study_backend.dto;
 
+import com.example.moody_study_backend.enums.StreakLevel;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import com.example.moody_study_backend.enums.StreakLevel;
 
 @Data
 @AllArgsConstructor
@@ -11,4 +12,12 @@ public class StreakResponse {
     private String lastStudyDate;
     private int life;
     private StreakLevel level;
+    private int totalSessions;
+    private int sessionsToNextLevel;
+    private String nextLevelName;
+
+    // Level-up info (only meaningful after completeSession)
+    private StreakLevel previousLevel;
+    private boolean leveledUp;
+    private int totalXpInLevel; // Total XP earned by user (maps to "points" in UI)
 }

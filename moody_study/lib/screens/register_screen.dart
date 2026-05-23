@@ -5,6 +5,7 @@ import 'loading_screen.dart';
 import 'theme_selector_screen.dart';
 import 'login_screen.dart';
 import '../widgets/music_visualizer_widget.dart';
+import '../utils/app_localizations.dart';
 
 class RegisterScreen extends StatefulWidget {
   final AppTheme theme;
@@ -108,21 +109,22 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 
   void _onRegister() async {
+    final l = AppLocalizations.of(context);
     if (!_isFormValid) {
       setState(() {
         if (_nameController.text.trim().isEmpty) {
-          _errorMessage = 'Name is required!';
+          _errorMessage = l.registerNameRequired;
         } else if (_usernameController.text.trim().isEmpty) {
-          _errorMessage = 'Username is required!';
+          _errorMessage = l.registerUsernameRequired;
         } else if (_usernameController.text.trim().length < 3 ||
             _usernameController.text.contains(' ')) {
-          _errorMessage = 'Username must be at least 3 characters without spaces!';
+          _errorMessage = l.registerUsernameInvalid;
         } else if (!_emailController.text.contains('@')) {
-          _errorMessage = 'Invalid email!';
+          _errorMessage = l.loginInvalidEmail;
         } else if (_passwordController.text.length < 6) {
-          _errorMessage = 'Password must be at least 6 characters!';
+          _errorMessage = l.loginPasswordShort;
         } else if (_passwordController.text != _confirmController.text) {
-          _errorMessage = 'Passwords do not match!';
+          _errorMessage = l.registerPasswordMismatch;
         }
       });
       return;
@@ -169,6 +171,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final isDark = widget.theme == AppTheme.dark;
     final bgColor = isDark ? const Color(0xFF1a1a2e) : const Color(0xFF1EE86F);
     final cardBg = Colors.white;
@@ -227,12 +230,12 @@ class _RegisterScreenState extends State<RegisterScreen>
                         const SizedBox(height: 24),
 
                         // Name field
-                        _buildLabel('Full Name'),
+                        _buildLabel(l.registerFullName),
                         const SizedBox(height: 6),
                         _RegisterInput(
                           controller: _nameController,
                           focusNode: _nameFocus,
-                          hintText: 'Your name',
+                          hintText: l.registerNameHint,
                           textInputAction: TextInputAction.next,
                           onSubmitted: (_) => FocusScope.of(context)
                               .requestFocus(_usernameFocus),
@@ -242,7 +245,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         const SizedBox(height: 18),
 
                         // Username field
-                        _buildLabel('Username'),
+                        _buildLabel(l.registerUsername),
                         const SizedBox(height: 6),
                         _RegisterInput(
                           controller: _usernameController,
@@ -257,7 +260,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         const SizedBox(height: 18),
 
                         // Email field
-                        _buildLabel('Email'),
+                        _buildLabel(l.loginEmail),
                         const SizedBox(height: 6),
                         _RegisterInput(
                           controller: _emailController,
@@ -273,12 +276,12 @@ class _RegisterScreenState extends State<RegisterScreen>
                         const SizedBox(height: 18),
 
                         // Password field
-                        _buildLabel('Password'),
+                        _buildLabel(l.loginPassword),
                         const SizedBox(height: 6),
                         _RegisterInput(
                           controller: _passwordController,
                           focusNode: _passwordFocus,
-                          hintText: 'min. 6 characters',
+                          hintText: l.registerPasswordHint,
                           obscureText: _obscurePassword,
                           textInputAction: TextInputAction.next,
                           onSubmitted: (_) => FocusScope.of(context)
@@ -300,12 +303,12 @@ class _RegisterScreenState extends State<RegisterScreen>
                         const SizedBox(height: 18),
 
                         // Confirm password
-                        _buildLabel('Confirm Password'),
+                        _buildLabel(l.registerConfirmPassword),
                         const SizedBox(height: 6),
                         _RegisterInput(
                           controller: _confirmController,
                           focusNode: _confirmFocus,
-                          hintText: 'repeat password',
+                          hintText: l.registerConfirmHint,
                           obscureText: _obscureConfirm,
                           textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _onRegister(),
@@ -365,6 +368,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                             enabled: _isFormValid && !_isLoading,
                             isLoading: _isLoading,
                             onTap: _onRegister,
+                            label: l.registerSignUp,
                           ),
                         ),
                       ],
@@ -377,7 +381,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                   GestureDetector(
                     onTap: _navigateToLogin,
                     child: Text(
-                      'Already have an account? Login',
+                      l.registerHaveAccount,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: 15,
@@ -423,6 +427,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 
   Widget _buildHeader(bool isDark) {
+    final l = AppLocalizations.of(context);
     final textColor =
         isDark ? const Color(0xFFE2E8F0) : const Color(0xFF111111);
     final strokeColor =
@@ -433,7 +438,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         Stack(
           children: [
             Text(
-              'Sign Up',
+              l.registerTitle,
               style: TextStyle(
                 fontFamily: 'BlackHanSans',
                 fontSize: 52,
@@ -446,7 +451,7 @@ class _RegisterScreenState extends State<RegisterScreen>
               ),
             ),
             Text(
-              'Sign Up',
+              l.registerTitle,
               style: TextStyle(
                 fontFamily: 'BlackHanSans',
                 fontSize: 52,
@@ -465,7 +470,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         ),
         const SizedBox(height: 6),
         Text(
-          'to Moody Study',
+          l.registerSubtitle,
           style: TextStyle(
             fontFamily: 'Nunito',
             fontSize: 18,
@@ -590,11 +595,13 @@ class _RegisterButton extends StatefulWidget {
   final bool enabled;
   final bool isLoading;
   final VoidCallback onTap;
+  final String label;
 
   const _RegisterButton({
     required this.enabled,
     required this.isLoading,
     required this.onTap,
+    required this.label,
   });
 
   @override
@@ -665,7 +672,7 @@ class _RegisterButtonState extends State<_RegisterButton> {
                   ),
                 )
               : Text(
-                  'SIGN UP NOW',
+                  widget.label,
                   style: TextStyle(
                     fontFamily: 'BlackHanSans',
                     fontSize: 20,

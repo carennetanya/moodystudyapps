@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'theme_selector_screen.dart';
 import 'study_session.dart';
+import '../utils/app_localizations.dart';
 
 class UploadScreen extends StatefulWidget {
   final String mood;
@@ -95,6 +96,7 @@ class _UploadScreenState extends State<UploadScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       color: _bgColor,
@@ -122,7 +124,21 @@ class _UploadScreenState extends State<UploadScreen>
                     children: [
                       Align(
                         alignment: Alignment.topLeft,
-                        child: _BookLanguageBadge(),
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border.all(color: const Color(0xFF111111), width: 2),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0xFF111111), offset: Offset(2, 2), blurRadius: 0),
+                              ],
+                            ),
+                            child: const Icon(Icons.arrow_back, size: 20, color: Color(0xFF111111)),
+                          ),
+                        ),
                       ),
                       const Align(
                         alignment: Alignment.topRight,
@@ -150,7 +166,7 @@ class _UploadScreenState extends State<UploadScreen>
 
                         // Hello username
                         Text(
-                          'Hello, ${widget.userName}!',
+                          l.uploadGreeting(widget.userName),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontFamily: 'BlackHanSans',
@@ -180,10 +196,10 @@ class _UploadScreenState extends State<UploadScreen>
                         const SizedBox(height: 10),
 
                         // Subtitle
-                        const Text(
-                          "Upload or drag your materials here and let's summarize them together!",
+                        Text(
+                          l.uploadSubtitle,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'BlackHanSans',
                             fontSize: 13,
                             color: Color(0xFF444444),
@@ -224,20 +240,18 @@ class _UploadScreenState extends State<UploadScreen>
                             Flexible(
                               child: RichText(
                                 textAlign: TextAlign.center,
-                                text: const TextSpan(
-                                  style: TextStyle(
+                                text: TextSpan(
+                                  style: const TextStyle(
                                     fontFamily: 'BlackHanSans',
                                     fontSize: 11,
                                     color: Color(0xFFE05555),
                                     height: 1.5,
                                   ),
                                   children: [
+                                    TextSpan(text: l.upload20AI),
                                     TextSpan(
-                                        text:
-                                            '20 AI summaries available per day. If exceeded, '),
-                                    TextSpan(
-                                      text: 'offline mode activates automatically.',
-                                      style: TextStyle(
+                                      text: l.uploadOfflineMode,
+                                      style: const TextStyle(
                                         decoration: TextDecoration.underline,
                                       ),
                                     ),
@@ -336,36 +350,36 @@ class _UploadBoxState extends State<_UploadBox> {
                           )
                         : Column(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(
+                            children: [
+                              const Icon(
                                 Icons.insert_drive_file_outlined,
                                 size: 48,
                                 color: Color(0xFF888888),
                               ),
-                              SizedBox(height: 14),
+                              const SizedBox(height: 14),
                               Text(
-                                'Click files here',
-                                style: TextStyle(
+                                AppLocalizations.of(context).uploadClickFiles,
+                                style: const TextStyle(
                                   fontFamily: 'BlackHanSans',
                                   fontSize: 17,
                                   color: Color(0xFF111111),
                                   letterSpacing: 0.3,
                                 ),
                               ),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               Text(
-                                'PDF · DOCX · TXT',
-                                style: TextStyle(
+                                AppLocalizations.of(context).uploadFormats,
+                                style: const TextStyle(
                                   fontFamily: 'BlackHanSans',
                                   fontSize: 13,
                                   color: Color(0xFF888888),
                                   letterSpacing: 1.5,
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
-                                'Max 150 MB per file',
-                                style: TextStyle(
+                                AppLocalizations.of(context).uploadMaxSize,
+                                style: const TextStyle(
                                   fontFamily: 'BlackHanSans',
                                   fontSize: 12,
                                   color: Color(0xFFAAAAAA),
@@ -534,7 +548,7 @@ class _DoneButtonState extends State<_DoneButton> {
         ),
         child: Center(
           child: Text(
-            'Done (${widget.fileCount} files)',
+            AppLocalizations.of(context).uploadDoneCount(widget.fileCount),
             style: TextStyle(
               fontFamily: 'BlackHanSans',
               fontSize: 16,
@@ -599,53 +613,6 @@ class _LogoBadge extends StatelessWidget {
                       letterSpacing: 1.5,
                       height: 1.1)),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Book + Language Badge ─────────────────────────────────────────
-class _BookLanguageBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        border: Border.all(color: const Color(0xFF111111), width: 2),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0xFF111111), offset: Offset(2, 2), blurRadius: 0),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFF111111),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Icon(Icons.book, size: 18, color: Colors.white),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFF111111),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Icon(Icons.translate, size: 18, color: Colors.white),
-            ),
           ),
         ],
       ),

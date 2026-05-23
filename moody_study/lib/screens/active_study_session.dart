@@ -18,6 +18,7 @@ import 'package:pdf/widgets.dart' as pw;
  
 import 'package:moody_study/services/streak_service.dart';
 import 'character_intro_screen.dart';
+import 'level_up_screen.dart';
 import 'theme_selector_screen.dart';
  
 class ActiveStudySession extends StatefulWidget {
@@ -57,6 +58,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   Timer? _flashTimer;
   DateTime? _awayStartTime;
   bool _awayAlarmTriggered = false;
+  int _totalDistractionSeconds = 0; // akumulasi total detik distraksi selama sesi
   bool _showRedFlash = false;
   final AudioPlayer _awayAlarmPlayer = AudioPlayer();
  
@@ -259,6 +261,8 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   Future<void> _showReturnPopup(Duration awayDuration) async {
     if (!mounted) return;
     final seconds = awayDuration.inSeconds;
+    // Akumulasi total detik distraksi
+    _totalDistractionSeconds += seconds;
     final minutes = awayDuration.inMinutes;
     final formatted = minutes > 0
         ? '$minutes min ${seconds % 60} sec'
@@ -553,19 +557,39 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
 
     if (action == null || action == 'continue') return;
 
+    SessionResult? sessionResult;
     try {
-      await StreakService.completeSession(
+      sessionResult = await StreakService.completeSession(
         mood: widget.mood,
         location: widget.location,
         durationMinutes: studyDuration.inMinutes,
         focusSeconds: studyDuration.inSeconds,
-        distractionSeconds: 0,
+        distractionSeconds: _totalDistractionSeconds,
       );
     } catch (e) {
       debugPrint('Failed to save session to database: $e');
     }
 
     if (!mounted) return;
+
+    // Show level up screen if leveled up
+    if (sessionResult != null && sessionResult.leveledUp) {
+      await Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => LevelUpScreen(
+            newLevel: sessionResult!.newLevel,
+            newLevelName: sessionResult.newLevelName ?? _levelName(sessionResult.newLevel),
+            xpEarnedInLevel: sessionResult.xpEarnedInLevel,
+            userName: widget.userName,
+            onContinue: () => Navigator.of(context).pop(),
+          ),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+      if (!mounted) return;
+    }
 
     if (action == 'save') {
       if (_materialId == null) {
@@ -603,6 +627,17 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     }
   }
  
+  String _levelName(int level) {
+    switch (level) {
+      case 1: return 'Beginner';
+      case 2: return 'Learner';
+      case 3: return 'Practitioner';
+      case 4: return 'Expert';
+      case 5: return 'Master';
+      default: return 'Level $level';
+    }
+  }
+
   String _formatDuration(Duration d) {
     final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');

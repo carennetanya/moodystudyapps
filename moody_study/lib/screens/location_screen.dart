@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'theme_selector_screen.dart';
 import 'upload_screen.dart';
+import '../utils/app_localizations.dart';
 
 class LocationScreen extends StatefulWidget {
   final String mood;
@@ -189,7 +190,21 @@ class _LocationScreenState extends State<LocationScreen>
                     children: [
                       Align(
                         alignment: Alignment.topLeft,
-                        child: _BookLanguageBadge(),
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border.all(color: const Color(0xFF111111), width: 2),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0xFF111111), offset: Offset(2, 2), blurRadius: 0),
+                              ],
+                            ),
+                            child: const Icon(Icons.arrow_back, size: 20, color: Color(0xFF111111)),
+                          ),
+                        ),
                       ),
                       const Align(
                         alignment: Alignment.topRight,
@@ -218,14 +233,14 @@ class _LocationScreenState extends State<LocationScreen>
                           const SizedBox(height: 36),
                           _LocationButton(
                             icon: Icons.home_outlined,
-                            label: 'Home / Outside',
+                            label: AppLocalizations.of(context).locationHome,
                             location: 'home',
                             onTap: _selectLocation,
                           ),
                           const SizedBox(height: 16),
                           _LocationButton(
                             icon: Icons.menu_book_outlined,
-                            label: 'Library',
+                            label: AppLocalizations.of(context).locationLibrary,
                             location: 'library',
                             onTap: _selectLocation,
                           ),
@@ -275,6 +290,7 @@ class _SoundAlertBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     // Home: kuning muda bg, border hitam, teks hitam, icon speaker aktif
     // Library: hitam bg, border hitam, teks hijau, icon speaker muted
     final bgColor = _isLibrary
@@ -286,9 +302,7 @@ class _SoundAlertBanner extends StatelessWidget {
     final iconWidget = _isLibrary
         ? const Icon(Icons.volume_off_rounded, color: Color(0xFFFF6B8A), size: 20)
         : const Icon(Icons.volume_up_rounded, color: Color(0xFF111111), size: 20);
-    final String label = _isLibrary
-        ? 'Silent mode & visual alerts only'
-        : 'Sound alerts & notifications active';
+    final String label = _isLibrary ? l.locationSilent : l.locationSound;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -330,11 +344,12 @@ class _SoundAlertBanner extends StatelessWidget {
 class _QuestionText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final w = MediaQuery.sizeOf(context).width;
     final fontSize = (w * 0.075).clamp(24.0, 38.0);
 
     return Text(
-      'Where are you\nstudying now?',
+      l.locationQuestion,
       textAlign: TextAlign.center,
       style: TextStyle(
         fontFamily: 'BlackHanSans',
@@ -489,53 +504,6 @@ class _LogoBadge extends StatelessWidget {
                       letterSpacing: 1.5,
                       height: 1.1)),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Book + Language Badge ─────────────────────────────────────────
-class _BookLanguageBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        border: Border.all(color: const Color(0xFF111111), width: 2),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0xFF111111), offset: Offset(2, 2), blurRadius: 0),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFF111111),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Icon(Icons.book, size: 18, color: Colors.white),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFF111111),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Icon(Icons.translate, size: 18, color: Colors.white),
-            ),
           ),
         ],
       ),
