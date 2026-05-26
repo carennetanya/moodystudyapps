@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:moody_study/services/notification_service.dart';
 import 'package:moody_study/services/schedule_service.dart';
 import 'package:moody_study/utils/app_localizations.dart';
 
@@ -1079,6 +1080,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                   children: [
                                     Text(
                                       item.subject,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         fontFamily: 'BlackHanSans',
                                         fontSize: 14,
@@ -1090,12 +1093,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                       children: [
                                         const Icon(Icons.calendar_today_rounded, size: 11, color: Color(0xFF888888)),
                                         const SizedBox(width: 3),
-                                        Text(
-                                          '${item.studyDate}  ·  ${item.startTime} – ${item.endTime}',
-                                          style: const TextStyle(
-                                            fontFamily: 'Nunito',
-                                            fontSize: 11,
-                                            color: Color(0xFF555555),
+                                        Expanded(
+                                          child: Text(
+                                            '${item.studyDate}  ·  ${item.startTime} – ${item.endTime}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontFamily: 'Nunito',
+                                              fontSize: 11,
+                                              color: Color(0xFF555555),
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -1291,13 +1298,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     int saved = 0;
     for (final item in items) {
       try {
-        await ScheduleService.createSchedule(
+        final created = await ScheduleService.createSchedule(
           subject: item.subject,
           studyDate: item.studyDate,
           startTime: item.startTime,
           endTime: item.endTime,
           location: item.location,
           mood: null,
+        );
+        await NotificationService.instance.scheduleStudyNotification(
+          created.id,
+          created.subject,
+          _parseScheduleDateTime(created.studyDate, created.startTime),
         );
         saved++;
       } catch (_) {}
@@ -1512,13 +1524,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                   return;
                                 }
                                 try {
-                                  await ScheduleService.createSchedule(
+                                  final created = await ScheduleService.createSchedule(
                                     subject: subjectController.text.trim(),
                                     studyDate: _formatIsoDate(studyDate!),
                                     startTime: _formatIsoTime(startTime!),
                                     endTime: _formatIsoTime(endTime!),
                                     location: locationController.text.trim().isEmpty ? null : locationController.text.trim(),
                                     mood: moodController.text.trim().isEmpty ? null : moodController.text.trim(),
+                                  );
+                                  await NotificationService.instance.scheduleStudyNotification(
+                                    created.id,
+                                    created.subject,
+                                    _parseScheduleDateTime(created.studyDate, created.startTime),
                                   );
                                   if (!mounted) return;
                                   Navigator.of(context).pop();
@@ -1637,6 +1654,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ),
     );
     if (confirmed == true) {
+      await NotificationService.instance.cancelNotification(item.id);
       await ScheduleService.deleteSchedule(item.id);
       _refreshSchedules();
     }
@@ -1657,6 +1675,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   bool _isTimeRangeValid(TimeOfDay start, TimeOfDay end) =>
       (end.hour * 60 + end.minute) > (start.hour * 60 + start.minute);
+
+  DateTime _parseScheduleDateTime(String isoDate, String time) {
+    final date = DateTime.parse(isoDate);
+    final parts = time.split(':');
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = int.tryParse(parts[1]) ?? 0;
+    return DateTime(date.year, date.month, date.day, hour, minute);
+  }
 
   DateTime? _tryParseDate(String s) {
     try {
@@ -1825,6 +1851,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         l: l,
                         onComplete: () async {
                           await ScheduleService.completeSchedule(schedule.id);
+                          await NotificationService.instance.cancelNotification(schedule.id);
                           _refreshSchedules();
                         },
                         onDelete: () => _confirmDelete(schedule),

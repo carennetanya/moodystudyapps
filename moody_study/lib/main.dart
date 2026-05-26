@@ -1,8 +1,11 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:moody_study/services/notification_service.dart';
 import 'screens/theme_selector_screen.dart';
 import 'utils/app_localizations.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.instance.init();
   runApp(const MoodyStudyApp());
 }
 
