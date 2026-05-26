@@ -10,4 +10,7 @@ public class MaterialRequest {
 
     @NotBlank
     private String originalText;
+
+    // Optional — diisi kalau upload dilakukan dalam konteks sesi belajar tertentu
+    private Long sessionId;
 }

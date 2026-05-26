@@ -6,8 +6,11 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class StreakService {
-  static String get baseUrl =>
-      kIsWeb ? 'http://localhost:8081' : 'http://10.0.2.2:8081';
+ static String get baseUrl {
+  if (kIsWeb) return 'http://localhost:8081';
+  // Ganti dengan IP LAN kamu, misal:
+  return 'http://192.168.1.9:8081';
+}
 
   /// Fetch current user's life count from backend `/api/streak`.
   /// Returns an int (default 3 if response missing).
@@ -143,6 +146,9 @@ class StreakService {
             ? body['totalXpInLevel'] as int
             : (body['totalXpInLevel'] is num ? (body['totalXpInLevel'] as num).toInt() : 0);
 
+        final cs = body['currentStreak'];
+        final currentStreak = cs is int ? cs : (cs is num ? cs.toInt() : 0);
+
         return SessionResult(
           life: lifeInt,
           leveledUp: leveledUp,
@@ -150,9 +156,10 @@ class StreakService {
           newLevel: newLevel,
           newLevelName: body['levelName'] is String ? body['levelName'] : null,
           xpEarnedInLevel: totalXpInLevel,
+          currentStreak: currentStreak,
         );
       }
-      return SessionResult(life: 3, leveledUp: false, previousLevel: 1, newLevel: 1, xpEarnedInLevel: 0);
+      return SessionResult(life: 3, leveledUp: false, previousLevel: 1, newLevel: 1, xpEarnedInLevel: 0, currentStreak: 0);
     }
 
     if (response.statusCode == 401 || response.statusCode == 403) {
@@ -170,6 +177,7 @@ class SessionResult {
   final int newLevel;
   final String? newLevelName;
   final int xpEarnedInLevel;
+  final int currentStreak;
 
   SessionResult({
     required this.life,
@@ -178,6 +186,7 @@ class SessionResult {
     required this.newLevel,
     this.newLevelName,
     required this.xpEarnedInLevel,
+    this.currentStreak = 0,
   });
 }
 

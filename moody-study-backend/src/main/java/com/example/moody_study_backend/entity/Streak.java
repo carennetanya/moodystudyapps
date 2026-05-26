@@ -24,9 +24,16 @@ public class Streak {
     private int currentStreak;
 
     private LocalDate lastStudyDate;
-    
+
     // Life System: jumlah nyawa user
     @Column(nullable = false)
     @Builder.Default
     private int life = 3;
+
+    /**
+     * Tanggal terakhir life dikurangi oleh scheduler / checkLogin.
+     * Dipakai sebagai guard supaya pengurangan nyawa tidak dobel
+     * antara StreakMissedDaySchedulerService dan checkLogin.
+     */
+    private LocalDate lastLifeDeductedDate;
 }

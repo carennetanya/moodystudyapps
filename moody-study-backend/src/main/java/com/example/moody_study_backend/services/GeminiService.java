@@ -2,15 +2,19 @@ package com.example.moody_study_backend.services;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -24,7 +28,6 @@ public class GeminiService {
     
     private final RestTemplate restTemplate;
 
-    @Autowired
     public GeminiService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
@@ -113,7 +116,8 @@ public class GeminiService {
 
     public String generateAutoSchedule(String sessionHistoryJson,
                                         String existingSchedules,
-                                        int daysAhead) {
+                                        int daysAhead,
+                                        String additionalInstructions) {
         String prompt = """
                 Kamu adalah AI penjadwal belajar cerdas. Analisa data berikut:
 
@@ -143,7 +147,8 @@ public class GeminiService {
                 ]
 
                 Pastikan output hanya JSON array, tanpa teks tambahan apapun.
-                """.formatted(sessionHistoryJson, existingSchedules, daysAhead);
+                """.formatted(sessionHistoryJson, existingSchedules, daysAhead)
+                + "\n\n" + additionalInstructions;
 
         return callGemini(prompt);
     }
@@ -163,37 +168,49 @@ public class GeminiService {
         final int maxAttempts = 3;
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+                ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                        url,
+                        HttpMethod.POST,
+                        entity,
+                        new ParameterizedTypeReference<>() {
+                        }
+                );
 
-                if (response.getStatusCodeValue() == HttpStatus.OK.value() && response.getBody() != null) {
-                    List<?> candidates = (List<?>) response.getBody().get("candidates");
-                    if (candidates != null && !candidates.isEmpty()) {
-                        Map<?, ?> candidate  = (Map<?, ?>) candidates.get(0);
-                        Map<?, ?> contentMap = (Map<?, ?>) candidate.get("content");
-                        List<?> parts        = (List<?>) contentMap.get("parts");
-                        Map<?, ?> firstPart  = (Map<?, ?>) parts.get(0);
-                        return (String) firstPart.get("text");
+                if (response.getStatusCode() == HttpStatus.OK) {
+                    Map<String, Object> responseBody = response.getBody();
+                    if (responseBody != null) {
+                        Object candidatesObj = responseBody.get("candidates");
+                        if (candidatesObj instanceof List<?> candidates && !candidates.isEmpty()) {
+                            Map<?, ?> candidate  = (Map<?, ?>) candidates.get(0);
+                            Object contentObj = candidate.get("content");
+                            if (contentObj instanceof Map<?, ?> contentMap && contentMap.get("parts") instanceof List<?> parts && !parts.isEmpty()) {
+                                Object firstPartObj = parts.get(0);
+                                if (firstPartObj instanceof Map<?, ?> firstPart) {
+                                    return (String) firstPart.get("text");
+                                }
+                            }
+                        }
                     }
                 }
 
-                int statusCode = response.getStatusCodeValue();
-                if ((statusCode >= 500 || statusCode == 429)) {
+                int statusCode = response.getStatusCode().value();
+                if (statusCode >= 500 || statusCode == 429) {
                     if (attempt < maxAttempts) {
                         long backoff = 500L * attempt;
-                        try { Thread.sleep(backoff); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
-                        continue;
+                        LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(backoff));
                     } else {
                         throw new RuntimeException("Gemini returned HTTP " + statusCode);
                     }
+                } else {
+                    throw new RuntimeException("Gemini returned HTTP " + statusCode);
                 }
-
-            } catch (Exception e) {
+            } catch (RestClientException e) {
                 if (attempt < maxAttempts) {
                     long backoff = 500L * attempt;
-                    try { Thread.sleep(backoff); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
-                    continue;
+                    LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(backoff));
+                } else {
+                    throw new RuntimeException("Gagal menghubungi Gemini AI: " + e.getMessage(), e);
                 }
-                throw new RuntimeException("Gagal menghubungi Gemini AI: " + e.getMessage());
             }
         }
 

@@ -11,4 +11,5 @@ public class GeneratedQuizResponse {
     private String fileName;
     private String quizContent;
     private String generatedAt;
+    private boolean saved;
 }

@@ -9,9 +9,11 @@ import '../models/saved_file.dart';
 import 'auth_service.dart';
 
 class MaterialService {
-  static String get baseUrl =>
-      kIsWeb ? 'http://localhost:8081' : 'http://10.0.2.2:8081';
-
+ static String get baseUrl {
+  if (kIsWeb) return 'http://localhost:8081';
+  // Ganti dengan IP LAN kamu, misal:
+  return 'http://192.168.1.9:8081';
+}
   static Future<MaterialResponse> summarizeMaterial({
     required String fileName,
     required String originalText,
@@ -312,4 +314,33 @@ class MaterialService {
 
     throw Exception(message);
   }
+  static Future<GeneratedQuizResponse> toggleSaveQuiz(int quizId) async {
+    final token = AuthService.token;
+    if (token == null) throw Exception('Autentikasi diperlukan.');
+    final uri = Uri.parse('$baseUrl/api/quiz/$quizId/save');
+    final response = await http.post(uri, headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    });
+    if (response.statusCode == 200) {
+      return GeneratedQuizResponse.fromJson(jsonDecode(response.body));
+    }
+    throw Exception('Gagal menyimpan flashcard: \${response.statusCode}');
+  }
+
+  static Future<List<GeneratedQuizResponse>> getSavedQuizzes() async {
+    final token = AuthService.token;
+    if (token == null) throw Exception('Autentikasi diperlukan.');
+    final uri = Uri.parse('$baseUrl/api/quiz/saved');
+    final response = await http.get(uri, headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    });
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
+      return list.map((e) => GeneratedQuizResponse.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    throw Exception('Gagal memuat saved quiz: \${response.statusCode}');
+  }
+
 }

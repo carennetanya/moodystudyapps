@@ -13,11 +13,12 @@ import com.example.moody_study_backend.entity.User;
 public interface StudySessionRepository extends JpaRepository<StudySession, Long> {
     List<StudySession> findByUserOrderByStartTimeDesc(User user);
 
+    List<StudySession> findByUserOrderByStartTimeAsc(User user); // untuk level history
+
     long countByUserAndStartTimeBetween(User user, LocalDateTime start, LocalDateTime end);
 
     long countByUser(User user);
 
-    // Untuk statistik 7 hari terakhir
     List<StudySession> findByUserAndStartTimeBetweenOrderByStartTimeAsc(
             User user, LocalDateTime start, LocalDateTime end);
 }

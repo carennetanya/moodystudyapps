@@ -28,4 +28,9 @@ public class GeneratedQuiz {
     private String quizContent;
 
     private LocalDateTime generatedAt;
+
+    // true = disimpan ke tab Kuis, false = belum disimpan
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean saved = false;
 }

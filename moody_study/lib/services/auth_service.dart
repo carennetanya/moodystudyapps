@@ -15,7 +15,11 @@ class AuthException implements Exception {
 class AuthService {
   static String? token;
 
-  static String get baseUrl => kIsWeb ? 'http://localhost:8081' : 'http://10.0.2.2:8081';
+  static String get baseUrl {
+  if (kIsWeb) return 'http://localhost:8081';
+  // Ganti dengan IP LAN kamu, misal:
+  return 'http://192.168.1.9:8081';
+}
 
   static Future<Map<String, dynamic>> register({
     required String name,

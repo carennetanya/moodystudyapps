@@ -20,6 +20,11 @@ public class StudyMaterial {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // Relasi optional ke sesi belajar — null kalau upload di luar sesi
+    @ManyToOne
+    @JoinColumn(name = "session_id", nullable = true)
+    private StudySession studySession;
+
     private String fileName;
 
     @Column(columnDefinition = "TEXT")

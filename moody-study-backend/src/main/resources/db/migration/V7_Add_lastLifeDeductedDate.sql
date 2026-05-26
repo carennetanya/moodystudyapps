@@ -1,0 +1,1 @@
+ALTER TABLE streaks ADD COLUMN last_life_deducted_date DATE;

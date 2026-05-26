@@ -73,6 +73,7 @@ class AppLocalizations {
   String get homeTagline => isId ? 'belajar kapan saja dan di mana saja' : 'study anytime anywhere';
   String get homeSubtitle => isId ? 'mood bagus atau tidak,\ntetap belajar bareng Oddy!' : "good mood or not,\nlet's keep studying with oddy!";
   String get homeStartNow => isId ? 'mulai sekarang' : 'start now';
+  String get homeSchedule => isId ? 'atur jadwal' : 'schedule';
   String get homeStreak => isId ? 'Streak' : 'Streak';
 
   // ─── Bottom Nav ───────────────────────────────────────────────────
@@ -182,6 +183,24 @@ class AppLocalizations {
   // ─── Stats Screen ─────────────────────────────────────────────────
   String get statsTitle => isId ? 'Statistik' : 'Statistics';
   String get statsComingSoon => isId ? '📊 Halaman statistik\nakan segera hadir!' : '📊 Statistics page\ncoming soon!';
+
+  // ─── Schedule Screen ───────────────────────────────────────────────
+  String get scheduleTitle => isId ? 'Jadwal Belajar' : 'Study Schedule';
+  String get scheduleSubtitle => isId ? 'Atur jadwal belajarmu di sini.' : 'Set your study schedule here.';
+  String get scheduleAddButton => isId ? 'Buat Jadwal' : 'Create';
+  String get scheduleCreateNew => isId ? 'Buat Jadwal Baru' : 'Create New';
+  String get scheduleSubject => isId ? 'Mata Pelajaran' : 'Subject';
+  String get scheduleStudyDate => isId ? 'Tanggal Belajar' : 'Study Date';
+  String get scheduleStartTime => isId ? 'Jam Mulai' : 'Start Time';
+  String get scheduleEndTime => isId ? 'Jam Selesai' : 'End Time';
+  String get scheduleLocation => isId ? 'Lokasi (opsional)' : 'Location (optional)';
+  String get scheduleMood => isId ? 'Mood (opsional)' : 'Mood (optional)';
+  String get scheduleNoSchedules => isId ? 'Belum ada jadwal. Tambah jadwal baru dulu.' : 'No schedules yet. Add a new schedule.';
+  String get scheduleCreated => isId ? 'Jadwal berhasil dibuat!' : 'Schedule created successfully!';
+  String get scheduleComplete => isId ? 'Tandai Selesai' : 'Mark Complete';
+  String get delete => isId ? 'Hapus' : 'Delete';
+  String get scheduleDelete => isId ? 'Hapus jadwal' : 'Delete schedule';
+  String get scheduleTimeRangeError => isId ? 'Waktu akhir harus setelah waktu mulai.' : 'End time must be after start time.';
 
   // ─── Quiz ─────────────────────────────────────────────────────────
   String get quizTitle => isId ? 'Kuis' : 'Quiz';

@@ -6,8 +6,11 @@ import 'auth_service.dart';
 import '../models/daily_quest_model.dart';
 
 class DailyQuestService {
-  static String get baseUrl =>
-      kIsWeb ? 'http://localhost:8081' : 'http://10.0.2.2:8081';
+  static String get baseUrl {
+  if (kIsWeb) return 'http://localhost:8081';
+  // Ganti dengan IP LAN kamu, misal:
+  return 'http://192.168.1.9:8081';
+}
 
   static Map<String, String> get _authHeaders {
     final token = AuthService.token;

@@ -18,7 +18,7 @@ class OddyFlashcardScreen extends StatefulWidget {
   State<OddyFlashcardScreen> createState() => _OddyFlashcardScreenState();
 }
 
-class _QuizCard {
+class QuizCard {
   final String question;
   final String? answer;
   final Map<String, String>? options;
@@ -26,7 +26,7 @@ class _QuizCard {
   final String? type;
   bool revealed = false;
 
-  _QuizCard({
+  QuizCard({
     required this.question,
     this.answer,
     this.options,
@@ -41,7 +41,7 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
   bool _generating = false;
   String? _error;
   GeneratedQuizResponse? _generatedQuiz;
-  List<_QuizCard> _cards = [];
+  List<QuizCard> _cards = [];
 
   Future<void> _generateFlashcards() async {
     setState(() {
@@ -70,6 +70,7 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
             builder: (_) => FlashcardResultScreen(
               fileName: quiz.fileName,
               cards: cards,
+              quizId: quiz.id,
             ),
           ),
         );
@@ -87,23 +88,44 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
     }
   }
 
-  List<_QuizCard> _parseQuizContent(String content) {
+  List<QuizCard> _parseQuizContent(String content) {
     final trimmed = content.trim();
     if (trimmed.isEmpty) return [];
 
     final normalized = _normalizeQuizContent(trimmed);
-    try {
-      final dynamic decoded = jsonDecode(normalized);
-      if (decoded is List) {
-        return decoded
-            .whereType<Map<String, dynamic>>()
-            .map((item) => _parseQuizItem(item))
-            .toList();
-      } else if (decoded is Map<String, dynamic>) {
-        return [_parseQuizItem(decoded)];
+    final decoded = _decodePotentialJson(normalized);
+
+    if (decoded is List) {
+      final cards = <QuizCard>[];
+      for (final item in decoded) {
+        final card = _tryParseQuizItem(item);
+        if (card != null) cards.add(card);
       }
-    } catch (_) {
-      // fallback ke parser teks biasa
+      if (cards.isNotEmpty) return cards;
+    } else if (decoded is Map<String, dynamic>) {
+      final cards = <QuizCard>[];
+      if (decoded['questions'] is List) {
+        for (final item in decoded['questions'] as List) {
+          final card = _tryParseQuizItem(item);
+          if (card != null) cards.add(card);
+        }
+      } else if (decoded['cards'] is List) {
+        for (final item in decoded['cards'] as List) {
+          final card = _tryParseQuizItem(item);
+          if (card != null) cards.add(card);
+        }
+      } else if (decoded['data'] is List) {
+        for (final item in decoded['data'] as List) {
+          final card = _tryParseQuizItem(item);
+          if (card != null) cards.add(card);
+        }
+      } else if (decoded.containsKey('question')) {
+        final card = _tryParseQuizItem(decoded);
+        if (card != null) cards.add(card);
+      } else if (decoded['quizContent'] is String) {
+        return _parseQuizContent(decoded['quizContent'] as String);
+      }
+      if (cards.isNotEmpty) return cards;
     }
 
     final blocks = normalized
@@ -111,19 +133,25 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
         .where((b) => b.trim().isNotEmpty)
         .toList();
     if (blocks.isEmpty) {
-      return [_QuizCard(question: trimmed, answer: null)];
+      return [QuizCard(question: normalized, answer: null)];
     }
 
-    final cards = <_QuizCard>[];
+    final cards = <QuizCard>[];
     for (final block in blocks) {
-      final normalized = block.trim();
-      final answerIndex = normalized.toLowerCase().indexOf('answer:');
+      final parsed = _extractQuestionAnswerFromRaw(block);
+      if (parsed != null) {
+        cards.add(parsed);
+        continue;
+      }
+
+      final normalizedBlock = block.trim();
+      final answerIndex = normalizedBlock.toLowerCase().indexOf('answer:');
       if (answerIndex >= 0) {
-        final questionPart = normalized.substring(0, answerIndex).trim();
-        final answerPart = normalized.substring(answerIndex + 7).trim();
-        cards.add(_QuizCard(question: questionPart, answer: answerPart));
+        final questionPart = normalizedBlock.substring(0, answerIndex).trim();
+        final answerPart = normalizedBlock.substring(answerIndex + 7).trim();
+        cards.add(QuizCard(question: questionPart, answer: answerPart));
       } else {
-        cards.add(_QuizCard(question: normalized, answer: null));
+        cards.add(QuizCard(question: normalizedBlock, answer: null));
       }
     }
 
@@ -146,29 +174,86 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
     return normalized;
   }
 
-  _QuizCard _parseQuizItem(Map<String, dynamic> item) {
-    final question =
-        item['question']?.toString() ??
-        item['text']?.toString() ??
-        _getUnknownQuestionText();
-    final answer = item['answer']?.toString();
-    final explanation = item['explanation']?.toString();
-    final type = item['type']?.toString();
+  dynamic _decodePotentialJson(String value) {
+    var current = value.trim();
+    for (var i = 0; i < 4; i++) {
+      try {
+        final decoded = jsonDecode(current);
+        if (decoded is String) {
+          current = decoded.trim();
+          continue;
+        }
+        return decoded;
+      } catch (_) {
+        if ((current.startsWith('"') && current.endsWith('"')) || (current.startsWith("'") && current.endsWith("'"))) {
+          current = current.substring(1, current.length - 1).trim();
+          continue;
+        }
+        break;
+      }
+    }
 
-    Map<String, String>? options;
-    if (item['options'] is Map) {
-      options = (item['options'] as Map).map(
-        (key, value) => MapEntry(key.toString(), value.toString()),
+    final jsonMatch = RegExp(r'([\[{].*[\]}])', dotAll: true).firstMatch(current);
+    if (jsonMatch != null) {
+      try {
+        return jsonDecode(jsonMatch.group(1)!);
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    return current;
+  }
+
+  QuizCard? _tryParseQuizItem(dynamic item) {
+    if (item is Map<String, dynamic>) {
+      final questionValue = item['question'] ?? item['text'] ?? item['prompt'] ?? item['questionText'] ?? item['content'];
+      var question = questionValue?.toString().trim() ?? '';
+      if (question.isEmpty) {
+        question = _extractQuestionAnswerFromRaw(item.toString())?.question ?? '';
+      }
+      final answer = item['answer']?.toString();
+      final explanation = item['explanation']?.toString();
+      final type = item['type']?.toString();
+      Map<String, String>? options;
+      if (item['options'] is Map) {
+        options = (item['options'] as Map).map((k, v) => MapEntry(k.toString(), v.toString()));
+      }
+      if (question.isEmpty && answer == null) return null;
+      return QuizCard(
+        question: question.isNotEmpty ? question : 'Question unavailable',
+        answer: answer,
+        explanation: explanation,
+        options: options,
+        type: type,
       );
     }
 
-    return _QuizCard(
-      question: question,
-      answer: answer,
-      explanation: explanation,
-      options: options,
-      type: type,
-    );
+    if (item is String) {
+      final decoded = _decodePotentialJson(item);
+      if (decoded is Map<String, dynamic>) return _tryParseQuizItem(decoded);
+      if (decoded is List && decoded.isNotEmpty) return _tryParseQuizItem(decoded.first);
+      return _extractQuestionAnswerFromRaw(item);
+    }
+
+    return null;
+  }
+
+  QuizCard? _extractQuestionAnswerFromRaw(String raw) {
+    final questionMatch = RegExp(r'"question"\s*:\s*"(.+?)"', dotAll: true).firstMatch(raw);
+    final answerMatch = RegExp(r'"answer"\s*:\s*"(.+?)"', dotAll: true).firstMatch(raw);
+    if (questionMatch != null) {
+      return QuizCard(
+        question: questionMatch.group(1)!.trim(),
+        answer: answerMatch?.group(1)?.trim(),
+      );
+    }
+    final fallbackQuestion = RegExp(r'question\s*[:\-]\s*(.+?)(?:\n|\r|$)', caseSensitive: false).firstMatch(raw)?.group(1)?.trim();
+    final fallbackAnswer = RegExp(r'answer\s*[:\-]\s*(.+?)(?:\n|\r|$)', caseSensitive: false).firstMatch(raw)?.group(1)?.trim();
+    if (fallbackQuestion != null) {
+      return QuizCard(question: fallbackQuestion, answer: fallbackAnswer);
+    }
+    return null;
   }
 
   // fall back string is now English
@@ -338,12 +423,16 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
 
 class FlashcardResultScreen extends StatefulWidget {
   final String fileName;
-  final List<_QuizCard> cards;
+  final List<QuizCard> cards;
+  final int quizId;
+  final bool isSaved;
 
   const FlashcardResultScreen({
     super.key,
     required this.fileName,
     required this.cards,
+    required this.quizId,
+    this.isSaved = false,
   });
 
   @override
@@ -351,6 +440,41 @@ class FlashcardResultScreen extends StatefulWidget {
 }
 
 class _FlashcardResultScreenState extends State<FlashcardResultScreen> {
+  late bool _isSaved;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isSaved = widget.isSaved;
+  }
+
+  Future<void> _toggleSave() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final result = await MaterialService.toggleSaveQuiz(widget.quizId);
+      setState(() => _isSaved = result.saved);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_isSaved ? '✅ Flashcard disimpan ke tab Kuis!' : 'Flashcard dihapus dari tab Kuis'),
+          backgroundColor: _isSaved ? const Color(0xFF1EE86F) : const Color(0xFF555555),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Gagal: ${e.toString()}'),
+          backgroundColor: const Color(0xFFEF5350),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -358,119 +482,176 @@ class _FlashcardResultScreenState extends State<FlashcardResultScreen> {
       appBar: AppBar(
         title: Text(
           'Questions from: ${widget.fileName}',
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
         ),
-        backgroundColor: const Color(0xFF111111),
+        backgroundColor: const Color(0xFFF2EA05),
         centerTitle: true,
       ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: ListView.separated(
-            itemCount: widget.cards.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final card = widget.cards[index];
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFDDDDDD)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x11000000),
-                      blurRadius: 6,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Flashcard ${index + 1}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (card.answer != null)
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                card.revealed = !card.revealed;
-                              });
-                            },
-                            child: Text(
-                              card.revealed
-                                  ? 'Hide Answer'
-                                  : 'Show Answer',
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      card.question,
-                      style: const TextStyle(fontSize: 15),
-                    ),
-                    if (card.options != null && card.options!.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      ...card.options!.entries.map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${entry.key}. ',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF111111),
-                                ),
+          child: Column(
+            children: [
+              Expanded(
+                child: widget.cards.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.menu_book_outlined,
+                                size: 52,
+                                color: Color(0xFF888888),
                               ),
-                              Expanded(
-                                child: Text(
-                                  entry.value,
-                                  style: const TextStyle(fontSize: 14),
+                              SizedBox(height: 16),
+                              Text(
+                                'No quiz cards are available yet. If you saved a quiz from another screen, it may contain content that needs to be parsed first.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: Color(0xFF666666),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
-                    if (card.answer != null && card.revealed) ...[
-                      const SizedBox(height: 12),
-                      const Divider(color: Color(0xFFCCCCCC)),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Answer: ${card.answer!}',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF111111),
-                        ),
-                      ),
-                      if (card.explanation != null && card.explanation!.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          'Explanation: ${card.explanation!}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF555555),
+                      )
+                    : ListView.separated(
+                        itemCount: widget.cards.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final card = widget.cards[index];
+                          return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFDDDDDD)),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x11000000),
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
                           ),
-                        ),
-                      ],
-                    ],
-                  ],
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Flashcard ${index + 1}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (card.answer != null)
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      card.revealed = !card.revealed;
+                                    });
+                                  },
+                                  child: Text(
+                                    card.revealed
+                                        ? 'Hide Answer'
+                                        : 'Show Answer',
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            card.question,
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                          if (card.options != null && card.options!.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            ...card.options!.entries.map(
+                              (entry) => Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${entry.key}. ',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF111111),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        entry.value,
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (card.answer != null && card.revealed) ...[
+                            const SizedBox(height: 12),
+                            const Divider(color: Color(0xFFCCCCCC)),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Answer: ${card.answer!}',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111111),
+                              ),
+                            ),
+                            if (card.explanation != null && card.explanation!.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Text(
+                                'Explanation: ${card.explanation!}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF555555),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _saving ? null : _toggleSave,
+                  icon: _saving
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Icon(_isSaved ? Icons.bookmark : Icons.bookmark_border),
+                  label: Text(
+                    _isSaved ? 'Saved to Quiz' : 'Save to Quiz',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isSaved ? const Color(0xFF1EE86F) : const Color(0xFF111111),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

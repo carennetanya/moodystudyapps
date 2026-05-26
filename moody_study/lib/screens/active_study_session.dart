@@ -8,8 +8,11 @@ import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:pdf_text/pdf_text.dart';
+import 'package:vibration/vibration.dart';
+import 'package:flutter_pdf_text/flutter_pdf_text.dart';
 import 'package:moody_study/screens/oddy_flashcard_screen.dart';
 import 'package:moody_study/screens/your_files_screen.dart';
 import 'package:moody_study/services/material_service.dart';
@@ -17,8 +20,10 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
  
 import 'package:moody_study/services/streak_service.dart';
+import 'package:moody_study/screens/life_lost_popup.dart';
 import 'character_intro_screen.dart';
 import 'level_up_screen.dart';
+import 'streak_counter_screen.dart';
 import 'theme_selector_screen.dart';
  
 class ActiveStudySession extends StatefulWidget {
@@ -53,9 +58,12 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   bool _loadingSummary = true;
   String? _summaryError;
   int? _materialId;
+  int? _initialStreak;
+  int? _initialLife;
  
   Timer? _awayTimer;
   Timer? _flashTimer;
+  Timer? _vibrationTimer;
   DateTime? _awayStartTime;
   bool _awayAlarmTriggered = false;
   int _totalDistractionSeconds = 0; // akumulasi total detik distraksi selama sesi
@@ -73,9 +81,23 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _remaining = Duration(minutes: widget.initialMinutes);
+    _loadInitialStreak();
     _loadSummary();
   }
  
+  Future<void> _loadInitialStreak() async {
+    try {
+      final streakInfo = await StreakService.fetchStreak();
+      if (!mounted) return;
+      setState(() {
+        _initialStreak = streakInfo.currentStreak;
+        _initialLife = streakInfo.life;
+      });
+    } catch (_) {
+      // If the streak fetch fails, fallback gracefully and avoid forcing the screen.
+    }
+  }
+
   Future<void> _loadSummary() async {
     if (!mounted) return;
     setState(() {
@@ -184,24 +206,11 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   Future<void> _cancelAwayTimer() async {
     _awayTimer?.cancel();
     _awayTimer = null;
-    if (_awayAlarmTriggered) {
-      // For library, popup is shown immediately in _triggerAwayAlarm; skip on resume.
-      if (!_isLibraryLocation) {
-        await _stopAwayAlarm();
-        final awayDuration = _awayStartTime != null
-            ? DateTime.now().difference(_awayStartTime!)
-            : const Duration(seconds: 30);
-        _awayStartTime = null;
-        await _showReturnPopup(awayDuration);
-        if (!mounted) return;
-        setState(() {
-          _awayAlarmTriggered = false;
-          _showRedFlash = false;
-        });
-      } else {
-        _awayStartTime = null;
-      }
-    } else {
+
+    // Hanya handle kasus user balik SEBELUM alarm trigger (< 30 detik pergi)
+    // Kalau alarm sudah trigger (_awayAlarmTriggered == true), cleanup sudah
+    // ditangani di _triggerAwayAlarm setelah user pencet "I'm back".
+    if (!_awayAlarmTriggered) {
       _awayStartTime = null;
     }
   }
@@ -209,14 +218,15 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   Future<void> _triggerAwayAlarm() async {
     _awayTimer = null;
     _awayAlarmTriggered = true;
-    setState(() {});
+    if (mounted) setState(() {});
+
+    final awayDuration = _awayStartTime != null
+        ? DateTime.now().difference(_awayStartTime!)
+        : const Duration(seconds: 30);
 
     if (_isLibraryLocation) {
       _startFlashEffect();
       // Show popup immediately — flash continues behind the dialog
-      final awayDuration = _awayStartTime != null
-          ? DateTime.now().difference(_awayStartTime!)
-          : const Duration(seconds: 30);
       await _showReturnPopup(awayDuration);
       _stopFlashEffect();
       _awayTimer?.cancel();
@@ -229,18 +239,37 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
         });
       }
     } else if (_isHomeLocation) {
+      // Play alarm + vibrate first, then show popup immediately
       await _playAwayAlarm();
+      await _showReturnPopup(awayDuration);
+      // User pressed "I'm back" — stop everything now
+      await _stopAwayAlarm();
+      _awayStartTime = null;
+      if (mounted) {
+        setState(() {
+          _awayAlarmTriggered = false;
+          _showRedFlash = false;
+        });
+      }
     }
   }
  
   Future<void> _stopAwayAlarm() async {
+    // Cancel vibration timer PERTAMA (sync) supaya getaran langsung berhenti
+    _vibrationTimer?.cancel();
+    _vibrationTimer = null;
+    try {
+      if (await Vibration.hasVibrator() ?? false) {
+        await Vibration.cancel();
+      }
+    } catch (_) {}
+
+    // Lalu stop audio
     try {
       await _awayAlarmPlayer.stop();
-    } catch (_) {
-      // Ignore stop errors.
-    }
+    } catch (_) {}
   }
- 
+
   void _startFlashEffect() {
     _stopFlashEffect();
     _showRedFlash = true;
@@ -334,22 +363,82 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     );
   }
  
-  Future<void> _playAwayAlarm() async {
+ Future<void> _playAwayAlarm() async {
+  try {
+    await _awayAlarmPlayer.stop();
+    await _awayAlarmPlayer.setPlayerMode(PlayerMode.mediaPlayer);
+    await _awayAlarmPlayer.setReleaseMode(ReleaseMode.loop);
+    await _awayAlarmPlayer.setVolume(1.0);
+
     try {
-      await _awayAlarmPlayer.setReleaseMode(ReleaseMode.loop);
-      final bytes = _buildAlarmWavBytes();
-      await _awayAlarmPlayer.play(
-        BytesSource(bytes),
-        volume: 1.0,
-      );
+      final alarmFile = await _createTempAlarmFile();
+      await _awayAlarmPlayer.play(DeviceFileSource(alarmFile.path));
     } catch (e) {
-      debugPrint('Away alarm failed: $e');
+      debugPrint('Failed to play generated alarm file, trying asset fallback: $e');
+      await _playAwayAlarmFromAssetFile();
+    }
+
+    await _startAwayVibration();
+  } catch (e) {
+    debugPrint('Away alarm failed: $e');
+  }
+}
+
+  Future<File> _createTempAlarmFile() async {
+    final tempDir = await getTemporaryDirectory();
+    final alarmFile = File('${tempDir.path}/away_alarm.wav');
+    final waveBytes = _buildAlarmWavBytes(
+      frequency: 1000.0,
+      durationSeconds: 1.0,
+      amplitude: 0.9,
+    );
+    await alarmFile.writeAsBytes(waveBytes);
+    return alarmFile;
+  }
+
+  Future<void> _playAwayAlarmFromAssetFile() async {
+    final bytes = await rootBundle.load('assets/audio/alarm.wav');
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = File('${tempDir.path}/away_alarm.wav');
+    await tempFile.writeAsBytes(bytes.buffer.asUint8List());
+
+    await _awayAlarmPlayer.play(DeviceFileSource(tempFile.path));
+  }
+
+  Future<void> _startAwayVibration() async {
+    _vibrationTimer?.cancel();
+    _vibrationTimer = null;
+
+    final hasVibrator = await Vibration.hasVibrator();
+    if (hasVibrator ?? false) {
+      await Vibration.vibrate(duration: 500);
+      _vibrationTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) async {
+          try {
+            if (await Vibration.hasVibrator() ?? false) {
+              await Vibration.vibrate(duration: 500);
+            }
+          } catch (_) {}
+        },
+      );
+    } else {
+      HapticFeedback.vibrate();
+      _vibrationTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) async {
+          try {
+            HapticFeedback.vibrate();
+          } catch (_) {}
+        },
+      );
     }
   }
- 
+
   Uint8List _buildAlarmWavBytes({
     double frequency = 880.0,
     double durationSeconds = 0.8,
+    double amplitude = 0.8,
     int sampleRate = 44100,
   }) {
     final sampleCount = (sampleRate * durationSeconds).round();
@@ -374,7 +463,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
  
     for (var i = 0; i < sampleCount; i++) {
       final t = i / sampleRate;
-      final value = (32767 * math.sin(2 * math.pi * frequency * t) * 0.5).round();
+      final value = (32767 * math.sin(2 * math.pi * frequency * t) * amplitude).round();
       bytes.add(_int16Bytes(value));
     }
  
@@ -572,6 +661,35 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
 
     if (!mounted) return;
 
+    // Show streak counter screen only when the streak actually grew.
+    final shouldShowStreak = sessionResult != null &&
+        sessionResult.currentStreak > 0 &&
+        (_initialStreak == null || sessionResult.currentStreak > _initialStreak!);
+
+    final previousLife = _initialLife;
+
+    if (shouldShowStreak) {
+      await Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => StreakCounterScreen(
+            previousStreak: (sessionResult!.currentStreak - 1).clamp(0, sessionResult.currentStreak),
+            newStreak: sessionResult.currentStreak,
+            userName: widget.userName,
+            onContinue: () => Navigator.of(context).pop(),
+          ),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+      if (!mounted) return;
+    }
+
+    if (sessionResult != null) {
+      _initialStreak = sessionResult.currentStreak;
+      _initialLife = sessionResult.life;
+    }
+
     // Show level up screen if leveled up
     if (sessionResult != null && sessionResult.leveledUp) {
       await Navigator.of(context).push(
@@ -589,6 +707,10 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
         ),
       );
       if (!mounted) return;
+    }
+
+    if (sessionResult != null && previousLife != null && sessionResult.life > previousLife) {
+      await showLifeRecoveredPopup(context, sessionResult.life);
     }
 
     if (action == 'save') {
@@ -848,6 +970,16 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
                             size: 24,
                           ),
                         ),
+                        const Spacer(),
+                        if (kDebugMode)
+                          IconButton(
+                            tooltip: 'Trigger alarm (debug)',
+                            onPressed: () async {
+                              // allow quick foreground test
+                              await _playAwayAlarm();
+                            },
+                            icon: const Icon(Icons.alarm, color: Colors.red),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 20),

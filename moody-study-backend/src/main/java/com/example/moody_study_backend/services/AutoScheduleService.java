@@ -8,14 +8,12 @@ import com.example.moody_study_backend.entity.User;
 import com.example.moody_study_backend.repository.ScheduleRepository;
 import com.example.moody_study_backend.repository.StudySessionRepository;
 import com.example.moody_study_backend.repository.UserRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,7 +32,7 @@ public class AutoScheduleService {
      * Generate jadwal belajar otomatis berbasis AI.
      * AI menganalisa histori sesi & jadwal existing lalu menyarankan slot optimal.
      *
-     * @return list jadwal baru yang disimpan ke DB
+     * @return list jadwal AI sebagai suggestion tanpa menyimpan otomatis ke DB
      */
     public List<ScheduleResponse> generateAutoSchedule(String email, AutoScheduleRequest request) {
         User user = userRepository.findByEmail(email)
@@ -47,49 +45,50 @@ public class AutoScheduleService {
                 .limit(20)
                 .collect(Collectors.toList());
 
-        // Ambil jadwal yang sudah ada (seminggu ke depan) untuk hindari konflik
+        // Ambil jadwal yang sudah ada untuk hindari konflik
         List<Schedule> existingSchedules = scheduleRepository
                 .findByUserOrderByStudyDateAscStartTimeAsc(user);
 
         // Serialisasi ke JSON ringkas untuk dikirim ke Gemini
-        String sessionJson  = serializeSessions(sessions);
+        String sessionJson = serializeSessions(sessions);
         String scheduleJson = serializeSchedules(existingSchedules);
 
         int daysAhead = request.getDaysAhead() > 0 ? request.getDaysAhead() : 7;
 
+        String subjectsText = request.getSubjects().isEmpty()
+                ? "Mata pelajaran: semua pelajaran sesuai histori dan prioritas belajar."
+                : "Mata pelajaran: " + String.join(", ", request.getSubjects());
+        String daysText = request.getAvailableDays().isEmpty()
+                ? "Hari tersedia: Senin, Selasa, Rabu, Kamis, Jumat, Sabtu, Minggu"
+                : "Hari tersedia: " + String.join(", ", request.getAvailableDays());
+        String timeText = "Jam belajar: " + request.getStartHour() + " sampai " + request.getEndHour();
+        String durationText = "Durasi per sesi: " + request.getDurationMinutes() + " menit.";
+
+        String extraInstructions = subjectsText + "\n" + daysText + "\n" + timeText + "\n" + durationText;
+
         // Minta Gemini buat jadwal
-        String aiResponse = geminiService.generateAutoSchedule(sessionJson, scheduleJson, daysAhead);
+        String aiResponse = geminiService.generateAutoSchedule(sessionJson, scheduleJson, daysAhead, extraInstructions);
 
         // Parse response JSON dari Gemini
         List<Map<String, String>> suggestions = parseAiSchedule(aiResponse);
 
-        // Simpan semua saran ke DB
-        List<Schedule> saved = new ArrayList<>();
-        for (Map<String, String> s : suggestions) {
-            try {
-                Schedule schedule = Schedule.builder()
-                        .user(user)
-                        .subject(s.getOrDefault("subject", "Sesi Belajar"))
-                        .studyDate(LocalDate.parse(s.get("studyDate")))
-                        .startTime(LocalTime.parse(s.get("startTime")))
-                        .endTime(LocalTime.parse(s.get("endTime")))
-                        .mood(s.getOrDefault("mood", "semangat"))
-                        .location(s.getOrDefault("location", "rumah"))
-                        .isCompleted(false)
-                        .build();
-
-                saved.add(scheduleRepository.save(schedule));
-            } catch (Exception e) {
-                // Skip entri yang tidak valid daripada gagal total
-            }
-        }
-
-        if (saved.isEmpty()) {
+        if (suggestions.isEmpty()) {
             throw new RuntimeException(
                     "AI tidak bisa menghasilkan jadwal. Coba lagi atau tambah histori sesi belajar.");
         }
 
-        return saved.stream().map(this::toResponse).collect(Collectors.toList());
+        return suggestions.stream()
+                .map(s -> new ScheduleResponse(
+                        0L,
+                        s.getOrDefault("subject", "Sesi Belajar"),
+                        s.getOrDefault("studyDate", ""),
+                        s.getOrDefault("startTime", ""),
+                        s.getOrDefault("endTime", ""),
+                        s.getOrDefault("location", ""),
+                        s.getOrDefault("mood", ""),
+                        false
+                ))
+                .collect(Collectors.toList());
     }
 
     // -----------------------------------------------------------------------
@@ -107,7 +106,7 @@ public class AutoScheduleService {
                     "startTime",           s.getStartTime() != null ? s.getStartTime().toString() : ""
             )).collect(Collectors.toList());
             return objectMapper.writeValueAsString(list);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             return "[]";
         }
     }
@@ -123,12 +122,11 @@ public class AutoScheduleService {
                     "location",   s.getLocation() != null ? s.getLocation() : ""
             )).collect(Collectors.toList());
             return objectMapper.writeValueAsString(list);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             return "[]";
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<Map<String, String>> parseAiSchedule(String json) {
         try {
             // Bersihkan markdown code block jika ada
@@ -139,21 +137,8 @@ public class AutoScheduleService {
 
             return objectMapper.readValue(cleaned,
                     new TypeReference<List<Map<String, String>>>() {});
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException("Gagal memparse jadwal dari AI: " + e.getMessage());
         }
-    }
-
-    private ScheduleResponse toResponse(Schedule s) {
-        return new ScheduleResponse(
-                s.getId(),
-                s.getSubject(),
-                s.getStudyDate().toString(),
-                s.getStartTime().toString(),
-                s.getEndTime().toString(),
-                s.getLocation(),
-                s.getMood(),
-                s.isCompleted()
-        );
     }
 }

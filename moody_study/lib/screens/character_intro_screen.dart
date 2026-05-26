@@ -7,10 +7,17 @@ import 'mood_screen.dart';
 import 'location_screen.dart';
 import 'your_files_screen.dart';
 import 'oddy_flashcard_screen.dart';
+import 'statistik_screen.dart';
 import 'daily_quest_screen.dart';
+import 'kuis_screen.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:moody_study/services/streak_service.dart';
+import 'package:moody_study/services/auth_service.dart';
+import 'life_lost_popup.dart';
 import 'package:moody_study/services/daily_quest_service.dart';
 import 'package:moody_study/utils/app_localizations.dart';
+import 'schedule_screen.dart';
 
 class CharacterIntroScreen extends StatefulWidget {
   final String userName;
@@ -108,6 +115,36 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
       _showLandingPage = true;
     });
     _landingFadeController.forward();
+
+    // Cek bolos setelah landing page tampil
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    try {
+      final token = AuthService.token;
+      if (token == null) return;
+      final baseUrl = StreakService.baseUrl;
+      final res = await http.post(
+        Uri.parse('\$baseUrl/api/streak/check-login'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer \$token',
+        },
+      );
+      if (res.statusCode == 200 && mounted) {
+        final result = LoginCheckResult.fromJson(
+          jsonDecode(res.body) as Map<String, dynamic>,
+        );
+        // Tampilkan popup jika ada nyawa yang hilang ATAU level turun
+        if (result.livesLost > 0 || result.leveledDown) {
+          await Future.delayed(const Duration(milliseconds: 600));
+          if (mounted) await showLifeLostPopup(context, result);
+        }
+      }
+    } catch (e) {
+      debugPrint('checkLogin error: \$e');
+    }
   }
 
   @override
@@ -147,6 +184,18 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
     );
   }
 
+  void _onScheduleTap() {
+    if (!mounted) return;
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const ScheduleScreen(),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
+  }
+
   double get _greetingFontSize {
     final w = MediaQuery.sizeOf(context).width;
     switch (_greetingPhase) {
@@ -170,6 +219,7 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
                 heroContent: _HeroContent(
                   userName: widget.userName,
                   onStartNow: _onStartNow,
+                  onScheduleTap: _onScheduleTap,
                 ),
                 userName: widget.userName,
                 theme: widget.theme,
@@ -259,7 +309,7 @@ class _LandingPageState extends State<_LandingPage> {
       case 3: // Quiz
         Navigator.of(context).push(
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const _QuizPlaceholderScreen(),
+            pageBuilder: (_, __, ___) => const KuisScreen(),
             transitionsBuilder: (_, anim, __, child) =>
                 FadeTransition(opacity: anim, child: child),
             transitionDuration: const Duration(milliseconds: 300),
@@ -267,18 +317,17 @@ class _LandingPageState extends State<_LandingPage> {
         ).then((_) => setState(() => _selectedNav = 0));
         break;
       case 4: // Statistik
-        Navigator.of(context).push(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const _StatPlaceholderScreen(),
-            transitionsBuilder: (_, anim, __, child) =>
-                FadeTransition(opacity: anim, child: child),
-            transitionDuration: const Duration(milliseconds: 300),
-          ),
-        ).then((_) {
-          // Tandai quest Review Stats selesai saat user buka statistik
-          DailyQuestService.completeReviewStats().catchError((_) {});
-          setState(() => _selectedNav = 0);
-        });
+  Navigator.of(context).push(
+    PageRouteBuilder(
+      pageBuilder: (_, __, ___) => const StatistikScreen(), // ← tanpa underscore
+      transitionsBuilder: (_, anim, __, child) =>
+          FadeTransition(opacity: anim, child: child),
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
+  ).then((_) {
+    DailyQuestService.completeReviewStats().catchError((_) {});
+    setState(() => _selectedNav = 0);
+  });
         break;
       case 5: // Settings
         Navigator.of(context).push(
@@ -500,7 +549,8 @@ class _NavButton extends StatelessWidget {
 class _HeroContent extends StatelessWidget {
   final String userName;
   final VoidCallback? onStartNow;
-  const _HeroContent({required this.userName, this.onStartNow});
+  final VoidCallback? onScheduleTap;
+  const _HeroContent({required this.userName, this.onStartNow, this.onScheduleTap});
 
   @override
   Widget build(BuildContext context) {
@@ -560,8 +610,64 @@ class _HeroContent extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               _StartNowButton(onTap: onStartNow),
+              const SizedBox(height: 14),
+              _ScheduleButton(onTap: onScheduleTap),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScheduleButton extends StatefulWidget {
+  final VoidCallback? onTap;
+  const _ScheduleButton({this.onTap});
+
+  @override
+  State<_ScheduleButton> createState() => _ScheduleButtonState();
+}
+
+class _ScheduleButtonState extends State<_ScheduleButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap?.call();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        transform: Matrix4.translationValues(
+            _pressed ? 4 : 0, _pressed ? 4 : 0, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0xFF111111), width: 2),
+          boxShadow: _pressed
+              ? const [BoxShadow(color: Color(0x22000000), offset: Offset(2, 2), blurRadius: 0)]
+              : const [BoxShadow(color: Color(0x22000000), offset: Offset(5, 5), blurRadius: 0)],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              AppLocalizations.of(context).homeSchedule,
+              style: const TextStyle(
+                fontFamily: 'BlackHanSans',
+                fontSize: 14,
+                letterSpacing: 1.5,
+                color: Color(0xFF111111),
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.calendar_month, size: 18, color: Color(0xFF111111)),
+          ],
         ),
       ),
     );

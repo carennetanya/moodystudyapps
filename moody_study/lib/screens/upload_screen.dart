@@ -297,7 +297,7 @@ class _UploadBoxState extends State<_UploadBox> {
   Future<void> _pickFiles() async {
     setState(() => _isLoading = true);
     try {
-      final result = await FilePicker.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         allowMultiple: true,
         type: FileType.custom,
         allowedExtensions: ['pdf', 'docx', 'txt'],
