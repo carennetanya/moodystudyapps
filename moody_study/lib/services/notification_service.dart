@@ -51,15 +51,16 @@ class NotificationService {
     if (tzDate.isBefore(tz.TZDateTime.now(tz.local))) return;
 
     const androidDetails = AndroidNotificationDetails(
-      'study_schedule_channel',
-      'Study Schedule Reminders',
-      channelDescription: 'Reminds the user about a scheduled study session',
-      importance: Importance.max,
-      priority: Priority.max,
-      playSound: true,
-      enableVibration: true,
-      fullScreenIntent: true,
-    );
+  'study_schedule_channel',
+  'Study Schedule Reminders',
+  channelDescription: 'Reminds the user about a scheduled study session',
+  importance: Importance.max,
+  priority: Priority.max,
+  playSound: true,
+  sound: RawResourceAndroidNotificationSound('alarm'), // ← tambah ini
+  enableVibration: true,
+  fullScreenIntent: true,
+);
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
