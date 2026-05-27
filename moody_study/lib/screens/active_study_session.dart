@@ -9,14 +9,18 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_pdf_text/flutter_pdf_text.dart';
 import 'package:moody_study/screens/oddy_flashcard_screen.dart';
 import 'package:moody_study/screens/your_files_screen.dart';
+import 'package:moody_study/screens/headphone_screen.dart';
 import 'package:moody_study/services/material_service.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:moody_study/services/spotify_service.dart';
+import 'package:spotify_sdk/spotify_sdk.dart';
  
 import 'package:moody_study/services/streak_service.dart';
 import 'package:moody_study/screens/life_lost_popup.dart';
@@ -53,6 +57,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   Timer? _timer;
   bool _running = false;
   bool _savingPdf = false;
+  bool _musicWasPausedByAlarm = false; 
   String _summary = '';
   bool _loadingSummary = true;
   String? _summaryError;
@@ -68,6 +73,15 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   int _totalDistractionSeconds = 0;
   bool _showRedFlash = false;
   AudioPlayer? _awayAlarmPlayer;
+  late final AudioPlayer _musicPlayer;
+  StreamSubscription<PlayerState>? _musicStateSubscription;
+  bool _musicPlaying = false;
+
+  // Notification plugin for background alarm
+  final FlutterLocalNotificationsPlugin _notifPlugin =
+      FlutterLocalNotificationsPlugin();
+  bool _pendingAlarmDialog = false;
+  Duration _pendingAlarmDuration = Duration.zero;
  
   int get _totalSeconds => widget.initialMinutes * 60;
   double get _progress {
@@ -80,10 +94,82 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _remaining = Duration(minutes: widget.initialMinutes);
+    _musicPlayer = AudioPlayer();
+    _musicPlayer.setReleaseMode(ReleaseMode.loop);
+    _musicStateSubscription = _musicPlayer.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
+      setState(() => _musicPlaying = state == PlayerState.playing);
+    });
     _loadInitialStreak();
     _loadSummary();
+    _initNotifications();
   }
- 
+
+  Future<void> _initNotifications() async {
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    await _notifPlugin.initialize(
+      const InitializationSettings(android: androidSettings, iOS: iosSettings),
+    );
+    if (Platform.isAndroid) {
+      final android = _notifPlugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await android?.requestNotificationsPermission();
+    }
+  }
+
+  Future<void> _showDistractedNotification() async {
+    // Android: pakai sound channel custom (alarm.wav)
+    const androidChannel = AndroidNotificationChannel(
+      'distraction_alarm',
+      'Distraction Alarm',
+      description: 'Notifies when you leave the study session',
+      importance: Importance.max,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('alarm'),
+      enableVibration: true,
+    );
+    final androidImpl = _notifPlugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await androidImpl?.createNotificationChannel(androidChannel);
+
+    final androidDetails = AndroidNotificationDetails(
+      'distraction_alarm',
+      'Distraction Alarm',
+      channelDescription: 'Notifies when you leave the study session',
+      importance: Importance.max,
+      priority: Priority.max,
+      sound: const RawResourceAndroidNotificationSound('alarm'),
+      enableVibration: true,
+      playSound: true,
+      fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+    );
+    const iosDetails = DarwinNotificationDetails(
+      sound: 'alarm.wav',
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    final details = NotificationDetails(
+        android: androidDetails, iOS: iosDetails);
+    await _notifPlugin.show(
+      42,
+      '👀 Hey, come back!',
+      'You left your study session. Tap to return.',
+      details,
+    );
+  }
+
+  Future<void> _cancelDistractedNotification() async {
+    await _notifPlugin.cancel(42);
+  }
+
   Future<void> _loadInitialStreak() async {
     try {
       final streakInfo = await StreakService.fetchStreak();
@@ -156,6 +242,12 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     return s;
   }
  
+  void _openHeadphoneScreen() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => HeadphoneScreen(audioPlayer: _musicPlayer),
+    ));
+  }
+ 
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -178,10 +270,20 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!_shouldTrackAway) return;
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       _startAwayTimer();
     } else if (state == AppLifecycleState.resumed) {
-      _cancelAwayTimer();
+      _cancelDistractedNotification();
+      if (_pendingAlarmDialog) {
+        _pendingAlarmDialog = false;
+        // Tunda sedikit supaya context sudah siap
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) _handleReturnFromBackground(_pendingAlarmDuration);
+        });
+      } else {
+        _cancelAwayTimer();
+      }
     }
   }
  
@@ -212,30 +314,72 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
         ? DateTime.now().difference(_awayStartTime!)
         : const Duration(seconds: 30);
 
+    // Cek apakah app sedang di foreground atau background
+    // Kalau background: kirim notifikasi + vibrate, tandai pending dialog
+    // Kalau foreground: jalankan alarm + dialog seperti biasa
+    final isBackground = WidgetsBinding.instance.lifecycleState !=
+        AppLifecycleState.resumed;
+
+    if (isBackground) {
+      // Simpan info untuk ditampilkan saat user kembali
+      _pendingAlarmDialog = true;
+      _pendingAlarmDuration = awayDuration;
+      // Kirim notifikasi dengan suara alarm
+      await _showDistractedNotification();
+      // Vibrate terus sampai user kembali
+      unawaited(_startAwayVibration());
+      return;
+    }
+
+    // App masih foreground — jalankan normal
+    await _handleReturnFromBackground(awayDuration);
+  }
+
+  Future<void> _handleReturnFromBackground(Duration awayDuration) async {
+    // Pause musik
+    _musicWasPausedByAlarm = false;
+    try {
+      if (_musicPlayer.state == PlayerState.playing) {
+        await _musicPlayer.pause();
+        _musicWasPausedByAlarm = true;
+      }
+    } catch (_) {}
+    try {
+      final spState = await SpotifySdk.getPlayerState()
+          .timeout(const Duration(seconds: 2));
+      if (spState != null && !spState.isPaused) {
+        await SpotifyService.pause();
+        _musicWasPausedByAlarm = true;
+      }
+    } catch (_) {}
+
     if (_isLibraryLocation) {
       _startFlashEffect();
+      await _playAwayAlarm();
       await _showReturnPopup(awayDuration);
+      await _stopAwayAlarm();
       _stopFlashEffect();
-      _awayTimer?.cancel();
-      _awayTimer = null;
-      _awayStartTime = null;
-      if (mounted) {
-        setState(() {
-          _awayAlarmTriggered = false;
-          _showRedFlash = false;
-        });
-      }
     } else if (_isHomeLocation) {
       await _playAwayAlarm();
       await _showReturnPopup(awayDuration);
       await _stopAwayAlarm();
-      _awayStartTime = null;
-      if (mounted) {
-        setState(() {
-          _awayAlarmTriggered = false;
-          _showRedFlash = false;
-        });
-      }
+    }
+
+    _awayTimer?.cancel();
+    _awayTimer = null;
+    _awayStartTime = null;
+    if (mounted) {
+      setState(() {
+        _awayAlarmTriggered = false;
+        _showRedFlash = false;
+      });
+    }
+
+    // Resume musik
+    if (_musicWasPausedByAlarm) {
+      try { await _musicPlayer.resume(); } catch (_) {}
+      try { await SpotifyService.resume(); } catch (_) {}
+      _musicWasPausedByAlarm = false;
     }
   }
  
@@ -354,13 +498,13 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
         android: AudioContextAndroid(
           isSpeakerphoneOn: false,
           stayAwake: true,
-          contentType: AndroidContentType.music,
+          contentType: AndroidContentType.sonification,
           usageType: AndroidUsageType.alarm,
-          audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+          audioFocus: AndroidAudioFocus.gain,
         ),
         iOS: AudioContextIOS(
           category: AVAudioSessionCategory.playback,
-          options: {AVAudioSessionOptions.mixWithOthers},
+          options: {AVAudioSessionOptions.duckOthers},
         ),
       ));
 
@@ -725,6 +869,8 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     _awayTimer?.cancel();
     _stopAwayAlarm();
     _awayAlarmPlayer?.dispose();
+    _musicStateSubscription?.cancel();
+    _musicPlayer.dispose();
     super.dispose();
   }
  
@@ -782,6 +928,43 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
                       ),
                     ),
                     const SizedBox(height: 24),
+                    GestureDetector(
+                      onTap: _openHeadphoneScreen,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: const Color(0xFF111111), width: 2),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: const [BoxShadow(color: Color(0xFF111111), offset: Offset(3, 3), blurRadius: 0)],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.headphones, color: Color(0xFF111111), size: 30),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Headphone Player',
+                                    style: TextStyle(fontFamily: 'BlackHanSans', fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111111)),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _musicPlaying ? 'Tap to control music' : 'Tap to open music player',
+                                    style: const TextStyle(fontFamily: 'Nunito', fontSize: 12, color: Color(0xFF666666)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right, color: Color(0xFF111111), size: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
                     SizedBox(
                       width: 200,
                       height: 200,

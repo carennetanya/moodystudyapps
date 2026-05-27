@@ -23,4 +23,17 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 }
 
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        flatDir {
+            dirs("app/libs")
+        }
+    }
+}
+
+
 include(":app")
+include(":spotify-app-remote")  
+project(":spotify-app-remote").projectDir = file("spotify-app-remote")  
