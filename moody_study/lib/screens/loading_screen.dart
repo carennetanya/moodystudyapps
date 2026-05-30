@@ -36,6 +36,7 @@ class _LoadingScreenState extends State<LoadingScreen>
   bool _showMusicUI = false;
   bool _isPlaying = true;
   bool _showNameForm = false;
+  bool _audioPlayerTransferred = false;
 
   static const String _songName = 'Good Days - SZA';
   static const String _audioFile = 'audio/SZA - Good Days (Audio).mp3';
@@ -86,7 +87,9 @@ class _LoadingScreenState extends State<LoadingScreen>
   void dispose() {
     _btnController.dispose();
     _startedController.dispose();
-    _audioPlayer.dispose();
+    if (!_audioPlayerTransferred) {
+      _audioPlayer.dispose();
+    }
     super.dispose();
   }
 
@@ -187,6 +190,7 @@ class _LoadingScreenState extends State<LoadingScreen>
 
   void _onNameSubmit(String name) {
     setState(() => _showNameForm = false);
+    _audioPlayerTransferred = true;
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/streak_service.dart';
 
@@ -43,11 +44,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
   int _todayXp = 0;
   int _maxXp = 0;
 
-  static String get baseUrl {
-  if (kIsWeb) return 'http://localhost:8081';
-  // Ganti dengan IP LAN kamu, misal:
-  return 'http://192.168.1.9:8081';
-}
+  static String get baseUrl => ApiConfig.baseUrl;
 
   Map<String, String> get _headers {
     final token = AuthService.token;

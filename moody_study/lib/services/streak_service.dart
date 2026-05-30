@@ -3,14 +3,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'api_config.dart';
 import 'auth_service.dart';
 
 class StreakService {
- static String get baseUrl {
-  if (kIsWeb) return 'http://localhost:8081';
-  // Ganti dengan IP LAN kamu, misal:
-  return 'http://192.168.1.9:8081';
-}
+  static String get baseUrl => ApiConfig.baseUrl;
 
   /// Fetch current user's life count from backend `/api/streak`.
   /// Returns an int (default 3 if response missing).

@@ -217,14 +217,18 @@ class _RegisterScreenState extends State<RegisterScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Subtitle
-                        Text(
-                          'Create new account',
-                          style: TextStyle(
-                            fontFamily: 'Nunito',
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: textColor.withOpacity(0.5),
-                            letterSpacing: 1,
+                        Align(
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Create new account',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Nunito',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: textColor.withOpacity(0.5),
+                              letterSpacing: 1,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -434,39 +438,46 @@ class _RegisterScreenState extends State<RegisterScreen>
         isDark ? const Color(0xFF1a1a2e) : const Color(0xFF111111);
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Stack(
-          children: [
-            Text(
-              l.registerTitle,
-              style: TextStyle(
-                fontFamily: 'BlackHanSans',
-                fontSize: 52,
-                letterSpacing: 2,
-                foreground: Paint()
-                  ..style = PaintingStyle.stroke
-                  ..strokeWidth = 8
-                  ..strokeJoin = StrokeJoin.round
-                  ..color = strokeColor,
+        Align(
+          alignment: Alignment.center,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Text(
+                l.registerTitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'BlackHanSans',
+                  fontSize: 52,
+                  letterSpacing: 2,
+                  foreground: Paint()
+                    ..style = PaintingStyle.stroke
+                    ..strokeWidth = 8
+                    ..strokeJoin = StrokeJoin.round
+                    ..color = strokeColor,
+                ),
               ),
-            ),
-            Text(
-              l.registerTitle,
-              style: TextStyle(
-                fontFamily: 'BlackHanSans',
-                fontSize: 52,
-                color: Colors.white,
-                letterSpacing: 2,
-                shadows: [
-                  Shadow(
-                    color: strokeColor,
-                    offset: const Offset(5, 5),
-                    blurRadius: 0,
-                  ),
-                ],
+              Text(
+                l.registerTitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'BlackHanSans',
+                  fontSize: 52,
+                  color: Colors.white,
+                  letterSpacing: 2,
+                  shadows: [
+                    Shadow(
+                      color: strokeColor,
+                      offset: const Offset(5, 5),
+                      blurRadius: 0,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         Text(
