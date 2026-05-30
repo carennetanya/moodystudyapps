@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import 'auth_service.dart';
 
@@ -191,6 +193,64 @@ class ScheduleService {
     }
 
     throw Exception('Failed to delete schedule: ${response.statusCode}.');
+  }
+  static Future<List<String>> parseSubjectsFromFile(
+    String filePath,
+    String fileName,
+  ) async {
+    final token = AuthService.token;
+    if (token == null) {
+      throw Exception('Authentication required. Please log in again.');
+    }
+
+    final uri = Uri.parse('$baseUrl/api/schedule/parse-file');
+    final file = File(filePath);
+    final ext = fileName.split('.').last.toLowerCase();
+
+    // Determine MIME type
+    MediaType mediaType;
+    switch (ext) {
+      case 'pdf':
+        mediaType = MediaType('application', 'pdf');
+        break;
+      case 'docx':
+        mediaType = MediaType('application',
+            'vnd.openxmlformats-officedocument.wordprocessingml.document');
+        break;
+      case 'csv':
+        mediaType = MediaType('text', 'csv');
+        break;
+      default:
+        mediaType = MediaType('text', 'plain');
+    }
+
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Authorization'] = 'Bearer $token'
+      ..files.add(await http.MultipartFile.fromPath(
+        'file',
+        filePath,
+        filename: fileName,
+        contentType: mediaType,
+      ));
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      final rawList = body['subjects'];
+      if (rawList is List) {
+        return rawList.whereType<String>().toList();
+      }
+      return [];
+    }
+
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('Authentication failed. Please log in again.');
+    }
+
+    final errBody = jsonDecode(response.body);
+    throw Exception(errBody['error'] ?? 'Gagal memproses file: ${response.statusCode}');
   }
 }
 

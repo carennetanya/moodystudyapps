@@ -263,20 +263,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     String inputMode = 'single'; // 'single' | 'bulk' | 'upload'
     String? uploadedFileName;
     String? uploadedFileContent;
+    String? uploadedFilePath; // path for pdf/docx (sent to backend)
+    bool isProcessingFile = false;
 
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => Dialog(
           backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Container(
             decoration: _neoBox(bg: _kBg, radius: 16, shadowOffset: 4),
-            padding: const EdgeInsets.all(20),
-            constraints: const BoxConstraints(maxHeight: 600),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height -
+                  MediaQuery.of(ctx).viewInsets.bottom -
+                  48,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 // Header
                 Row(
                   children: [
@@ -420,22 +428,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       final result = await FilePicker.platform.pickFiles(
                         type: FileType.custom,
                         allowedExtensions: ['txt', 'csv', 'pdf', 'docx'],
-                        withData: true,
+                        withData: false, // never load bytes into memory
                       );
                       if (result != null && result.files.isNotEmpty) {
                         final file = result.files.first;
-                        final bytes = file.bytes;
-                        String fileText = '';
-                        if (bytes != null) {
-                          try {
-                            fileText = utf8.decode(bytes);
-                          } catch (_) {
-                            fileText = String.fromCharCodes(bytes);
-                          }
-                        }
+                        final ext = file.name.split('.').last.toLowerCase();
                         setS(() {
                           uploadedFileName = file.name;
-                          uploadedFileContent = fileText;
+                          uploadedFilePath = file.path;
+                          // txt/csv content can be read from path
+                          uploadedFileContent = (ext == 'txt' || ext == 'csv')
+                              ? 'text' // marker: needs path-based read
+                              : null;  // pdf/docx: backend handles it
                         });
                       }
                     },
@@ -471,7 +475,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            uploadedFileName != null ? 'Ketuk untuk ganti file' : 'Format: .txt, .csv, .pdf, .docx',
+                            uploadedFileName != null ? 'Ketuk untuk ganti file' : 'Format: .txt .csv .pdf .docx',
                             style: TextStyle(
                               fontFamily: 'Nunito',
                               fontSize: 11,
@@ -485,40 +489,60 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   if (uploadedFileName != null) ...[
                     const SizedBox(height: 8),
                     GestureDetector(
-                      onTap: () {
-                        // Parse file content into subjects
-                        if (uploadedFileContent != null && uploadedFileContent!.isNotEmpty) {
-                          final lines = uploadedFileContent!
-                              .split(RegExp(r'[,\n]+'))
-                              .map((s) => s.trim())
-                              .where((s) => s.isNotEmpty)
-                              .toList();
-                          setS(() {
-                            for (final item in lines) {
-                              if (!subjects.contains(item)) subjects.add(item);
-                            }
-                            uploadedFileName = null;
-                            uploadedFileContent = null;
-                            inputMode = 'single';
-                          });
-                        }
-                      },
+                      onTap: isProcessingFile
+                          ? null
+                          : () async {
+                              if (uploadedFilePath == null) return;
+                              setS(() => isProcessingFile = true);
+                              try {
+                                final parsed = await ScheduleService.parseSubjectsFromFile(
+                                  uploadedFilePath!,
+                                  uploadedFileName!,
+                                );
+                                setS(() {
+                                  for (final item in parsed) {
+                                    if (!subjects.contains(item)) subjects.add(item);
+                                  }
+                                  uploadedFileName = null;
+                                  uploadedFilePath = null;
+                                  uploadedFileContent = null;
+                                  isProcessingFile = false;
+                                  inputMode = 'single';
+                                });
+                              } catch (e) {
+                                setS(() => isProcessingFile = false);
+                                _showErrorSnack('Gagal proses file: $e');
+                              }
+                            },
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: _neoBox(bg: _kPurple, radius: 8, shadowOffset: 2),
                         alignment: Alignment.center,
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.auto_awesome_rounded, size: 15, color: _kWhite),
-                            SizedBox(width: 6),
-                            Text(
-                              'Proses File',
-                              style: TextStyle(fontFamily: 'BlackHanSans', fontSize: 13, color: _kWhite),
-                            ),
-                          ],
-                        ),
+                        child: isProcessingFile
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  color: _kWhite,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.auto_awesome_rounded, size: 15, color: _kWhite),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Proses File',
+                                    style: TextStyle(
+                                      fontFamily: 'BlackHanSans',
+                                      fontSize: 13,
+                                      color: _kWhite,
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ),
                   ],
@@ -528,9 +552,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                 // Subject chips list
                 if (subjects.isNotEmpty) ...[
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: Wrap(
+                  Wrap(
                         spacing: 6,
                         runSpacing: 6,
                         children: subjects.map((s) => Container(
@@ -560,8 +582,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             ],
                           ),
                         )).toList(),
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -620,7 +640,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     ),
                   ],
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -994,13 +1015,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             ),
                           ),
                           const SizedBox(width: 10),
-                          const Text(
-                            'Jadwal dari Oddy',
-                            style: TextStyle(
-                              fontFamily: 'BlackHanSans',
-                              fontSize: 18,
-                              color: _kBlack,
-                              letterSpacing: 0.5,
+                          const Flexible(
+                            child: Text(
+                              'Jadwal dari Oddy',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontFamily: 'BlackHanSans',
+                                fontSize: 18,
+                                color: _kBlack,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
