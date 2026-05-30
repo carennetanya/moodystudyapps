@@ -83,6 +83,7 @@ class AppLocalizations {
   String get navQuiz => isId ? 'Kuis' : 'Quiz';
   String get navStats => isId ? 'Statistik' : 'Stats';
   String get navSettings => isId ? 'Setelan' : 'Settings';
+  String get navProfile => isId ? 'Profil' : 'Profile';
 
   // ─── Mood Screen ──────────────────────────────────────────────────
   String get moodQuestion => isId ? 'Bagaimana mood kamu\nhari ini?' : "How's your mood today?";

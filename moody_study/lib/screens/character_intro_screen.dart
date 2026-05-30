@@ -10,6 +10,7 @@ import 'oddy_flashcard_screen.dart';
 import 'statistik_screen.dart';
 import 'daily_quest_screen.dart';
 import 'kuis_screen.dart';
+import 'profile_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:moody_study/services/streak_service.dart';
@@ -329,10 +330,10 @@ class _LandingPageState extends State<_LandingPage> {
     setState(() => _selectedNav = 0);
   });
         break;
-      case 5: // Settings
+      case 5: // Profile
         Navigator.of(context).push(
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const _SettingsPlaceholderScreen(),
+            pageBuilder: (_, __, ___) => const ProfileScreen(),
             transitionsBuilder: (_, anim, __, child) =>
                 FadeTransition(opacity: anim, child: child),
             transitionDuration: const Duration(milliseconds: 300),
@@ -414,7 +415,7 @@ class _BottomNavBar extends StatelessWidget {
       _NavItem(icon: Icons.folder_rounded, label: l.navFiles),
       _NavItem(icon: Icons.quiz_rounded, label: l.navQuiz),
       _NavItem(icon: Icons.bar_chart_rounded, label: l.navStats),
-      _NavItem(icon: Icons.settings_rounded, label: l.navSettings),
+      _NavItem(icon: Icons.person_rounded, label: l.navProfile),
     ];
     return Container(
       decoration: const BoxDecoration(
@@ -1443,36 +1444,6 @@ class _QuizPlaceholderScreen extends StatelessWidget {
       body: const Center(
         child: Text(
           '🧠 Pilih materi dulu\nuntuk mulai quiz!',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontFamily: 'Nunito', fontSize: 16, color: Color(0xFF555555)),
-        ),
-      ),
-    );
-  }
-}
-class _SettingsPlaceholderScreen extends StatelessWidget {
-  const _SettingsPlaceholderScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F0),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF2EA05),
-        elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: const Icon(Icons.arrow_back, color: Color(0xFF111111)),
-        ),
-        title: Text(
-          l.navSettings,
-          style: const TextStyle(fontFamily: 'BlackHanSans', color: Color(0xFF111111)),
-        ),
-      ),
-      body: const Center(
-        child: Text(
-          '⚙️ Halaman setelan\nakan segera hadir!',
           textAlign: TextAlign.center,
           style: TextStyle(fontFamily: 'Nunito', fontSize: 16, color: Color(0xFF555555)),
         ),
