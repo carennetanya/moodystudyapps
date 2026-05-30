@@ -25,6 +25,8 @@ public class StudyMaterial {
     @JoinColumn(name = "session_id", nullable = true)
     private StudySession studySession;
 
+    private String title;
+
     private String fileName;
 
     @Column(columnDefinition = "TEXT")

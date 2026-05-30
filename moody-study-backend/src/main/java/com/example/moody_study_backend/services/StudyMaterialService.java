@@ -43,6 +43,7 @@ public class StudyMaterialService {
         StudyMaterial material = StudyMaterial.builder()
                 .user(user)
                 .studySession(session)
+                .title(request.getFileName())
                 .fileName(request.getFileName())
                 .originalText(request.getOriginalText())
                 .summary(summary)
