@@ -1,11 +1,15 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:moody_study/services/notification_service.dart';
 import 'screens/schedule_screen.dart';
+import 'package:moody_study/services/profile_image_store.dart';
 import 'screens/theme_selector_screen.dart';
 import 'utils/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.instance.init();
+  // Load foto profil yang tersimpan dari sesi sebelumnya
+  await ProfileImageStore.instance.init();
   runApp(const MoodyStudyApp());
 }
 

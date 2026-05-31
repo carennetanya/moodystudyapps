@@ -1,20 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:moody_study/utils/app_localizations.dart';
 import 'package:moody_study/services/profile_service.dart';
 import 'package:moody_study/services/auth_service.dart';
+import 'package:moody_study/services/profile_image_store.dart';
 import 'theme_selector_screen.dart';
-
-// dart:io is only imported on non-web platforms
-import 'dart:io' if (dart.library.html) 'dart:html' as platformLib;
-
-// Static cache agar foto tidak hilang saat back
-class _ProfileImageCache {
-  static Uint8List? imageBytes;
-  static String? imageMime;
-}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -41,9 +35,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _errorMessage;
   String? _successMessage;
 
-  // Gunakan cache static agar foto tidak hilang saat back
-  Uint8List? get _selectedImageBytes => _ProfileImageCache.imageBytes;
-  String? get _selectedImageMime => _ProfileImageCache.imageMime;
+  // Bytes foto yang dipilih tapi belum diupload
+  Uint8List? _pendingImageBytes;
+  String? _pendingImageMime;
+
+  // Foto yang ditampilkan: pending dulu, fallback ke store (persisted)
+  Uint8List? get _selectedImageBytes =>
+      _pendingImageBytes ?? ProfileImageStore.instance.imageBytes.value;
+  String? get _selectedImageMime => _pendingImageMime;
 
   @override
   void initState() {
@@ -79,8 +78,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _usernameController.text = result['username'] as String? ?? '';
         });
       }
+
+      // Jika belum ada foto lokal, coba load dari avatarUrl backend
+      if (ProfileImageStore.instance.imageBytes.value == null) {
+        final avatarUrl = result['avatarUrl'] as String?;
+        if (avatarUrl != null && avatarUrl.isNotEmpty) {
+          await _loadAvatarFromUrl(avatarUrl);
+        }
+      }
     } catch (e) {
       debugPrint('Error loading profile: $e');
+    }
+  }
+
+  /// Decode base64 data-URL atau fetch HTTP URL lalu simpan ke store
+  Future<void> _loadAvatarFromUrl(String url) async {
+    try {
+      Uint8List bytes;
+      if (url.startsWith('data:')) {
+        // Format: data:image/jpeg;base64,....
+        final commaIdx = url.indexOf(',');
+        if (commaIdx < 0) return;
+        bytes = base64Decode(url.substring(commaIdx + 1));
+      } else {
+        // HTTP URL — fetch dulu
+        final import_http = await _httpGet(url);
+        if (import_http == null) return;
+        bytes = import_http;
+      }
+      await ProfileImageStore.instance.saveBytes(bytes);
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('Error loading avatar from url: $e');
+    }
+  }
+
+  Future<Uint8List?> _httpGet(String url) async {
+    try {
+      // ignore: depend_on_referenced_packages
+      final uri = Uri.parse(url);
+      final client = HttpClient();
+      final request = await client.getUrl(uri);
+      final response = await request.close();
+      if (response.statusCode != 200) return null;
+      final bytes = <int>[];
+      await for (final chunk in response) {
+        bytes.addAll(chunk);
+      }
+      client.close();
+      return Uint8List.fromList(bytes);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -114,8 +162,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
 
       setState(() {
-        _ProfileImageCache.imageBytes = bytes;
-        _ProfileImageCache.imageMime = mime;
+        _pendingImageBytes = bytes;
+        _pendingImageMime = mime;
       });
 
       _showSuccess('Foto berhasil dipilih');
@@ -143,10 +191,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       await ProfileService.updateAvatar(base64Image);
 
+      // Simpan ke persistent store supaya icon bottom nav & sesi berikutnya update
+      await ProfileImageStore.instance.saveBytes(_pendingImageBytes!);
+
       if (mounted) {
         setState(() {
           _successMessage = 'Foto profil berhasil diperbarui!';
           _isLoading = false;
+          // Pending bytes sudah di-persist, bersihkan pending
+          _pendingImageBytes = null;
+          _pendingImageMime = null;
         });
         _clearSuccessMessage();
       }
@@ -318,9 +372,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () async {
               Navigator.of(dialogContext).pop();
               await AuthService.logout();
-              // Hapus cache foto saat logout
-              _ProfileImageCache.imageBytes = null;
-              _ProfileImageCache.imageMime = null;
+              // Hapus foto cache saat logout
+              await ProfileImageStore.instance.clear();
               if (mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   PageRouteBuilder(

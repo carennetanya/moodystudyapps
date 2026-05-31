@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -15,6 +16,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:moody_study/services/streak_service.dart';
 import 'package:moody_study/services/auth_service.dart';
+import 'package:moody_study/services/profile_image_store.dart';
 import 'life_lost_popup.dart';
 import 'package:moody_study/services/daily_quest_service.dart';
 import 'package:moody_study/utils/app_localizations.dart';
@@ -447,6 +449,8 @@ class _BottomNavBar extends StatelessWidget {
                 onTap: () => onTap(i),
                 // Daily Quest punya badge khusus
                 showQuestBadge: i == 1,
+                // Profile button: tampilkan foto user
+                isProfile: i == 5,
               );
             }),
           ),
@@ -468,6 +472,7 @@ class _NavButton extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final bool showQuestBadge;
+  final bool isProfile;
 
   const _NavButton({
     required this.icon,
@@ -475,6 +480,7 @@ class _NavButton extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.showQuestBadge = false,
+    this.isProfile = false,
   });
 
   @override
@@ -505,12 +511,45 @@ class _NavButton extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(
-                  icon,
-                  size: 24,
-                  color: selected ? const Color(0xFF111111) : const Color(0xFF888888),
-                ),
-                // Quest badge: titik kuning jika belum semua selesai
+                // ── Profile icon: selalu bingkai lingkaran ──
+                // Jika ada foto → tampil foto, jika belum ada → bingkai kosong
+                if (isProfile)
+                  ValueListenableBuilder<Uint8List?>(
+                    valueListenable: ProfileImageStore.instance.imageBytes,
+                    builder: (_, bytes, __) {
+                      return Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: selected
+                                ? const Color(0xFF111111)
+                                : const Color(0xFF888888),
+                            width: 1.5,
+                          ),
+                          color: const Color(0xFFE0E0E0),
+                        ),
+                        child: ClipOval(
+                          child: bytes != null
+                              ? Image.memory(
+                                  bytes,
+                                  fit: BoxFit.cover,
+                                  width: 26,
+                                  height: 26,
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      );
+                    },
+                  )
+                else
+                  Icon(
+                    icon,
+                    size: 24,
+                    color: selected ? const Color(0xFF111111) : const Color(0xFF888888),
+                  ),
+                // Quest badge: titik merah jika belum semua selesai
                 if (showQuestBadge && !selected)
                   Positioned(
                     top: -2,
