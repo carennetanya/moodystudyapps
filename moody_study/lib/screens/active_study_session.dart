@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
  
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
@@ -23,7 +24,9 @@ import 'package:moody_study/services/spotify_service.dart';
 import 'package:spotify_sdk/spotify_sdk.dart';
  
 import 'package:moody_study/services/streak_service.dart';
+import 'package:moody_study/services/auth_service.dart';
 import 'package:moody_study/screens/life_lost_popup.dart';
+import 'package:http/http.dart' as http;
 import 'character_intro_screen.dart';
 import 'level_up_screen.dart';
 import 'streak_counter_screen.dart';
@@ -73,6 +76,8 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   int _totalDistractionSeconds = 0;
   bool _showRedFlash = false;
   AudioPlayer? _awayAlarmPlayer;
+  StreamSubscription<void>? _alarmLoopSubscription;
+  bool _alarmShouldLoop = false;
   late final AudioPlayer _musicPlayer;
   StreamSubscription<PlayerState>? _musicStateSubscription;
   bool _musicPlaying = false;
@@ -124,47 +129,63 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   }
 
   Future<void> _showDistractedNotification() async {
-    // Android: pakai sound channel custom (alarm.mp3 di res/raw/)
-    // PENTING: channel ID pakai _v2 karena Android cache channel lama tanpa sound
-    const androidChannel = AndroidNotificationChannel(
-      'distraction_alarm_v2',
-      'Distraction Alarm',
+    // Channel ID pakai _v3 supaya Android tidak pakai cache channel lama yang masih alarm.wav
+    final channelId = _isLibraryLocation
+        ? 'distraction_library_v3'
+        : 'distraction_alarm_v3';
+    final channelName = _isLibraryLocation
+        ? 'Library Distraction Alert'
+        : 'Distraction Alarm';
+
+    final vibrationPattern = _isLibraryLocation
+        ? Int64List.fromList([0, 400, 200, 400, 200, 400, 200, 400])
+        : Int64List.fromList([0, 500, 500]);
+
+    final androidChannel = AndroidNotificationChannel(
+      channelId,
+      channelName,
       description: 'Notifies when you leave the study session',
       importance: Importance.max,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound('alarm'),
+      sound: const RawResourceAndroidNotificationSound('alarm'), // file: res/raw/alarm.mp3
       enableVibration: true,
+      vibrationPattern: vibrationPattern,
     );
     final androidImpl = _notifPlugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.createNotificationChannel(androidChannel);
 
     final androidDetails = AndroidNotificationDetails(
-      'distraction_alarm_v2',
-      'Distraction Alarm',
+      channelId,
+      channelName,
       channelDescription: 'Notifies when you leave the study session',
       importance: Importance.max,
       priority: Priority.max,
-      sound: const RawResourceAndroidNotificationSound('alarm'),
+      sound: const RawResourceAndroidNotificationSound('alarm'), // file: res/raw/alarm.mp3
       enableVibration: true,
+      vibrationPattern: vibrationPattern,
       playSound: true,
       fullScreenIntent: true,
       category: AndroidNotificationCategory.alarm,
     );
+
     const iosDetails = DarwinNotificationDetails(
-      sound: 'alarm.wav',
+      sound: 'alarm.mp3',
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
     );
-    final details = NotificationDetails(
-        android: androidDetails, iOS: iosDetails);
-    await _notifPlugin.show(
-      42,
-      '👀 Hey, come back!',
-      'You left your study session. Tap to return.',
-      details,
-    );
+
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+    final title = _isLibraryLocation
+        ? '📚 Fokus! Kamu di perpustakaan!'
+        : '👀 Hey, come back!';
+    final body = _isLibraryLocation
+        ? 'Kamu meninggalkan sesi belajar. Tetap tenang dan kembali fokus. 🤫'
+        : 'You left your study session. Tap to return.';
+
+    await _notifPlugin.show(42, title, body, details);
   }
 
   Future<void> _cancelDistractedNotification() async {
@@ -180,6 +201,32 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
         _initialLife = streakInfo.life;
       });
     } catch (_) {}
+  }
+
+  /// Fetch check-login untuk dapat data lengkap (livesLost, sessionsToRecover, dll)
+  /// lalu tampilkan LifeLostPopup
+  Future<void> _checkAndShowLifeLost() async {
+    try {
+      final token = AuthService.token;
+      if (token == null) return;
+      final res = await http.post(
+        Uri.parse('${StreakService.baseUrl}/api/streak/check-login'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (res.statusCode == 200 && mounted) {
+        final result = LoginCheckResult.fromJson(
+          jsonDecode(res.body) as Map<String, dynamic>,
+        );
+        if (result.livesLost > 0 || result.leveledDown) {
+          if (mounted) await showLifeLostPopup(context, result);
+        }
+      }
+    } catch (e) {
+      debugPrint('_checkAndShowLifeLost error: $e');
+    }
   }
 
   Future<void> _loadSummary() async {
@@ -278,6 +325,8 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
       _cancelDistractedNotification();
       if (_pendingAlarmDialog) {
         _pendingAlarmDialog = false;
+        // Langsung play alarm begitu user balik — tidak tunggu dialog
+        unawaited(_playAwayAlarm());
         // Tunda sedikit supaya context sudah siap
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) _handleReturnFromBackground(_pendingAlarmDuration);
@@ -325,14 +374,23 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
       // Simpan info untuk ditampilkan saat user kembali
       _pendingAlarmDialog = true;
       _pendingAlarmDuration = awayDuration;
-      // Kirim notifikasi dengan suara alarm
+
+      // Kirim notifikasi dengan suara alarm (sudah location-aware: home vs library)
       await _showDistractedNotification();
-      // Play alarm audio langsung via AudioPlayer (lebih reliable dari notif sound)
-      await _playAwayAlarm();
+
+      if (_isLibraryLocation) {
+        // Library: vibrate intens saja (tidak play alarm keras supaya tidak ganggu orang lain)
+        // Suara sudah lewat notifikasi (alarm.wav via channel)
+        unawaited(_startAwayVibration());
+      } else {
+        // Home / luar: play alarm.wav via AudioPlayer + vibrate
+        await _playAwayAlarm();
+      }
       return;
     }
 
-    // App masih foreground — jalankan normal
+    // App masih foreground — play alarm langsung lalu tampilkan dialog
+    unawaited(_playAwayAlarm());
     await _handleReturnFromBackground(awayDuration);
   }
 
@@ -356,12 +414,10 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
 
     if (_isLibraryLocation) {
       _startFlashEffect();
-      await _playAwayAlarm();
       await _showReturnPopup(awayDuration);
       await _stopAwayAlarm();
       _stopFlashEffect();
     } else if (_isHomeLocation) {
-      await _playAwayAlarm();
       await _showReturnPopup(awayDuration);
       await _stopAwayAlarm();
     }
@@ -385,6 +441,11 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   }
  
   Future<void> _stopAwayAlarm() async {
+    // Hentikan loop alarm
+    _alarmShouldLoop = false;
+    await _alarmLoopSubscription?.cancel();
+    _alarmLoopSubscription = null;
+
     _vibrationTimer?.cancel();
     _vibrationTimer = null;
     try {
@@ -485,37 +546,29 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   }
  
   Future<void> _playAwayAlarm() async {
-    // Mulai vibration dulu — tidak bergantung pada audio berhasil
     unawaited(_startAwayVibration());
+    _alarmShouldLoop = true;
+    _loopAlarm();
+  }
 
+  Future<void> _loopAlarm() async {
+    if (!_alarmShouldLoop) return;
     try {
+      await _awayAlarmPlayer?.stop();
       await _awayAlarmPlayer?.dispose();
       _awayAlarmPlayer = null;
 
+      if (!_alarmShouldLoop) return;
+
       _awayAlarmPlayer = AudioPlayer();
+      _alarmLoopSubscription = _awayAlarmPlayer!.onPlayerComplete.listen((_) {
+        if (_alarmShouldLoop) _loopAlarm();
+      });
 
-      // Set audio context supaya bisa bunyi saat app di background / layar terkunci
-      await _awayAlarmPlayer!.setAudioContext(AudioContext(
-        android: AudioContextAndroid(
-          isSpeakerphoneOn: false,
-          stayAwake: true,
-          contentType: AndroidContentType.sonification,
-          usageType: AndroidUsageType.alarm,
-          audioFocus: AndroidAudioFocus.gain,
-        ),
-        iOS: AudioContextIOS(
-          category: AVAudioSessionCategory.playback,
-          options: {AVAudioSessionOptions.duckOthers},
-        ),
-      ));
-
-      await _awayAlarmPlayer!.setReleaseMode(ReleaseMode.loop);
       await _awayAlarmPlayer!.setVolume(1.0);
-      await _awayAlarmPlayer!.play(AssetSource('audio/alarm.wav'));
-      debugPrint('=== ALARM: play called successfully ===');
+      await _awayAlarmPlayer!.play(AssetSource('audio/alarm.mp3'));
     } catch (e) {
       debugPrint('=== ALARM audio failed: $e ===');
-      // Vibration tetap jalan meski audio gagal
     }
   }
 
@@ -718,6 +771,9 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     if (sessionResult != null && previousLife != null && sessionResult.life > previousLife) {
       await showLifeRecoveredPopup(context, sessionResult.life);
     }
+    if (sessionResult != null && previousLife != null && sessionResult.life < previousLife) {
+      if (mounted) await _checkAndShowLifeLost();
+    }
     if (action == 'save') {
       if (_materialId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -868,6 +924,8 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _awayTimer?.cancel();
+    _alarmShouldLoop = false;
+    _alarmLoopSubscription?.cancel();
     _stopAwayAlarm();
     _awayAlarmPlayer?.dispose();
     _musicStateSubscription?.cancel();

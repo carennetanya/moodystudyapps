@@ -43,7 +43,7 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/audio/
-    - assets/audio/alarm.wav
+    - assets/audio/alarm.mp3
 
   fonts:
     - family: BlackHanSans
