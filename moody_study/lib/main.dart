@@ -1,11 +1,11 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:moody_study/services/notification_service.dart';
+import 'screens/schedule_screen.dart';
 import 'screens/theme_selector_screen.dart';
 import 'utils/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.instance.init();
   runApp(const MoodyStudyApp());
 }
 
@@ -18,6 +18,15 @@ class MoodyStudyApp extends StatefulWidget {
 
 class _MoodyStudyAppState extends State<MoodyStudyApp> {
   AppLanguage _language = AppLanguage.id;
+
+  @override
+  void initState() {
+    super.initState();
+    // Init SETELAH widget tree siap supaya navigatorKey.currentState tidak null
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.instance.init();
+    });
+  }
 
   void _toggleLanguage() {
     setState(() {
@@ -35,11 +44,15 @@ class _MoodyStudyAppState extends State<MoodyStudyApp> {
         child: MaterialApp(
           title: 'Moody Study',
           debugShowCheckedModeBanner: false,
+          navigatorKey: NotificationService.navigatorKey,
           theme: ThemeData(
             fontFamily: 'BlackHanSans',
             scaffoldBackgroundColor: const Color(0xFF1EE86F),
           ),
           home: const ThemeSelectorScreen(),
+          routes: {
+            '/schedule': (context) => const ScheduleScreen(),
+          },
         ),
       ),
     );

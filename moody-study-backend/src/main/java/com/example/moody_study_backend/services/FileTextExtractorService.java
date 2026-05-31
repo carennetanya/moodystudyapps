@@ -10,22 +10,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Mengekstrak daftar mata pelajaran dari file PDF atau DOCX yang diupload user.
+ * Mengekstrak daftar mata kuliah dari file PDF / DOCX / TXT / CSV.
  *
- * Strategi parsing:
- *  - Split teks berdasarkan newline, koma, titik koma, atau bullet/nomor
- *  - Filter baris kosong, terlalu pendek (<2 char), atau terlalu panjang (>80 char)
- *  - Bersihkan karakter non-printable dan whitespace berlebih
- *  - Maksimal 50 item hasil untuk mencegah abuse
+ * Strategi:
+ *  1. Ekstrak raw text dari file sesuai formatnya.
+ *  2. Kirim raw text ke Gemini AI untuk mengidentifikasi nama-nama mata kuliah.
+ *  3. Fallback ke parser sederhana jika Gemini gagal.
  */
 @Service
 public class FileTextExtractorService {
@@ -34,9 +30,14 @@ public class FileTextExtractorService {
     private static final int MIN_LENGTH   = 2;
     private static final int MAX_LENGTH   = 80;
 
+    private final GeminiService geminiService;
+
+    public FileTextExtractorService(GeminiService geminiService) {
+        this.geminiService = geminiService;
+    }
+
     /**
-     * Entry point — deteksi format lalu ekstrak.
-     * @return list mata pelajaran yang bersih
+     * Entry point — ekstrak raw text lalu minta Gemini identifikasi mata kuliah.
      */
     public List<String> extractSubjects(MultipartFile file) throws IOException {
         String filename = file.getOriginalFilename() != null
@@ -53,7 +54,25 @@ public class FileTextExtractorService {
             rawText = new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
         }
 
-        return parseSubjects(rawText);
+        if (rawText == null || rawText.isBlank()) {
+            return new ArrayList<>();
+        }
+
+        // Gunakan Gemini untuk ekstrak nama matkul dari raw text
+        List<String> geminiResult = geminiService.extractSubjectsFromText(rawText);
+
+        // Jika Gemini berhasil dan hasilnya tidak kosong, pakai itu
+        if (!geminiResult.isEmpty()) {
+            return geminiResult.stream()
+                    .filter(s -> s != null && !s.isBlank())
+                    .filter(s -> s.length() >= MIN_LENGTH && s.length() <= MAX_LENGTH)
+                    .distinct()
+                    .limit(MAX_SUBJECTS)
+                    .collect(Collectors.toList());
+        }
+
+        // Fallback: parser sederhana jika Gemini gagal
+        return parseSubjectsFallback(rawText);
     }
 
     // ── PDF ──────────────────────────────────────────────────────────────────
@@ -81,19 +100,21 @@ public class FileTextExtractorService {
         }
     }
 
-    // ── Parser ────────────────────────────────────────────────────────────────
+    // ── Fallback Parser ───────────────────────────────────────────────────────
 
-    private List<String> parseSubjects(String raw) {
+    /**
+     * Fallback sederhana jika Gemini tidak tersedia.
+     * Hanya dipakai jika Gemini gagal — hasilnya mungkin tidak akurat untuk PDF tabel.
+     */
+    private List<String> parseSubjectsFallback(String raw) {
         if (raw == null || raw.isBlank()) return new ArrayList<>();
 
-        // Split by newline, comma, semicolon
         String[] tokens = raw.split("[\\n\\r,;]+");
 
         return Arrays.stream(tokens)
                 .map(this::clean)
                 .filter(s -> !s.isEmpty())
                 .filter(s -> s.length() >= MIN_LENGTH && s.length() <= MAX_LENGTH)
-                // Hapus token yang keliatan bukan nama mapel (angka pure, URL, dsb)
                 .filter(s -> !s.matches("^\\d+\\.?$"))
                 .filter(s -> !s.startsWith("http"))
                 .distinct()
@@ -101,15 +122,11 @@ public class FileTextExtractorService {
                 .collect(Collectors.toList());
     }
 
-    /** Bersihkan bullet/nomor di awal, whitespace, dan karakter non-printable */
     private String clean(String s) {
         if (s == null) return "";
         return s
-                // Hapus bullet / nomor di awal: "1. ", "- ", "• ", dll
                 .replaceAll("^[\\s\\-•*\\d.)+]+\\s*", "")
-                // Hapus karakter non-printable
                 .replaceAll("[^\\x20-\\x7E\\u00A0-\\uFFFF]", " ")
-                // Collapse whitespace
                 .replaceAll("\\s{2,}", " ")
                 .trim();
     }

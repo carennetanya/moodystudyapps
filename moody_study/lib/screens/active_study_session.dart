@@ -124,9 +124,10 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   }
 
   Future<void> _showDistractedNotification() async {
-    // Android: pakai sound channel custom (alarm.wav)
+    // Android: pakai sound channel custom (alarm.mp3 di res/raw/)
+    // PENTING: channel ID pakai _v2 karena Android cache channel lama tanpa sound
     const androidChannel = AndroidNotificationChannel(
-      'distraction_alarm',
+      'distraction_alarm_v2',
       'Distraction Alarm',
       description: 'Notifies when you leave the study session',
       importance: Importance.max,
@@ -139,7 +140,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     await androidImpl?.createNotificationChannel(androidChannel);
 
     final androidDetails = AndroidNotificationDetails(
-      'distraction_alarm',
+      'distraction_alarm_v2',
       'Distraction Alarm',
       channelDescription: 'Notifies when you leave the study session',
       importance: Importance.max,
@@ -326,8 +327,8 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
       _pendingAlarmDuration = awayDuration;
       // Kirim notifikasi dengan suara alarm
       await _showDistractedNotification();
-      // Vibrate terus sampai user kembali
-      unawaited(_startAwayVibration());
+      // Play alarm audio langsung via AudioPlayer (lebih reliable dari notif sound)
+      await _playAwayAlarm();
       return;
     }
 

@@ -1,8 +1,18 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:moody_study/screens/study_session.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
+
+/// Top-level function — wajib di luar class untuk background isolate
+@pragma('vm:entry-point')
+void _onNotificationTapBackground(NotificationResponse response) {
+  // Background tap — tidak bisa navigasi langsung, tapi payload sudah tersimpan
+  // dan akan dihandle saat app dibuka lewat getNotificationAppLaunchDetails
+}
 
 class NotificationService {
   NotificationService._();
@@ -14,10 +24,13 @@ class NotificationService {
 
   bool _initialized = false;
 
+  /// GlobalKey untuk navigasi dari luar context (waktu notif di-tap)
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   Future<void> init() async {
     if (_initialized) return;
 
-    tzdata.initializeTimeZones();
     tzdata.initializeTimeZones();
 
     tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
@@ -34,9 +47,60 @@ class NotificationService {
       iOS: iosSettings,
     );
 
-    await _plugin.initialize(settings);
+    await _plugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: _onNotificationTap,
+      onDidReceiveBackgroundNotificationResponse: _onNotificationTapBackground,
+    );
+
+    // Handle notif yang di-tap saat app dalam kondisi terminated
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp == true &&
+        launchDetails?.notificationResponse?.payload != null) {
+      // Delay lebih panjang — navigator butuh waktu render full widget tree
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        _handlePayload(launchDetails!.notificationResponse!.payload!);
+      });
+    }
 
     _initialized = true;
+  }
+
+  void _onNotificationTap(NotificationResponse response) {
+    if (response.payload != null) {
+      _handlePayload(response.payload!);
+    }
+  }
+
+  void _handlePayload(String payload) {
+    try {
+      final data = jsonDecode(payload) as Map<String, dynamic>;
+      final subject     = data['subject'] as String? ?? 'Sesi Belajar';
+      final mood        = data['mood'] as String? ?? 'happy';
+      final location    = data['location'] as String? ?? 'home';
+      final duration    = data['durationMinutes'] as int? ?? 60;
+
+      navigatorKey.currentState?.push(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => StudySession(
+            mood: mood,
+            location: location,
+            userName: 'Friend',
+            // Subject dari jadwal langsung dipakai sebagai context
+            // files kosong dulu — user upload pas sesi dimulai
+            files: const [],
+            initialSubject: subject,
+            initialMinutes: duration,
+          ),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+    } catch (_) {
+      // Payload invalid — fallback ke schedule screen
+      navigatorKey.currentState?.pushNamed('/schedule');
+    }
   }
 
   Future<void> scheduleNotification({
@@ -44,6 +108,7 @@ class NotificationService {
     required String title,
     required String body,
     required DateTime scheduledDate,
+    String? payload,
   }) async {
     if (!_initialized) await init();
 
@@ -77,6 +142,7 @@ class NotificationService {
       body,
       tzDate,
       platformDetails,
+      payload: payload,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.wallClockTime,
@@ -85,14 +151,27 @@ class NotificationService {
 
   Future<void> scheduleStudyNotification(
     int id,
-    String title,
-    DateTime scheduledDate,
-  ) async {
+    String subject,
+    DateTime scheduledDate, {
+    String mood = 'happy',
+    String location = 'home',
+    int durationMinutes = 60,
+  }) async {
+    // Embed semua data yang dibutuhkan di payload (JSON encoded)
+    final payload = jsonEncode({
+      'id': id,
+      'subject': subject,
+      'mood': mood,
+      'location': location,
+      'durationMinutes': durationMinutes,
+    });
+
     await scheduleNotification(
       id: id,
-      title: title,
-      body: 'Waktunya belajar untuk $title 📚',
+      title: '📚 Waktunya belajar!',
+      body: '$subject — yuk mulai sesinya!',
       scheduledDate: scheduledDate,
+      payload: payload,
     );
   }
 

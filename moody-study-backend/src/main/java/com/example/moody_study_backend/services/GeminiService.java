@@ -114,6 +114,39 @@ public class GeminiService {
         return callGemini(prompt);
     }
 
+    public List<String> extractSubjectsFromText(String rawText) {
+        String prompt = """
+                Kamu adalah asisten yang mengekstrak daftar nama mata kuliah dari teks jadwal akademik.
+
+                Dari teks berikut, ekstrak HANYA nama-nama mata kuliah/mata pelajaran saja.
+                Jangan sertakan: nama dosen, kode ruangan, tanggal, waktu, NIK, jabatan, keterangan, atau teks lainnya.
+                Nama mata kuliah biasanya terdiri dari 2–6 kata dan sering diawali kode seperti INF, MAT, PHL, LAN, dll.
+
+                Teks jadwal:
+                %s
+
+                Output WAJIB berupa JSON array of string seperti ini:
+                ["Basis Data", "Probabilitas dan Statistika", "Jaringan Komputer"]
+
+                Hanya JSON array, tanpa teks tambahan apapun.
+                """.formatted(truncate(rawText, 6000));
+
+        try {
+            String response = callGemini(prompt);
+            // Bersihkan markdown fence jika ada
+            String cleaned = response.trim()
+                    .replaceAll("(?s)```json\\s*", "")
+                    .replaceAll("(?s)```\\s*", "")
+                    .trim();
+            // Parse JSON array
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return mapper.readValue(cleaned, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            System.err.println("Gemini extractSubjects failed: " + e.getMessage());
+            return new java.util.ArrayList<>();
+        }
+    }
+
     public String generateAutoSchedule(String sessionHistoryJson,
                                         String existingSchedules,
                                         int daysAhead,

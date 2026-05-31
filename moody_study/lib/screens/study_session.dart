@@ -14,6 +14,8 @@ class StudySession extends StatefulWidget {
   final String userName;
   final AppTheme theme;
   final List<PlatformFile> files;
+  final String? initialSubject;   // dari notif jadwal
+  final int? initialMinutes;      // durasi dari jadwal (override mood default)
 
   const StudySession({
     super.key,
@@ -22,6 +24,8 @@ class StudySession extends StatefulWidget {
     this.userName = 'Friend',
     this.theme = AppTheme.green,
     this.files = const [],
+    this.initialSubject,
+    this.initialMinutes,
   });
 
   @override
@@ -40,7 +44,7 @@ class _StudySessionState extends State<StudySession> {
   @override
   void initState() {
     super.initState();
-    _minutes = _minutesForMood(widget.mood);
+    _minutes = widget.initialMinutes ?? _minutesForMood(widget.mood);
     _remaining = Duration(minutes: _minutes);
     _files = List<PlatformFile>.from(widget.files);
   }
@@ -103,6 +107,33 @@ class _StudySessionState extends State<StudySession> {
     }
   }
 
+  bool _pickingFiles = false;
+
+  Future<void> _pickFiles() async {
+    if (_pickingFiles) return;
+    setState(() => _pickingFiles = true);
+    try {
+      await FilePicker.platform.clearTemporaryFiles();
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'docx', 'txt'],
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        setState(() {
+          for (final f in result.files) {
+            if (!_files.any((e) => e.name == f.name)) {
+              _files.add(f);
+            }
+          }
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _pickingFiles = false);
+    }
+  }
+
   void _toggleRunning() {
     Navigator.of(context).push(
       PageRouteBuilder(
@@ -111,7 +142,7 @@ class _StudySessionState extends State<StudySession> {
           location: widget.location,
           userName: widget.userName,
           theme: widget.theme,
-          files: widget.files,
+          files: _files,
           initialMinutes: _minutes,
         ),
         transitionsBuilder: (_, anim, __, child) =>
@@ -492,6 +523,52 @@ class _StudySessionState extends State<StudySession> {
                     ],
 
                     const SizedBox(height: 28),
+
+                    // Upload file material (selalu tampil)
+                    GestureDetector(
+                      onTap: _pickingFiles ? null : _pickFiles,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFFFF),
+                          border: Border.all(color: const Color(0xFF111111), width: 2),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0xFF111111),
+                              offset: Offset(3, 3),
+                              blurRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: _pickingFiles
+                              ? const SizedBox(
+                                  width: 20, height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111111)),
+                                )
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(Icons.upload_file_rounded, color: Color(0xFF111111), size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Tambah Materi',
+                                      style: TextStyle(
+                                        fontFamily: 'BlackHanSans',
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF111111),
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
 
                     // Start Studying button
                     GestureDetector(

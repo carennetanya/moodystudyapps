@@ -555,31 +555,37 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   Wrap(
                         spacing: 6,
                         runSpacing: 6,
-                        children: subjects.map((s) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _kPurpleLight,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: _kPurple, width: 1.5),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                s,
-                                style: const TextStyle(
-                                  fontFamily: 'Nunito',
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: _kPurple,
+                        children: subjects.map((s) => ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 220),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _kPurpleLight,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: _kPurple, width: 1.5),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    s,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'Nunito',
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: _kPurple,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              GestureDetector(
-                                onTap: () => setS(() => subjects.remove(s)),
-                                child: const Icon(Icons.close_rounded, size: 14, color: _kPurple),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => setS(() => subjects.remove(s)),
+                                  child: const Icon(Icons.close_rounded, size: 14, color: _kPurple),
+                                ),
+                              ],
+                            ),
                           ),
                         )).toList(),
                   ),
@@ -1334,7 +1340,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           created.id,
           created.subject,
           _parseScheduleDateTime(created.studyDate, created.startTime),
+          mood: created.mood ?? 'happy',
+          location: created.location ?? 'home',
+          durationMinutes: _calcDurationMinutes(created.startTime, created.endTime),
         );
+    
         saved++;
       } catch (_) {}
     }
@@ -1560,6 +1570,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                     created.id,
                                     created.subject,
                                     _parseScheduleDateTime(created.studyDate, created.startTime),
+                                    mood: created.mood ?? 'happy',
+                                    location: created.location ?? 'home',
+                                    durationMinutes: _calcDurationMinutes(created.startTime, created.endTime),
                                   );
                                   if (!mounted) return;
                                   Navigator.of(context).pop();
@@ -1706,6 +1719,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final hour = int.tryParse(parts[0]) ?? 0;
     final minute = int.tryParse(parts[1]) ?? 0;
     return DateTime(date.year, date.month, date.day, hour, minute);
+  }
+
+  int _calcDurationMinutes(String startTime, String endTime) {
+    try {
+      final sParts = startTime.split(':');
+      final eParts = endTime.split(':');
+      final start = int.parse(sParts[0]) * 60 + int.parse(sParts[1]);
+      final end   = int.parse(eParts[0]) * 60 + int.parse(eParts[1]);
+      final diff  = end - start;
+      return diff > 0 ? diff : 60;
+    } catch (_) {
+      return 60;
+    }
   }
 
   DateTime? _tryParseDate(String s) {
