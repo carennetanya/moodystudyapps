@@ -96,4 +96,8 @@ class AuthService {
       'Login failed. Kode: ${response.statusCode}.',
     );
   }
+
+  static Future<void> logout() async {
+    token = null;
+  }
 }

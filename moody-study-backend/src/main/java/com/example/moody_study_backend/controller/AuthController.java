@@ -32,8 +32,9 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    // Returns AuthResponse with a NEW token — Flutter must store this token
     @PutMapping("/update-email")
-    public ResponseEntity<Map<String, String>> updateEmail(
+    public ResponseEntity<AuthResponse> updateEmail(
             @Valid @RequestBody UpdateEmailRequest request,
             Authentication authentication) {
         return ResponseEntity.ok(authService.updateEmail(authentication.getName(), request));

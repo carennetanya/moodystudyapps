@@ -1,6 +1,20 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:moody_study/utils/app_localizations.dart';
 import 'package:moody_study/services/profile_service.dart';
+import 'package:moody_study/services/auth_service.dart';
+import 'theme_selector_screen.dart';
+
+// dart:io is only imported on non-web platforms
+import 'dart:io' if (dart.library.html) 'dart:html' as platformLib;
+
+// Static cache agar foto tidak hilang saat back
+class _ProfileImageCache {
+  static Uint8List? imageBytes;
+  static String? imageMime;
+}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,70 +24,129 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late TextEditingController _nicknameController;
+  late TextEditingController _nameController;
+  late TextEditingController _usernameController;
   late TextEditingController _emailController;
+  late TextEditingController _emailPasswordController;
   late TextEditingController _currentPasswordController;
   late TextEditingController _newPasswordController;
   late TextEditingController _confirmPasswordController;
 
-  bool _loadingNickname = false;
-  bool _loadingEmail = false;
-  bool _loadingPassword = false;
+  bool _isLoading = false;
+  bool _isPasswordLoading = false;
+  bool _showCurrentPassword = false;
+  bool _showNewPassword = false;
+  bool _showConfirmPassword = false;
+
   String? _errorMessage;
   String? _successMessage;
+
+  // Gunakan cache static agar foto tidak hilang saat back
+  Uint8List? get _selectedImageBytes => _ProfileImageCache.imageBytes;
+  String? get _selectedImageMime => _ProfileImageCache.imageMime;
 
   @override
   void initState() {
     super.initState();
-    _nicknameController = TextEditingController();
+    _nameController = TextEditingController();
+    _usernameController = TextEditingController();
     _emailController = TextEditingController();
+    _emailPasswordController = TextEditingController();
     _currentPasswordController = TextEditingController();
     _newPasswordController = TextEditingController();
     _confirmPasswordController = TextEditingController();
-    _loadNickname();
+    _loadProfile();
   }
 
   @override
   void dispose() {
-    _nicknameController.dispose();
+    _nameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
+    _emailPasswordController.dispose();
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadNickname() async {
+  Future<void> _loadProfile() async {
     try {
-      final result = await ProfileService.getNickname();
+      final result = await ProfileService.getUserInfo();
       if (mounted) {
         setState(() {
-          _nicknameController.text = result['nickname'] as String? ?? '';
+          _nameController.text = result['name'] as String? ?? '';
+          _usernameController.text = result['username'] as String? ?? '';
         });
       }
     } catch (e) {
-      debugPrint('Error loading nickname: $e');
+      debugPrint('Error loading profile: $e');
     }
   }
 
-  Future<void> _updateNickname() async {
-    if (_nicknameController.text.isEmpty) {
-      _showError('Nickname tidak boleh kosong');
+  Future<void> _pickImage() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final pickedFile = result.files.single;
+      final bytes = pickedFile.bytes;
+
+      if (bytes == null) {
+        _showError('Gagal membaca file gambar');
+        return;
+      }
+
+      // Check size: 2MB max
+      final sizeInMB = bytes.lengthInBytes / (1024 * 1024);
+      if (sizeInMB > 2) {
+        _showError('Ukuran foto maksimal 2MB');
+        return;
+      }
+
+      // Determine MIME type from extension
+      final ext = (pickedFile.extension ?? 'jpg').toLowerCase();
+      final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
+
+      setState(() {
+        _ProfileImageCache.imageBytes = bytes;
+        _ProfileImageCache.imageMime = mime;
+      });
+
+      _showSuccess('Foto berhasil dipilih');
+    } catch (e) {
+      debugPrint('Pick image error: $e');
+      _showError('Gagal memilih foto');
+    }
+  }
+
+  Future<void> _uploadAvatar() async {
+    if (_selectedImageBytes == null) {
+      _showError('Pilih foto terlebih dahulu');
       return;
     }
 
     setState(() {
-      _loadingNickname = true;
+      _isLoading = true;
       _errorMessage = null;
       _successMessage = null;
     });
 
     try {
-      await ProfileService.setNickname(_nicknameController.text);
+      final mime = _selectedImageMime ?? 'image/jpeg';
+      final base64Image = 'data:$mime;base64,${base64Encode(_selectedImageBytes!)}';
+
+      await ProfileService.updateAvatar(base64Image);
+
       if (mounted) {
         setState(() {
-          _successMessage = 'Nickname berhasil diperbarui!';
-          _loadingNickname = false;
+          _successMessage = 'Foto profil berhasil diperbarui!';
+          _isLoading = false;
         });
         _clearSuccessMessage();
       }
@@ -81,7 +154,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _errorMessage = e.toString().replaceAll('Exception: ', '');
-          _loadingNickname = false;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _updateProfile() async {
+    if (_nameController.text.isEmpty) {
+      _showError('Nama tidak boleh kosong');
+      return;
+    }
+
+    if (_usernameController.text.isEmpty) {
+      _showError('Username tidak boleh kosong');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _successMessage = null;
+    });
+
+    try {
+      await ProfileService.updateName(_nameController.text);
+      await ProfileService.updateUsername(_usernameController.text);
+
+      if (mounted) {
+        setState(() {
+          _successMessage = 'Profil berhasil diperbarui!';
+          _isLoading = false;
+        });
+        _clearSuccessMessage();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+          _isLoading = false;
         });
       }
     }
@@ -98,8 +209,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
+    if (_emailPasswordController.text.isEmpty) {
+      _showError('Password harus diisi untuk konfirmasi');
+      return;
+    }
+
     setState(() {
-      _loadingEmail = true;
+      _isLoading = true;
       _errorMessage = null;
       _successMessage = null;
     });
@@ -107,14 +223,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await ProfileService.updateEmail(
         newEmail: _emailController.text,
-        password: _currentPasswordController.text,
+        password: _emailPasswordController.text,
       );
       if (mounted) {
         setState(() {
           _successMessage = 'Email berhasil diperbarui!';
-          _loadingEmail = false;
-          _currentPasswordController.clear();
+          _isLoading = false;
           _emailController.clear();
+          _emailPasswordController.clear();
         });
         _clearSuccessMessage();
       }
@@ -122,7 +238,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _errorMessage = e.toString().replaceAll('Exception: ', '');
-          _loadingEmail = false;
+          _isLoading = false;
         });
       }
     }
@@ -132,22 +248,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_currentPasswordController.text.isEmpty ||
         _newPasswordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
-      _showError('Semua field password harus diisi');
+      _showError('Semua field harus diisi');
       return;
     }
 
     if (_newPasswordController.text.length < 6) {
-      _showError('Password baru minimal 6 karakter');
+      _showError('Password minimal 6 karakter');
       return;
     }
 
     if (_newPasswordController.text != _confirmPasswordController.text) {
-      _showError('Password baru tidak cocok');
+      _showError('Password tidak cocok');
       return;
     }
 
     setState(() {
-      _loadingPassword = true;
+      _isPasswordLoading = true;
       _errorMessage = null;
       _successMessage = null;
     });
@@ -161,7 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _successMessage = 'Password berhasil diperbarui!';
-          _loadingPassword = false;
+          _isPasswordLoading = false;
           _currentPasswordController.clear();
           _newPasswordController.clear();
           _confirmPasswordController.clear();
@@ -172,10 +288,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _errorMessage = e.toString().replaceAll('Exception: ', '');
-          _loadingPassword = false;
+          _isPasswordLoading = false;
         });
       }
     }
+  }
+
+  Future<void> _logout() async {
+    // Unfocus semua TextField dulu untuk mencegah error DomElement
+    FocusScope.of(context).unfocus();
+
+    // Tunggu sebentar agar unfocus selesai sebelum dialog muncul
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              await AuthService.logout();
+              // Hapus cache foto saat logout
+              _ProfileImageCache.imageBytes = null;
+              _ProfileImageCache.imageMime = null;
+              if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  PageRouteBuilder(
+                    pageBuilder: (_, __, ___) => const ThemeSelectorScreen(),
+                    transitionsBuilder: (_, anim, __, child) =>
+                        FadeTransition(opacity: anim, child: child),
+                    transitionDuration: const Duration(milliseconds: 400),
+                  ),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('Keluar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   bool _isValidEmail(String email) {
@@ -187,6 +349,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _errorMessage = message);
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) setState(() => _errorMessage = null);
+    });
+  }
+
+  void _showSuccess(String message) {
+    setState(() => _successMessage = message);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _successMessage = null);
     });
   }
 
@@ -202,6 +371,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TextInputType keyboardType = TextInputType.text,
     bool obscureText = false,
     String? hint,
+    Widget? suffixIcon,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,122 +380,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
           label,
           style: const TextStyle(
             fontFamily: 'BlackHanSans',
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
             color: Color(0xFF111111),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           obscureText: obscureText,
           decoration: InputDecoration(
             hintText: hint,
+            suffixIcon: suffixIcon,
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(
                 color: Color(0xFF111111),
-                width: 2,
+                width: 1,
               ),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(
                 color: Color(0xFF111111),
-                width: 2,
+                width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(
                 color: Color(0xFF1EE86F),
                 width: 2,
               ),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           ),
-          style: const TextStyle(fontFamily: 'Nunito', fontSize: 14),
+          style: const TextStyle(fontFamily: 'Nunito', fontSize: 12),
         ),
       ],
-    );
-  }
-
-  Widget _buildSection({
-    required String title,
-    required List<Widget> children,
-    required bool isLoading,
-    required VoidCallback onSubmit,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFF111111), width: 2),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0xFF111111),
-            offset: Offset(4, 4),
-            blurRadius: 0,
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'BlackHanSans',
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111111),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...children,
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: isLoading ? null : onSubmit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF2EA05),
-                foregroundColor: const Color(0xFF111111),
-                disabledBackgroundColor: Colors.grey,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(
-                    color: Color(0xFF111111),
-                    width: 2,
-                  ),
-                ),
-              ),
-              child: isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation(Color(0xFF111111)),
-                      ),
-                    )
-                  : const Text(
-                      'Simpan',
-                      style: TextStyle(
-                        fontFamily: 'BlackHanSans',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -352,12 +448,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             if (_errorMessage != null)
               Container(
                 padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFE5E5),
                   border: Border.all(
@@ -379,7 +476,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _errorMessage!,
                         style: const TextStyle(
                           fontFamily: 'Nunito',
-                          fontSize: 13,
+                          fontSize: 12,
                           color: Color(0xFF111111),
                           fontWeight: FontWeight.w600,
                         ),
@@ -413,7 +510,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _successMessage!,
                         style: const TextStyle(
                           fontFamily: 'Nunito',
-                          fontSize: 13,
+                          fontSize: 12,
                           color: Color(0xFF111111),
                           fontWeight: FontWeight.w600,
                         ),
@@ -422,67 +519,390 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-            const SizedBox(height: 12),
-            _buildSection(
-              title: '👤 Ubah Nickname',
-              isLoading: _loadingNickname,
-              onSubmit: _updateNickname,
-              children: [
-                _buildTextField(
-                  controller: _nicknameController,
-                  label: 'Nickname',
-                  hint: 'Masukkan nickname baru',
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFF111111), width: 2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Center(
+                    child: Column(
+                      children: [
+                        // Avatar lingkaran
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF1EE86F),
+                              width: 3,
+                            ),
+                            color: const Color(0xFFF0F0F0),
+                          ),
+                          child: ClipOval(
+                            child: _selectedImageBytes != null
+                                ? Image.memory(
+                                    _selectedImageBytes!,
+                                    fit: BoxFit.cover,
+                                    width: 100,
+                                    height: 100,
+                                  )
+                                : const Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: Color(0xFF999999),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _pickImage,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF111111),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Pilih Foto',
+                            style: TextStyle(
+                              fontFamily: 'Nunito',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Gambar rasio 1:1, maks 2MB',
+                          style: TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 11,
+                            color: Color(0xFF999999),
+                          ),
+                        ),
+                        if (_selectedImageBytes != null) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _uploadAvatar,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFF2EA05),
+                                foregroundColor: const Color(0xFF111111),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 14,
+                                      width: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation(
+                                          Color(0xFF111111),
+                                        ),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Upload Foto',
+                                      style: TextStyle(
+                                        fontFamily: 'BlackHanSans',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _nameController,
+                    label: 'Nama Lengkap',
+                    hint: 'Masukkan nama Anda',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _usernameController,
+                    label: 'Username',
+                    hint: 'Masukkan username Anda',
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _updateProfile,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF2EA05),
+                        foregroundColor: const Color(0xFF111111),
+                        disabledBackgroundColor: Colors.grey,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: const BorderSide(
+                            color: Color(0xFF111111),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation(Color(0xFF111111)),
+                              ),
+                            )
+                          : const Text(
+                              'Simpan Perubahan',
+                              style: TextStyle(
+                                fontFamily: 'BlackHanSans',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
-            _buildSection(
-              title: '📧 Ubah Email',
-              isLoading: _loadingEmail,
-              onSubmit: _updateEmail,
-              children: [
-                _buildTextField(
-                  controller: _emailController,
-                  label: 'Email Baru',
-                  keyboardType: TextInputType.emailAddress,
-                  hint: 'Masukkan email baru',
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _currentPasswordController,
-                  label: 'Password Saat Ini',
-                  obscureText: true,
-                  hint: 'Masukkan password untuk konfirmasi',
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFF111111), width: 2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Ubah Email',
+                    style: TextStyle(
+                      fontFamily: 'BlackHanSans',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111111),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _emailController,
+                    label: 'Email Baru',
+                    keyboardType: TextInputType.emailAddress,
+                    hint: 'Masukkan email baru',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _emailPasswordController,
+                    label: 'Password',
+                    obscureText: true,
+                    hint: 'Masukkan password Anda',
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _updateEmail,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF2EA05),
+                        foregroundColor: const Color(0xFF111111),
+                        disabledBackgroundColor: Colors.grey,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: const BorderSide(
+                            color: Color(0xFF111111),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation(Color(0xFF111111)),
+                              ),
+                            )
+                          : const Text(
+                              'Ubah Email',
+                              style: TextStyle(
+                                fontFamily: 'BlackHanSans',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
-            _buildSection(
-              title: '🔐 Ubah Password',
-              isLoading: _loadingPassword,
-              onSubmit: _updatePassword,
-              children: [
-                _buildTextField(
-                  controller: _currentPasswordController,
-                  label: 'Password Saat Ini',
-                  obscureText: true,
-                  hint: 'Masukkan password saat ini',
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _newPasswordController,
-                  label: 'Password Baru',
-                  obscureText: true,
-                  hint: 'Minimal 6 karakter',
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _confirmPasswordController,
-                  label: 'Konfirmasi Password',
-                  obscureText: true,
-                  hint: 'Ulangi password baru',
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFF111111), width: 2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Ubah Password',
+                    style: TextStyle(
+                      fontFamily: 'BlackHanSans',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111111),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _currentPasswordController,
+                    label: 'Password Saat Ini',
+                    obscureText: !_showCurrentPassword,
+                    hint: 'Masukkan password saat ini',
+                    suffixIcon: GestureDetector(
+                      onTap: () {
+                        setState(() =>
+                            _showCurrentPassword = !_showCurrentPassword);
+                      },
+                      child: Icon(
+                        _showCurrentPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: const Color(0xFF111111),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _newPasswordController,
+                    label: 'Password Baru',
+                    obscureText: !_showNewPassword,
+                    hint: 'Minimal 6 karakter',
+                    suffixIcon: GestureDetector(
+                      onTap: () {
+                        setState(() => _showNewPassword = !_showNewPassword);
+                      },
+                      child: Icon(
+                        _showNewPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: const Color(0xFF111111),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _confirmPasswordController,
+                    label: 'Konfirmasi Password',
+                    obscureText: !_showConfirmPassword,
+                    hint: 'Ulangi password baru',
+                    suffixIcon: GestureDetector(
+                      onTap: () {
+                        setState(
+                            () => _showConfirmPassword = !_showConfirmPassword);
+                      },
+                      child: Icon(
+                        _showConfirmPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: const Color(0xFF111111),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isPasswordLoading ? null : _updatePassword,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF2EA05),
+                        foregroundColor: const Color(0xFF111111),
+                        disabledBackgroundColor: Colors.grey,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: const BorderSide(
+                            color: Color(0xFF111111),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: _isPasswordLoading
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation(Color(0xFF111111)),
+                              ),
+                            )
+                          : const Text(
+                              'Simpan Password',
+                              style: TextStyle(
+                                fontFamily: 'BlackHanSans',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _logout,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color(0xFFDD2C00),
+                          width: 2,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Keluar',
+                        style: TextStyle(
+                          fontFamily: 'BlackHanSans',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFDD2C00),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
           ],

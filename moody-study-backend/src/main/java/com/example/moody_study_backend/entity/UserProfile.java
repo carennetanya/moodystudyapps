@@ -3,6 +3,8 @@ package com.example.moody_study_backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "user_profiles")
 @Data
@@ -15,18 +17,30 @@ public class UserProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    // Many rows per user (each row = one change event)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false)
-    private String nickname;
+    // Which field was changed: "name", "username", "avatar_url", "email", "password", "nickname"
+    @Column(name = "field_name", nullable = false, length = 50)
+    private String fieldName;
 
-    // Email user (bisa diakses juga via user.getEmail())
-    private String email;
+    // Previous value before change (null if first-time set)
+    @Column(name = "old_value", columnDefinition = "TEXT")
+    private String oldValue;
 
-    // Untuk fitur change password
-    private String currentPassword;
-    private String newPassword;
-    private String confirmPassword;
+    // New value after change
+    @Column(name = "new_value", columnDefinition = "TEXT")
+    private String newValue;
+
+    @Column(name = "changed_at", nullable = false)
+    private LocalDateTime changedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (changedAt == null) {
+            changedAt = LocalDateTime.now();
+        }
+    }
 }
