@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:moody_study/services/auth_service.dart';
+import 'package:moody_study/services/user_provider.dart';
 import 'loading_screen.dart';
 import 'character_intro_screen.dart';
 import 'theme_selector_screen.dart';
@@ -76,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _onLogin() async {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context, listen: false);
     if (!_isFormValid) {
       setState(() {
         if (_emailController.text.trim().isEmpty) {
@@ -96,14 +98,23 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     try {
-      final userData = await AuthService.login(
+      final userProvider = context.read<UserProvider>();
+      final success = await userProvider.login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
       if (!mounted) return;
 
-      final userName = (userData['name'] as String?) ?? 'Friend';
+      if (!success) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = userProvider.errorMessage ?? 'Login gagal';
+        });
+        return;
+      }
+
+      final userName = userProvider.name ?? 'Friend';
 
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(

@@ -25,6 +25,7 @@ dependencies:
   spotify_sdk: ^3.0.2
   flutter_volume_controller: ^1.0.0
   http_parser: ^4.0.2
+  provider: ^6.1.2
 
 dev_dependencies:
   flutter_test:

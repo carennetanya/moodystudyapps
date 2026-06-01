@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 /// Enum bahasa yang didukung
 enum AppLanguage { id, en }
 
-/// Provider untuk bahasa aktif — wrap MaterialApp dengan ChangeNotifierProvider
+/// ChangeNotifier untuk bahasa aktif.
+/// Daftarkan di main.dart dengan ChangeNotifierProvider.
 class LanguageProvider extends ChangeNotifier {
   AppLanguage _language = AppLanguage.id;
 
@@ -23,7 +25,7 @@ class LanguageProvider extends ChangeNotifier {
   }
 }
 
-/// Semua string UI yang bisa ditranslate
+/// Semua string UI yang bisa ditranslate.
 /// Akses via: AppLocalizations.of(context).someKey
 class AppLocalizations {
   final AppLanguage language;
@@ -31,9 +33,13 @@ class AppLocalizations {
 
   bool get isId => language == AppLanguage.id;
 
-  static AppLocalizations of(BuildContext context) {
-    final provider = context.dependOnInheritedWidgetOfExactType<_LocalizationInheritedWidget>();
-    return provider?.localizations ?? const AppLocalizations(AppLanguage.id);
+  /// Akses via Provider — otomatis rebuild saat bahasa berubah.
+  /// Gunakan listen: false di dalam async method / event handler.
+  static AppLocalizations of(BuildContext context, {bool listen = true}) {
+    final lang = listen
+        ? context.watch<LanguageProvider>().language
+        : context.read<LanguageProvider>().language;
+    return AppLocalizations(lang);
   }
 
   // ─── Login Screen ─────────────────────────────────────────────────
@@ -153,22 +159,11 @@ class AppLocalizations {
   String get filesTitle => isId ? 'File Kamu' : 'Your Files';
   String get filesEmpty => isId ? 'Belum ada file yang disimpan. Simpan PDF terlebih dahulu.' : 'No files saved yet. Save a PDF first.';
   String get filesLoadError => isId ? 'Gagal memuat file' : 'Failed to load files';
-  String get filesReload => isId ? 'Muat ulang' : 'Reload';
-  String get filesOpen => isId ? 'Buka' : 'Open';
-  String get filesDelete => isId ? 'Hapus' : 'Delete';
-  String get filesRename => isId ? 'Ganti Nama' : 'Rename';
-  String get filesDeleteTitle => isId ? 'Hapus file' : 'Delete file';
-  String get filesDeleteConfirm => isId ? 'Hapus dari Your Files?' : 'Delete from Your Files?';
-  String get filesDeleteSuccess => isId ? 'File dihapus.' : 'File deleted.';
-  String get filesDeleteFail => isId ? 'Gagal menghapus' : 'Failed to delete';
-  String get filesRenameTitle => isId ? 'Ganti nama file' : 'Rename file';
-  String get filesRenameLabel => isId ? 'Nama file' : 'File name';
-  String get filesRenameSuccess => isId ? 'Nama file diperbarui.' : 'File name updated.';
-  String get filesRenameFail => isId ? 'Gagal ganti nama' : 'Failed to rename';
-  String get filesCancel => isId ? 'Batal' : 'Cancel';
-  String get filesSave => isId ? 'Simpan' : 'Save';
+  String get filesDeleteConfirm => isId ? 'Hapus file ini?' : 'Delete this file?';
+  String get filesDeleteSuccess => isId ? 'File berhasil dihapus.' : 'File deleted successfully.';
+  String get filesOpenError => isId ? 'Gagal membuka file.' : 'Failed to open file.';
 
-  // ─── Daily Quest Screen ───────────────────────────────────────────
+  // ─── Daily Quest ──────────────────────────────────────────────────
   String get questTitle => isId ? 'Quest Harian' : 'Daily Quest';
   String get questSubtitle => isId ? 'Selesaikan quest hari ini' : 'Complete today\'s quests';
   String get questCompleted => isId ? 'Selesai!' : 'Completed!';
@@ -219,56 +214,17 @@ class AppLocalizations {
   String get langTooltip => isId ? 'Ganti ke English' : 'Switch to Indonesian';
 }
 
-// ─── InheritedWidget buat propagate localization ke seluruh tree ──────────────
-class _LocalizationInheritedWidget extends InheritedWidget {
-  final AppLocalizations localizations;
-
-  const _LocalizationInheritedWidget({
-    required this.localizations,
-    required super.child,
-  });
-
-  @override
-  bool updateShouldNotify(_LocalizationInheritedWidget old) =>
-      localizations.language != old.localizations.language;
-}
-
-/// Wrap widget tree dengan ini agar AppLocalizations.of(context) bisa dipakai
-class LocalizationWrapper extends StatelessWidget {
-  final AppLanguage language;
-  final Widget child;
-
-  const LocalizationWrapper({
-    super.key,
-    required this.language,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _LocalizationInheritedWidget(
-      localizations: AppLocalizations(language),
-      child: child,
-    );
-  }
-}
-
-/// Widget tombol globe untuk ganti bahasa — taruh di top bar
+/// Widget tombol globe untuk ganti bahasa — taruh di top bar.
+/// Sekarang pakai Provider, tidak butuh parameter callback manual.
 class LanguageToggleButton extends StatelessWidget {
-  final AppLanguage currentLanguage;
-  final VoidCallback onToggle;
-
-  const LanguageToggleButton({
-    super.key,
-    required this.currentLanguage,
-    required this.onToggle,
-  });
+  const LanguageToggleButton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isId = currentLanguage == AppLanguage.id;
+    final langProvider = context.watch<LanguageProvider>();
+    final isId = !langProvider.isEnglish;
     return GestureDetector(
-      onTap: onToggle,
+      onTap: langProvider.toggle,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
@@ -302,25 +258,4 @@ class LanguageToggleButton extends StatelessWidget {
       ),
     );
   }
-}
-// ─── LanguageNotifier — InheritedWidget untuk propagate toggle ke seluruh tree ─
-// Definisi di sini supaya bisa diimport dari screen mana saja.
-// Di main.dart: wrap MaterialApp dengan LanguageNotifier(language:..., onToggle:..., child:...)
-class LanguageNotifier extends InheritedWidget {
-  final AppLanguage language;
-  final VoidCallback onToggle;
-
-  const LanguageNotifier({
-    super.key,
-    required this.language,
-    required this.onToggle,
-    required super.child,
-  });
-
-  static LanguageNotifier? of(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<LanguageNotifier>();
-  }
-
-  @override
-  bool updateShouldNotify(LanguageNotifier old) => language != old.language;
 }

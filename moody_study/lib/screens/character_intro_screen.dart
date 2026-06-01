@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:provider/provider.dart';
 import 'theme_selector_screen.dart';
 import 'mood_screen.dart';
 import 'location_screen.dart';
@@ -16,7 +17,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:moody_study/services/streak_service.dart';
 import 'package:moody_study/services/auth_service.dart';
-import 'package:moody_study/services/profile_image_store.dart';
+import 'package:moody_study/services/profile_image_provider.dart';
 import 'life_lost_popup.dart';
 import 'package:moody_study/services/daily_quest_service.dart';
 import 'package:moody_study/utils/app_localizations.dart';
@@ -129,10 +130,10 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
       if (token == null) return;
       final baseUrl = StreakService.baseUrl;
       final res = await http.post(
-        Uri.parse('\$baseUrl/api/streak/check-login'),
+        Uri.parse('$baseUrl/api/streak/check-login'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer \$token',
+          'Authorization': 'Bearer $token',
         },
       );
       if (res.statusCode == 200 && mounted) {
@@ -146,7 +147,7 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
         }
       }
     } catch (e) {
-      debugPrint('checkLogin error: \$e');
+      debugPrint('checkLogin error: $e');
     }
   }
 
@@ -320,17 +321,17 @@ class _LandingPageState extends State<_LandingPage> {
         ).then((_) => setState(() => _selectedNav = 0));
         break;
       case 4: // Statistik
-  Navigator.of(context).push(
-    PageRouteBuilder(
-      pageBuilder: (_, __, ___) => const StatistikScreen(), // ← tanpa underscore
-      transitionsBuilder: (_, anim, __, child) =>
-          FadeTransition(opacity: anim, child: child),
-      transitionDuration: const Duration(milliseconds: 300),
-    ),
-  ).then((_) {
-    DailyQuestService.completeReviewStats().catchError((_) {});
-    setState(() => _selectedNav = 0);
-  });
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const StatistikScreen(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        ).then((_) {
+          DailyQuestService.completeReviewStats().catchError((_) {});
+          setState(() => _selectedNav = 0);
+        });
         break;
       case 5: // Profile
         Navigator.of(context).push(
@@ -378,7 +379,8 @@ class _LandingPageState extends State<_LandingPage> {
                   children: [
                     const _StatsBadge(),
                     const Spacer(),
-                    _GlobeButton(),
+                    // ✅ Ganti _GlobeButton() → LanguageToggleButton()
+                    const LanguageToggleButton(),
                     const SizedBox(width: 8),
                     const _LivesBox(),
                   ],
@@ -447,9 +449,7 @@ class _BottomNavBar extends StatelessWidget {
                 label: item.label,
                 selected: selected,
                 onTap: () => onTap(i),
-                // Daily Quest punya badge khusus
                 showQuestBadge: i == 1,
-                // Profile button: tampilkan foto user
                 isProfile: i == 5,
               );
             }),
@@ -511,12 +511,11 @@ class _NavButton extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                // ── Profile icon: selalu bingkai lingkaran ──
-                // Jika ada foto → tampil foto, jika belum ada → bingkai kosong
+                // ── Profile icon: pakai Consumer<ProfileImageProvider> ──
                 if (isProfile)
-                  ValueListenableBuilder<Uint8List?>(
-                    valueListenable: ProfileImageStore.instance.imageBytes,
-                    builder: (_, bytes, __) {
+                  Consumer<ProfileImageProvider>(
+                    builder: (_, profileImg, __) {
+                      final bytes = profileImg.imageBytes;
                       return Container(
                         width: 26,
                         height: 26,
@@ -602,7 +601,6 @@ class _HeroContent extends StatelessWidget {
       child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
         child: Padding(
-          // Extra bottom padding untuk bottom nav bar
           padding: const EdgeInsets.fromLTRB(24, 155, 24, 100),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
@@ -1382,53 +1380,6 @@ class _DiagonalStripePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ── Placeholder Screens (ganti dengan screen asli kalau sudah ada) ─
-
-// ── Globe Language Toggle Button ──────────────────────────────────
-class _GlobeButton extends StatelessWidget {
-  const _GlobeButton();
-
-  @override
-  Widget build(BuildContext context) {
-    final notifier = LanguageNotifier.of(context);
-    final l = AppLocalizations.of(context);
-    return GestureDetector(
-      onTap: notifier?.onToggle,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF111111), width: 2),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0xFF111111),
-              offset: Offset(2, 2),
-              blurRadius: 0,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.language, size: 14, color: Color(0xFF111111)),
-            const SizedBox(width: 4),
-            Text(
-              l.langButtonLabel,
-              style: const TextStyle(
-                fontFamily: 'BlackHanSans',
-                fontSize: 12,
-                color: Color(0xFF111111),
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _StatPlaceholderScreen extends StatelessWidget {

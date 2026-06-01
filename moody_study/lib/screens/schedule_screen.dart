@@ -1364,7 +1364,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   // ── Create Manual Dialog ───────────────────────────────────────
   Future<void> _showCreateScheduleDialog() async {
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context, listen: false);
     final subjectController = TextEditingController();
     final locationController = TextEditingController();
     final moodController = TextEditingController();
@@ -1620,7 +1620,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   // ── Delete confirm ─────────────────────────────────────────────
   Future<void> _confirmDelete(ScheduleItem item) async {
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context, listen: false);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(

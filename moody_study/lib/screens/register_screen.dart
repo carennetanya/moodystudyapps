@@ -109,7 +109,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 
   void _onRegister() async {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context, listen: false);
     if (!_isFormValid) {
       setState(() {
         if (_nameController.text.trim().isEmpty) {

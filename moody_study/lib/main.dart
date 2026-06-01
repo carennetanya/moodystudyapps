@@ -1,9 +1,12 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:moody_study/services/notification_service.dart';
-import 'screens/schedule_screen.dart';
 import 'package:moody_study/services/profile_image_store.dart';
+import 'package:moody_study/services/profile_image_provider.dart';
+import 'package:moody_study/services/user_provider.dart';
+import 'package:moody_study/utils/app_localizations.dart';
+import 'screens/schedule_screen.dart';
 import 'screens/theme_selector_screen.dart';
-import 'utils/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,55 +16,35 @@ void main() async {
   runApp(const MoodyStudyApp());
 }
 
-class MoodyStudyApp extends StatefulWidget {
+class MoodyStudyApp extends StatelessWidget {
   const MoodyStudyApp({super.key});
 
   @override
-  State<MoodyStudyApp> createState() => _MoodyStudyAppState();
-}
-
-class _MoodyStudyAppState extends State<MoodyStudyApp> {
-  AppLanguage _language = AppLanguage.id;
-
-  @override
-  void initState() {
-    super.initState();
-    // Init SETELAH widget tree siap supaya navigatorKey.currentState tidak null
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      NotificationService.instance.init();
-    });
-  }
-
-  void _toggleLanguage() {
-    setState(() {
-      _language = _language == AppLanguage.id ? AppLanguage.en : AppLanguage.id;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return LocalizationWrapper(
-      language: _language,
-      child: LanguageNotifier(
-        language: _language,
-        onToggle: _toggleLanguage,
-        child: MaterialApp(
-          title: 'Moody Study',
-          debugShowCheckedModeBanner: false,
-          navigatorKey: NotificationService.navigatorKey,
-          theme: ThemeData(
-            fontFamily: 'BlackHanSans',
-            scaffoldBackgroundColor: const Color(0xFF1EE86F),
-          ),
-          home: const ThemeSelectorScreen(),
-          routes: {
-            '/schedule': (context) => const ScheduleScreen(),
-          },
+    return MultiProvider(
+      providers: [
+        // 1. Bahasa app — menggantikan LocalizationWrapper + LanguageNotifier lama
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+
+        // 2. Foto profil user
+        ChangeNotifierProvider(create: (_) => ProfileImageProvider()),
+
+        // 3. Data user yang login (token, nama, username, dll)
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Moody Study',
+        debugShowCheckedModeBanner: false,
+        navigatorKey: NotificationService.navigatorKey,
+        theme: ThemeData(
+          fontFamily: 'BlackHanSans',
+          scaffoldBackgroundColor: const Color(0xFF1EE86F),
         ),
+        home: const ThemeSelectorScreen(),
+        routes: {
+          '/schedule': (context) => const ScheduleScreen(),
+        },
       ),
     );
   }
 }
-
-/// LanguageNotifier didefinisikan di utils/app_localizations.dart
-/// dan diimport di atas. Tidak perlu redefinisi di sini.

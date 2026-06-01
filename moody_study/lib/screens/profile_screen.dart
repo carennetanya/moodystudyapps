@@ -4,10 +4,11 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:moody_study/utils/app_localizations.dart';
 import 'package:moody_study/services/profile_service.dart';
-import 'package:moody_study/services/auth_service.dart';
-import 'package:moody_study/services/profile_image_store.dart';
+import 'package:moody_study/services/profile_image_provider.dart';
+import 'package:moody_study/services/user_provider.dart';
 import 'theme_selector_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -39,11 +40,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Uint8List? _pendingImageBytes;
   String? _pendingImageMime;
 
-  // Foto yang ditampilkan: pending dulu, fallback ke store (persisted)
-  Uint8List? get _selectedImageBytes =>
-      _pendingImageBytes ?? ProfileImageStore.instance.imageBytes.value;
-  String? get _selectedImageMime => _pendingImageMime;
-
   @override
   void initState() {
     super.initState();
@@ -70,17 +66,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
+    final userProvider = context.read<UserProvider>();
+
+    // Isi controller dari UserProvider dulu (data yang sudah ada di state)
+    _nameController.text = userProvider.name ?? '';
+    _usernameController.text = userProvider.username ?? '';
+
     try {
-      final result = await ProfileService.getUserInfo();
+      // Refresh data terbaru dari server lewat UserProvider
+      await userProvider.refreshUserInfo();
+
       if (mounted) {
         setState(() {
-          _nameController.text = result['name'] as String? ?? '';
-          _usernameController.text = result['username'] as String? ?? '';
+          _nameController.text = userProvider.name ?? '';
+          _usernameController.text = userProvider.username ?? '';
         });
       }
 
       // Jika belum ada foto lokal, coba load dari avatarUrl backend
-      if (ProfileImageStore.instance.imageBytes.value == null) {
+      final imageProvider = context.read<ProfileImageProvider>();
+      if (imageProvider.imageBytes == null) {
+        final result = await ProfileService.getUserInfo();
         final avatarUrl = result['avatarUrl'] as String?;
         if (avatarUrl != null && avatarUrl.isNotEmpty) {
           await _loadAvatarFromUrl(avatarUrl);
@@ -91,22 +97,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// Decode base64 data-URL atau fetch HTTP URL lalu simpan ke store
+  /// Decode base64 data-URL atau fetch HTTP URL lalu simpan ke provider
   Future<void> _loadAvatarFromUrl(String url) async {
     try {
       Uint8List bytes;
       if (url.startsWith('data:')) {
-        // Format: data:image/jpeg;base64,....
         final commaIdx = url.indexOf(',');
         if (commaIdx < 0) return;
         bytes = base64Decode(url.substring(commaIdx + 1));
       } else {
-        // HTTP URL — fetch dulu
-        final import_http = await _httpGet(url);
-        if (import_http == null) return;
-        bytes = import_http;
+        final fetched = await _httpGet(url);
+        if (fetched == null) return;
+        bytes = fetched;
       }
-      await ProfileImageStore.instance.saveBytes(bytes);
+      await context.read<ProfileImageProvider>().saveBytes(bytes);
       if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Error loading avatar from url: $e');
@@ -115,7 +119,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<Uint8List?> _httpGet(String url) async {
     try {
-      // ignore: depend_on_referenced_packages
       final uri = Uri.parse(url);
       final client = HttpClient();
       final request = await client.getUrl(uri);
@@ -150,14 +153,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      // Check size: 2MB max
       final sizeInMB = bytes.lengthInBytes / (1024 * 1024);
       if (sizeInMB > 2) {
         _showError('Ukuran foto maksimal 2MB');
         return;
       }
 
-      // Determine MIME type from extension
       final ext = (pickedFile.extension ?? 'jpg').toLowerCase();
       final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
 
@@ -174,7 +175,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _uploadAvatar() async {
-    if (_selectedImageBytes == null) {
+    final imageProvider = context.read<ProfileImageProvider>();
+    final displayBytes = _pendingImageBytes ?? imageProvider.imageBytes;
+
+    if (displayBytes == null) {
       _showError('Pilih foto terlebih dahulu');
       return;
     }
@@ -186,19 +190,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final mime = _selectedImageMime ?? 'image/jpeg';
-      final base64Image = 'data:$mime;base64,${base64Encode(_selectedImageBytes!)}';
+      final mime = _pendingImageMime ?? 'image/jpeg';
+      final base64Image = 'data:$mime;base64,${base64Encode(_pendingImageBytes!)}';
 
       await ProfileService.updateAvatar(base64Image);
 
-      // Simpan ke persistent store supaya icon bottom nav & sesi berikutnya update
-      await ProfileImageStore.instance.saveBytes(_pendingImageBytes!);
+      // Simpan ke ProfileImageProvider — notifyListeners otomatis, semua widget ikut update
+      await imageProvider.saveBytes(_pendingImageBytes!);
 
       if (mounted) {
         setState(() {
           _successMessage = 'Foto profil berhasil diperbarui!';
           _isLoading = false;
-          // Pending bytes sudah di-persist, bersihkan pending
           _pendingImageBytes = null;
           _pendingImageMime = null;
         });
@@ -234,6 +237,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await ProfileService.updateName(_nameController.text);
       await ProfileService.updateUsername(_usernameController.text);
+
+      // Update state global lewat UserProvider supaya widget lain ikut sinkron
+      final userProvider = context.read<UserProvider>();
+      userProvider.updateName(_nameController.text);
+      userProvider.updateUsername(_usernameController.text);
 
       if (mounted) {
         setState(() {
@@ -275,10 +283,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      await ProfileService.updateEmail(
+      final result = await ProfileService.updateEmail(
         newEmail: _emailController.text,
         password: _emailPasswordController.text,
       );
+
+      // Sync email & token baru ke UserProvider
+      final userProvider = context.read<UserProvider>();
+      userProvider.updateEmail(_emailController.text);
+      final newToken = result['token'] as String?;
+      if (newToken != null && newToken.isNotEmpty) {
+        userProvider.updateToken(newToken);
+      }
+
       if (mounted) {
         setState(() {
           _successMessage = 'Email berhasil diperbarui!';
@@ -349,12 +366,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _logout() async {
-    // Unfocus semua TextField dulu untuk mencegah error DomElement
     FocusScope.of(context).unfocus();
-
-    // Tunggu sebentar agar unfocus selesai sebelum dialog muncul
     await Future.delayed(const Duration(milliseconds: 100));
-
     if (!mounted) return;
 
     showDialog(
@@ -371,9 +384,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextButton(
             onPressed: () async {
               Navigator.of(dialogContext).pop();
-              await AuthService.logout();
-              // Hapus foto cache saat logout
-              await ProfileImageStore.instance.clear();
+
+              // Logout lewat UserProvider — state global (token, nama, dll) ikut di-reset
+              context.read<UserProvider>().logout();
+              // Hapus foto cache lewat ProfileImageProvider
+              await context.read<ProfileImageProvider>().clear();
+
               if (mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   PageRouteBuilder(
@@ -481,6 +497,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+
+    // watch ProfileImageProvider supaya avatar langsung update saat foto berubah
+    final profileImageBytes = context.watch<ProfileImageProvider>().imageBytes;
+    final displayImageBytes = _pendingImageBytes ?? profileImageBytes;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F0),
       appBar: AppBar(
@@ -597,9 +618,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: const Color(0xFFF0F0F0),
                           ),
                           child: ClipOval(
-                            child: _selectedImageBytes != null
+                            child: displayImageBytes != null
                                 ? Image.memory(
-                                    _selectedImageBytes!,
+                                    displayImageBytes,
                                     fit: BoxFit.cover,
                                     width: 100,
                                     height: 100,
@@ -643,7 +664,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: Color(0xFF999999),
                           ),
                         ),
-                        if (_selectedImageBytes != null) ...[
+                        if (_pendingImageBytes != null) ...[
                           const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
