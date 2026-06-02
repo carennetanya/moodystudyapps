@@ -1,4 +1,7 @@
+import 'package:dartz/dartz.dart';
 import 'package:flutter/foundation.dart';
+import '../core/failure.dart';
+import '../models/auth_user.dart';
 import 'auth_service.dart';
 import 'profile_service.dart';
 
@@ -32,51 +35,63 @@ class UserProvider extends ChangeNotifier {
 
   // ─── Auth ────────────────────────────────────────────────────────
 
-  Future<bool> login({
+  Future<Either<AuthFailure, AuthUser>> login({
     required String email,
     required String password,
   }) async {
     _errorMessage = null;
-    try {
-      final result = await AuthService.login(email: email, password: password);
-      _token = result['token'] as String?;
-      _name = result['name'] as String?;
-      _username = result['username'] as String?;
-      _email = email;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      notifyListeners();
-      return false;
-    }
+    _setLoading(true);
+
+    final result = await AuthService.login(email: email, password: password);
+    return result.fold(
+      (failure) {
+        _errorMessage = failure.message;
+        _setLoading(false);
+        return left(failure);
+      },
+      (user) {
+        _token = user.token;
+        _name = user.name;
+        _username = user.username;
+        _email = user.email;
+        _setLoading(false);
+        notifyListeners();
+        return right(user);
+      },
+    );
   }
 
-  Future<bool> register({
+  Future<Either<AuthFailure, AuthUser>> register({
     required String name,
     required String username,
     required String email,
     required String password,
   }) async {
     _errorMessage = null;
-    try {
-      final result = await AuthService.register(
-        name: name,
-        username: username,
-        email: email,
-        password: password,
-      );
-      _token = result['token'] as String?;
-      _name = name;
-      _username = username;
-      _email = email;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      notifyListeners();
-      return false;
-    }
+    _setLoading(true);
+
+    final result = await AuthService.register(
+      name: name,
+      username: username,
+      email: email,
+      password: password,
+    );
+    return result.fold(
+      (failure) {
+        _errorMessage = failure.message;
+        _setLoading(false);
+        return left(failure);
+      },
+      (user) {
+        _token = user.token;
+        _name = name;
+        _username = username;
+        _email = email;
+        _setLoading(false);
+        notifyListeners();
+        return right(user);
+      },
+    );
   }
 
   void logout() {

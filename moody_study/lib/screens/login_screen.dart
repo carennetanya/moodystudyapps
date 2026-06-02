@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:moody_study/services/auth_service.dart';
 import 'package:moody_study/services/user_provider.dart';
-import 'loading_screen.dart';
 import 'character_intro_screen.dart';
 import 'theme_selector_screen.dart';
 import 'register_screen.dart';
@@ -97,50 +95,37 @@ class _LoginScreenState extends State<LoginScreen>
       _errorMessage = null;
     });
 
-    try {
-      final userProvider = context.read<UserProvider>();
-      final success = await userProvider.login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+    final userProvider = context.read<UserProvider>();
+    final result = await userProvider.login(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      if (!success) {
+    result.fold(
+      (failure) {
         setState(() {
           _isLoading = false;
-          _errorMessage = userProvider.errorMessage ?? 'Login gagal';
+          _errorMessage = failure.message;
         });
-        return;
-      }
-
-      final userName = userProvider.name ?? 'Friend';
-
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => CharacterIntroScreen(
-            userName: userName,
-            theme: widget.theme,
-            audioPlayer: widget.audioPlayer,
+      },
+      (user) {
+        final userName = user.name ?? 'Friend';
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => CharacterIntroScreen(
+              userName: userName,
+              theme: widget.theme,
+              audioPlayer: widget.audioPlayer,
+            ),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 500),
           ),
-          transitionsBuilder: (_, anim, __, child) =>
-              FadeTransition(opacity: anim, child: child),
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
-      );
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.message;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
-    }
+        );
+      },
+    );
   }
 
   void _navigateToSignUp() {

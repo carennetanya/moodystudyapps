@@ -57,6 +57,7 @@ class ActiveStudySession extends StatefulWidget {
 class _ActiveStudySessionState extends State<ActiveStudySession>
     with WidgetsBindingObserver {
   late Duration _remaining;
+  late final ValueNotifier<Duration> _remainingNotifier;
   Timer? _timer;
   bool _running = false;
   bool _savingPdf = false;
@@ -89,16 +90,13 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   Duration _pendingAlarmDuration = Duration.zero;
  
   int get _totalSeconds => widget.initialMinutes * 60;
-  double get _progress {
-    if (_totalSeconds == 0) return 0;
-    return (_remaining.inSeconds / _totalSeconds).clamp(0.0, 1.0);
-  }
  
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _remaining = Duration(minutes: widget.initialMinutes);
+    _remainingNotifier = ValueNotifier<Duration>(_remaining);
     _musicPlayer = AudioPlayer();
     _musicPlayer.setReleaseMode(ReleaseMode.loop);
     _musicStateSubscription = _musicPlayer.onPlayerStateChanged.listen((state) {
@@ -298,21 +296,23 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
  
   void _startTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) async {
       if (!mounted) return;
-      setState(() {
-        final s = _remaining.inSeconds - 1;
-        if (s <= 0) {
-          _remaining = Duration.zero;
-          _running = false;
-          t.cancel();
-          _showSessionComplete();
-        } else {
-          _remaining = Duration(seconds: s);
-        }
-      });
+      final s = _remaining.inSeconds - 1;
+      if (s <= 0) {
+        _remaining = Duration.zero;
+        _remainingNotifier.value = Duration.zero;
+        _running = false;
+        t.cancel();
+        if (mounted) await _showSessionComplete();
+      } else {
+        _remaining = Duration(seconds: s);
+        _remainingNotifier.value = _remaining;
+      }
     });
-    setState(() => _running = true);
+    setState(() {
+      _running = true;
+    });
   }
  
   @override
@@ -930,6 +930,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     _awayAlarmPlayer?.dispose();
     _musicStateSubscription?.cancel();
     _musicPlayer.dispose();
+    _remainingNotifier.dispose();
     super.dispose();
   }
  
@@ -1024,49 +1025,59 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
                       ),
                     ),
                     const SizedBox(height: 18),
-                    SizedBox(
-                      width: 200,
-                      height: 200,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CustomPaint(
-                            size: const Size(200, 200),
-                            painter: _ArcTimerPainter(progress: _loadingSummary ? 1.0 : _progress),
-                          ),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                                  child: Text(
-                                    _formatDuration(_remaining),
-                                    style: TextStyle(
-                                      fontFamily: 'BlackHanSans',
-                                      fontSize: 44,
-                                      color: widget.mood == 'okay' ? Colors.black : Colors.black87,
-                                      height: 1,
+                    RepaintBoundary(
+                      child: ValueListenableBuilder<Duration>(
+                        valueListenable: _remainingNotifier,
+                        builder: (context, remaining, _) {
+                          final progress = _loadingSummary
+                              ? 1.0
+                              : (remaining.inSeconds / _totalSeconds).clamp(0.0, 1.0);
+                          return SizedBox(
+                            width: 200,
+                            height: 200,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                CustomPaint(
+                                  size: const Size(200, 200),
+                                  painter: _ArcTimerPainter(progress: progress),
+                                ),
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 28),
+                                        child: Text(
+                                          _formatDuration(remaining),
+                                          style: TextStyle(
+                                            fontFamily: 'BlackHanSans',
+                                            fontSize: 44,
+                                            color: widget.mood == 'okay' ? Colors.black : Colors.black87,
+                                            height: 1,
+                                          ),
+                                          softWrap: false,
+                                        ),
+                                      ),
                                     ),
-                                    softWrap: false,
-                                  ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'REMAINING',
+                                      style: TextStyle(
+                                        fontFamily: 'Nunito',
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: widget.mood == 'okay' ? Colors.black54 : Colors.black54,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'REMAINING',
-                                style: TextStyle(
-                                  fontFamily: 'Nunito',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: widget.mood == 'okay' ? Colors.black54 : Colors.black54,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: 28),

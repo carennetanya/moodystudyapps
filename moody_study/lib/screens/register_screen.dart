@@ -135,38 +135,34 @@ class _RegisterScreenState extends State<RegisterScreen>
       _errorMessage = null;
     });
 
-    try {
-      await AuthService.register(
-        name: _nameController.text.trim(),
-        username: _usernameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+    final result = await AuthService.register(
+      name: _nameController.text.trim(),
+      username: _usernameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) =>
-              LoadingScreen(theme: widget.theme, fromRegister: true),
-          transitionsBuilder: (_, anim, __, child) =>
-              FadeTransition(opacity: anim, child: child),
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.message;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
-    }
+    result.fold(
+      (failure) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = failure.message;
+        });
+      },
+      (_) {
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) =>
+                LoadingScreen(theme: widget.theme, fromRegister: true),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 400),
+          ),
+        );
+      },
+    );
   }
 
   @override
