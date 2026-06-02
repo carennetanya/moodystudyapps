@@ -27,25 +27,32 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .headers(h -> h.frameOptions(f -> f.disable()))
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/profile/**").hasAuthority("ROLE_USER")
-                .requestMatchers("/api/user/**").hasAuthority("ROLE_USER")
-                .requestMatchers("/api/material/**").hasAuthority("ROLE_USER")
-                .requestMatchers("/api/schedule/**").hasAuthority("ROLE_USER")
-                .requestMatchers("/api/streak/**").hasAuthority("ROLE_USER")
-                .requestMatchers("/api/stats/**").hasAuthority("ROLE_USER")
-                .requestMatchers("/api/quiz/**").hasAuthority("ROLE_USER")
-                .requestMatchers("/api/files/**").hasAuthority("ROLE_USER")
-                .requestMatchers("/api/quest/**").hasAuthority("ROLE_USER") // ← TAMBAHAN
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .headers(h -> h.frameOptions(f -> f.disable()))
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+
+                        .requestMatchers("/api/profile/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/user/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/material/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/schedule/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/streak/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/stats/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/quiz/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/files/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/quest/**").hasAuthority("ROLE_USER")
+
+                        .requestMatchers("/api/file-parse/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/notification/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/subject-plans/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/mood-object-log/**").hasAuthority("ROLE_USER")
+                        .requestMatchers("/api/award/**").hasAuthority("ROLE_USER")
+
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
