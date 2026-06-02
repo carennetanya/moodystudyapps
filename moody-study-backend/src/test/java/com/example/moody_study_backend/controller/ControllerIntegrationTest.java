@@ -80,9 +80,6 @@ class ControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        userRepository.deleteAll();
-        generatedQuizRepository.deleteAll();
-        studyMaterialRepository.deleteAll();
         createUser(TEST_EMAIL, TEST_USERNAME, TEST_PASSWORD);
     }
 
