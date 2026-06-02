@@ -1,0 +1,13 @@
+Moody Study Backend API Throughput Benchmark
+=============================================
+Tool: k6
+Scenario: 50 virtual users, constant load, 30 seconds
+Endpoint: GET /api/user/xp
+Base URL: http://localhost:8081
+Total requests: 27211
+Throughput: 853.92 req/s
+Error rate: 0.00%
+HTTP 200 check rate: 100.00%
+Pass threshold >=100 req/s: PASS
+All requests successful: PASS
+Final result: PASS
