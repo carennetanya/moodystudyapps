@@ -1,0 +1,30 @@
+Moody Study Backend — p95 Latency Benchmark (v3)
+==================================================
+Tool              : k6
+Scenario          : 50 virtual users, constant load, 5 minutes
+User accounts     : 50 akun terpisah (1 per VU, bukan shared)
+Journey per iter  : fetch list → create resource → end session
+Base URL          : http://localhost:8081
+
+── Latency per fase ───────────────────────────────────
+  Fetch List      : 36.85 ms   PASS ✓ (< 500ms)
+  Create Resource : 35.72 ms   PASS ✓ (< 500ms)
+  End Session     : 21.82 ms   PASS ✓ (< 500ms)
+
+── Latency overall ────────────────────────────────────
+  avg             : 20.46 ms
+  median          : 17.49 ms
+  p(95)           : 34.29 ms   PASS ✓ (threshold: < 500ms)
+  p(99)           : 79.92 ms
+  max             : 629.62 ms
+
+── Reliability ────────────────────────────────────────
+  Total requests  : 38815
+  Throughput      : 128.96 req/s
+  Error rate      : 0.00%   PASS ✓ (< 1%)
+  Check pass rate : 100.00%
+
+── Final Result ───────────────────────────────────────
+  p(95) < 500ms   : PASS ✓
+  Error < 1%      : PASS ✓
+  OVERALL         : PASS ✓
