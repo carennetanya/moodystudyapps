@@ -1,0 +1,23 @@
+Moody Study Backend — Error Rate Under Load (v1)
+==================================================
+Tool              : k6
+Scenario          : 50 virtual users, constant load, 5 minutes
+User accounts     : 50 akun terpisah (1 per VU)
+Journey per iter  : login → fetch list → create resource → end session
+Base URL          : http://localhost:8081
+
+── Error Rate per Fase ────────────────────────────────
+  Login           : 0.00%   PASS ✓
+  Fetch List      : 0.00%   PASS ✓
+  Create Resource : 0.00%   PASS ✓
+  End Session     : 0.00%   PASS ✓
+
+── Overall ────────────────────────────────────────────
+  Total requests  : 38350
+  Throughput      : 127.50 req/s
+  Error rate      : 0.13%   PASS ✓ (threshold: < 1%)
+  Check pass rate : 100.00%
+
+── Final Result ───────────────────────────────────────
+  Error < 1%      : PASS ✓
+  OVERALL         : PASS ✓

@@ -146,3 +146,148 @@ Berdasarkan hasil k6, total request yang diproses adalah [TOTAL_REQUEST] request
 
 Dengan target minimal 100 request per second, hasil pengujian dinyatakan [MEMENUHI/TIDAK MEMENUHI] karena throughput yang diperoleh [LEBIH BESAR/LEBIH KECIL] dari 100 req/s. Benchmark dinyatakan [VALID/TIDAK VALID] karena seluruh request [BERHASIL/TIDAK BERHASIL] diproses tanpa error 401, 403, 404, 500, atau connection refused.
 ```
+
+-- ============================================================
+-- Moody Study Backend — DB Query Performance Check
+-- ============================================================
+-- Tool    : PostgreSQL EXPLAIN ANALYZE
+-- Target  : No query > 200ms for standard operations
+-- DB      : 202.46.28.160:2002 / uas_5803024002
+--
+-- CARA PAKAI:
+--   Jalankan tiap blok satu per satu di psql atau DBeaver.
+--   Ganti :user_id dengan ID user benchmark yang nyata
+--   (lihat langkah 2 di panduan).
+--
+-- Standard operations yang diuji (sesuai ScheduleRepository,
+-- UserXpRepository, UserRepository yang ada di program):
+--   1. SELECT schedule by user (query paling sering dipanggil)
+--   2. SELECT user_xp by user
+--   3. SELECT user by email (login path)
+--   4. INSERT schedule (create resource)
+--   5. SELECT schedule by date range (NotificationSchedulerService)
+-- ============================================================
+
+-- ── LANGKAH 0: Aktifkan timing ──────────────────────────────
+\timing on
+
+-- ── LANGKAH 1: Cek index yang aktif di tabel schedules ──────
+-- Memverifikasi bahwa V14__Add_missing_indexes.sql sudah terapply.
+-- Kolom "indexname" harus ada: idx_schedules_user_date_time
+SELECT
+    indexname,
+    indexdef
+FROM pg_indexes
+WHERE tablename = 'schedules'
+ORDER BY indexname;
+
+-- ── LANGKAH 2: Cari user_id benchmark yang valid ────────────
+-- Ganti output ini ke variabel :user_id di query bawah.
+SELECT id, email
+FROM users
+WHERE email LIKE 'k6-vu%@moodystudy.test'
+ORDER BY id
+LIMIT 5;
+
+-- ============================================================
+-- QUERY 1: findByUserOrderByStudyDateAscStartTimeAsc
+-- Dipanggil setiap GET /api/schedule
+-- Repository: ScheduleRepository
+-- ============================================================
+-- Ganti 'GANTI_DENGAN_USER_ID' dengan angka dari LANGKAH 2
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT *
+FROM schedules
+WHERE user_id = GANTI_DENGAN_USER_ID
+ORDER BY study_date ASC, start_time ASC;
+
+-- Target: Execution Time < 200ms
+-- Harus ada: "Index Scan using idx_schedules_user_date_time"
+-- BUKAN: "Seq Scan on schedules"
+
+-- ============================================================
+-- QUERY 2: findByUser (UserXpRepository)
+-- Dipanggil setiap GET /api/user/xp
+-- Repository: UserXpRepository
+-- ============================================================
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT *
+FROM user_xp
+WHERE user_id = GANTI_DENGAN_USER_ID;
+
+-- Target: Execution Time < 200ms
+-- Harus ada: "Index Scan using idx_user_xp_user_id"
+
+-- ============================================================
+-- QUERY 3: findByEmail (UserRepository)
+-- Dipanggil setiap request (JWT filter lookup)
+-- Repository: UserRepository
+-- ============================================================
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT *
+FROM users
+WHERE email = 'k6-vu1@moodystudy.test';
+
+-- Target: Execution Time < 200ms
+-- Harus ada: "Index Scan using users_email_key" atau idx_users_email
+
+-- ============================================================
+-- QUERY 4: INSERT schedule (ScheduleRepository.save)
+-- Dipanggil setiap POST /api/schedule
+-- ============================================================
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+INSERT INTO schedules (user_id, subject, study_date, start_time, end_time, location, mood, is_completed)
+VALUES (
+    GANTI_DENGAN_USER_ID,
+    'DB Performance Test',
+    CURRENT_DATE,
+    '10:00',
+    '11:00',
+    'Test Lab',
+    'HAPPY',
+    false
+);
+
+-- Target: Execution Time < 200ms
+-- INSERT biasanya < 5ms jika tidak ada bloat atau lock contention
+
+-- Cleanup baris test agar tidak kotor DB
+DELETE FROM schedules
+WHERE subject = 'DB Performance Test'
+  AND user_id = GANTI_DENGAN_USER_ID;
+
+-- ============================================================
+-- QUERY 5: findByStudyDateAndStartTimeBetweenAndIsCompletedFalse
+-- Dipanggil oleh NotificationSchedulerService
+-- Repository: ScheduleRepository
+-- ============================================================
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT *
+FROM schedules
+WHERE study_date = CURRENT_DATE
+  AND start_time BETWEEN '08:00' AND '09:00'
+  AND is_completed = false;
+
+-- Target: Execution Time < 200ms
+-- Harus ada: "Index Scan using idx_schedules_date_time_completed"
+
+-- ============================================================
+-- LANGKAH AKHIR: Cek slow query log via pg_stat_statements
+-- (jika extension aktif di server kampus)
+-- ============================================================
+-- Cek apakah pg_stat_statements tersedia:
+SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';
+
+-- Jika tersedia, lihat query terlambat dari DB ini:
+SELECT
+    LEFT(query, 80)          AS query_snippet,
+    calls,
+    ROUND(mean_exec_time::numeric, 2) AS mean_ms,
+    ROUND(max_exec_time::numeric, 2)  AS max_ms,
+    ROUND(total_exec_time::numeric, 2) AS total_ms
+FROM pg_stat_statements
+WHERE query ILIKE '%schedules%'
+   OR query ILIKE '%user_xp%'
+   OR query ILIKE '%users%'
+ORDER BY max_exec_time DESC
+LIMIT 20;

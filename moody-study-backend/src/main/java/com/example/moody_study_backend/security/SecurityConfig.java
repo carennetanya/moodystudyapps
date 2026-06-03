@@ -50,7 +50,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/subject-plans/**").hasAuthority("ROLE_USER")
                         .requestMatchers("/api/mood-object-log/**").hasAuthority("ROLE_USER")
                         .requestMatchers("/api/award/**").hasAuthority("ROLE_USER")
-
+                        
+                        .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
