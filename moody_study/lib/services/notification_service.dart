@@ -57,9 +57,11 @@ class NotificationService {
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp == true &&
         launchDetails?.notificationResponse?.payload != null) {
+      // Log for debugging
+      debugPrint('App launched from notification with payload: ${launchDetails!.notificationResponse!.payload}');
       // Delay lebih panjang — navigator butuh waktu render full widget tree
       Future.delayed(const Duration(milliseconds: 1000), () {
-        _handlePayload(launchDetails!.notificationResponse!.payload!);
+        _handlePayload(launchDetails.notificationResponse!.payload!);
       });
     }
 
@@ -67,39 +69,62 @@ class NotificationService {
   }
 
   void _onNotificationTap(NotificationResponse response) {
-    if (response.payload != null) {
-      _handlePayload(response.payload!);
+    debugPrint('Notification tapped, payload: ${response.payload}');
+    if (response.payload != null && response.payload!.isNotEmpty) {
+      // Delay untuk memastikan navigator siap
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _handlePayload(response.payload!);
+      });
+    } else {
+      debugPrint('Notification payload empty or null');
     }
   }
 
   void _handlePayload(String payload) {
     try {
-      final data = jsonDecode(payload) as Map<String, dynamic>;
-      final subject     = data['subject'] as String? ?? 'Sesi Belajar';
-      final mood        = data['mood'] as String? ?? 'happy';
-      final location    = data['location'] as String? ?? 'home';
-      final duration    = data['durationMinutes'] as int? ?? 60;
+      debugPrint('Handling notification payload: $payload');
+      if (payload.isEmpty) {
+        debugPrint('Payload empty, navigating to /schedule');
+        navigatorKey.currentState?.pushNamed('/schedule');
+        return;
+      }
 
-      navigatorKey.currentState?.push(
+      final data = jsonDecode(payload) as Map<String, dynamic>;
+      final subject = data['subject'] as String? ?? 'Sesi Belajar';
+      final mood = data['mood'] as String? ?? 'happy';
+      final location = data['location'] as String? ?? 'home';
+      final duration = data['durationMinutes'] as int? ?? 60;
+
+      debugPrint('Parsed payload -> subject: $subject, mood: $mood, location: $location, duration: $duration');
+
+      final navigator = navigatorKey.currentState;
+      if (navigator == null) {
+        debugPrint('Navigator not ready — cannot navigate');
+        return;
+      }
+
+      navigator.push(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => StudySession(
             mood: mood,
             location: location,
             userName: 'Friend',
-            // Subject dari jadwal langsung dipakai sebagai context
-            // files kosong dulu — user upload pas sesi dimulai
             files: const [],
             initialSubject: subject,
             initialMinutes: duration,
           ),
-          transitionsBuilder: (_, anim, __, child) =>
-              FadeTransition(opacity: anim, child: child),
+          transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
           transitionDuration: const Duration(milliseconds: 400),
         ),
       );
-    } catch (_) {
-      // Payload invalid — fallback ke schedule screen
-      navigatorKey.currentState?.pushNamed('/schedule');
+    } catch (e, st) {
+      debugPrint('Error handling payload: $e');
+      debugPrint('$st');
+      // Payload invalid atau error parsing — fallback ke schedule screen
+      final navigator = navigatorKey.currentState;
+      if (navigator != null) {
+        navigator.pushNamed('/schedule');
+      }
     }
   }
 

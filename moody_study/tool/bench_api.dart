@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 // Simple API benchmark script. Run from repo root with:
 //   dart run tool/bench_api.dart
 
-const _baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://192.168.1.5:8081');
+const _baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://202.46.28.170:8081');
 const _testEmail = String.fromEnvironment('TEST_EMAIL', defaultValue: 'testuser@moody.dev');
 const _testPassword = String.fromEnvironment('TEST_PASSWORD', defaultValue: 'TestPass123!');
 

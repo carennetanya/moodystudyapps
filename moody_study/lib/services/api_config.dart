@@ -7,15 +7,7 @@ class ApiConfig {
       return envUrl;
     }
 
-    if (kIsWeb) {
-      return 'https://your-deployed-backend.com';
-    }
-
-    if (kReleaseMode) {
-      return 'https://your-deployed-backend.com';
-    }
-
-    // Local development default, can be overridden with --dart-define
-    return 'http://192.168.1.5:8081';
+    // When not overridden by --dart-define, use the SSH backend server directly.
+    return 'http://202.46.28.170:8081';
   }
 }
