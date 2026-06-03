@@ -10,6 +10,8 @@ import 'package:moody_study/services/profile_service.dart';
 import 'package:moody_study/services/profile_image_provider.dart';
 import 'package:moody_study/services/user_provider.dart';
 import 'theme_selector_screen.dart';
+import '../services/patrol_pin_service.dart';
+import '../widgets/patrol_pin_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -28,6 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _confirmPasswordController;
 
   bool _isLoading = false;
+  bool _hasPin = false;
   bool _isPasswordLoading = false;
   bool _showCurrentPassword = false;
   bool _showNewPassword = false;
@@ -43,6 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _loadPinStatus();
     _nameController = TextEditingController();
     _usernameController = TextEditingController();
     _emailController = TextEditingController();
@@ -361,6 +365,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _errorMessage = e.toString().replaceAll('Exception: ', '');
           _isPasswordLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _loadPinStatus() async {
+    final has = await PatrolPinService.hasPin();
+    if (mounted) setState(() => _hasPin = has);
+  }
+
+  Future<void> _showPinOptions() async {
+    final mode = _hasPin ? PatrolPinDialogMode.change : PatrolPinDialogMode.setup;
+    final ok = await showPatrolPinDialog(context, mode);
+    if (ok) {
+      setState(() => _hasPin = true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✅ PIN patrol berhasil disimpan!'),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
       }
     }
   }
@@ -947,6 +974,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // ─── Patrol PIN Section ───────────────────────────────
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF9E6),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE8C44A), width: 2),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF2EA05),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFF111111), width: 2),
+                              ),
+                              child: const Icon(Icons.shield_rounded, size: 16, color: Color(0xFF111111)),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'Patrol Mode PIN',
+                              style: TextStyle(
+                                fontFamily: 'BlackHanSans',
+                                fontSize: 14,
+                                color: Color(0xFF111111),
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: _hasPin ? Colors.green.shade100 : Colors.red.shade100,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: _hasPin ? Colors.green : Colors.red,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                _hasPin ? 'Aktif' : 'Belum diset',
+                                style: TextStyle(
+                                  fontFamily: 'Nunito',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: _hasPin ? Colors.green.shade700 : Colors.red,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'PIN ini dipakai kalau kamu perlu keluar darurat saat patrol mode aktif (3x distraksi).',
+                          style: TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 12,
+                            color: Color(0xFF888888),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _showPinOptions,
+                            icon: Icon(
+                              _hasPin ? Icons.edit_rounded : Icons.add_rounded,
+                              size: 16,
+                            ),
+                            label: Text(
+                              _hasPin ? 'Ganti PIN' : 'Set PIN Sekarang',
+                              style: const TextStyle(
+                                fontFamily: 'BlackHanSans',
+                                fontSize: 12,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF111111),
+                              side: const BorderSide(color: Color(0xFF111111), width: 2),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),

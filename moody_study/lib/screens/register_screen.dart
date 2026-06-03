@@ -6,6 +6,7 @@ import 'theme_selector_screen.dart';
 import 'login_screen.dart';
 import '../widgets/music_visualizer_widget.dart';
 import '../utils/app_localizations.dart';
+import '../widgets/patrol_pin_dialog.dart';
 
 class RegisterScreen extends StatefulWidget {
   final AppTheme theme;
@@ -151,7 +152,11 @@ class _RegisterScreenState extends State<RegisterScreen>
           _errorMessage = failure.message;
         });
       },
-      (_) {
+      (_) async {
+        if (mounted) {
+          await showPatrolPinDialog(context, PatrolPinDialogMode.setup);
+        }
+        if (!mounted) return;
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (_, __, ___) =>

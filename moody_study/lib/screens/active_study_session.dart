@@ -31,6 +31,9 @@ import 'character_intro_screen.dart';
 import 'level_up_screen.dart';
 import 'streak_counter_screen.dart';
 import 'theme_selector_screen.dart';
+import '../services/patrol_pin_service.dart';
+import '../widgets/patrol_pin_dialog.dart';
+import '../services/lock_task_service.dart';
  
 class ActiveStudySession extends StatefulWidget {
   final String mood;
@@ -76,6 +79,10 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
   bool _awayAlarmTriggered = false;
   int _totalDistractionSeconds = 0;
   bool _showRedFlash = false;
+  int _distractionCount = 0;
+  bool get _isPatrolMode => _distractionCount >= 3;
+  int _patrolTapCount = 0;
+  static const int _patrolTapsRequired = 5;
   AudioPlayer? _awayAlarmPlayer;
   StreamSubscription<void>? _alarmLoopSubscription;
   bool _alarmShouldLoop = false;
@@ -479,6 +486,8 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     if (!mounted) return;
     final seconds = awayDuration.inSeconds;
     _totalDistractionSeconds += seconds;
+    setState(() { _distractionCount++; });
+    if (_isPatrolMode) unawaited(_enterPatrolUiLock());
     final minutes = awayDuration.inMinutes;
     final formatted = minutes > 0
         ? '$minutes min ${seconds % 60} sec'
@@ -501,9 +510,13 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
                   : const Color(0xFF222222),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Hey, come back!',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            Text(
+              _distractionCount + 1 >= 3 ? '🚨 Last Warning!' : 'Hey, come back!',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: _distractionCount + 1 >= 3 ? Colors.red : const Color(0xFF111111),
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -513,6 +526,22 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 15, color: Colors.black87),
             ),
+            if (_distractionCount + 1 >= 3) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEEEE),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red, width: 1.5),
+                ),
+                child: const Text(
+                  '🔒 Patrol mode will activate. You won\'t be able to exit!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ],
         ),
         actionsAlignment: MainAxisAlignment.center,
@@ -713,6 +742,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
       builder: (context) => _DoneEarlyDialog(
         userName: widget.userName,
         durationText: durationText,
+        isPatrolMode: _isPatrolMode,
       ),
     );
     if (action == null || action == 'continue') return;
@@ -931,12 +961,126 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     _musicStateSubscription?.cancel();
     _musicPlayer.dispose();
     _remainingNotifier.dispose();
+    unawaited(_exitPatrolUiLock());
     super.dispose();
   }
  
+  Future<void> _enterPatrolUiLock() async {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    await LockTaskService.startLock();
+  }
+
+  Future<void> _exitPatrolUiLock() async {
+    await LockTaskService.stopLock();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
+
+  Future<void> _showPatrolLockedDialog() async {
+    if (!mounted) return;
+    final hasPin = await PatrolPinService.hasPin();
+    if (!mounted) return;
+
+    if (!hasPin) {
+      // Belum set PIN — locked total, kasih info cara set PIN
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72, height: 72,
+                decoration: BoxDecoration(
+                  color: Colors.red, shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF111111), width: 3),
+                  boxShadow: const [BoxShadow(color: Color(0xFF111111), offset: Offset(3, 3))],
+                ),
+                child: const Icon(Icons.lock, color: Colors.white, size: 36),
+              ),
+              const SizedBox(height: 16),
+              const Text('🚨 Patrol Mode Aktif!', textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              const Text(
+                'Kamu udah distraksi 3 kali. Selesaikan sesimu dulu!\n\nTip: Set Emergency PIN di Profile Screen biar bisa keluar darurat. 👊',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF2EA05), foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: const BorderSide(color: Color(0xFF111111), width: 2.5),
+                  ),
+                  elevation: 4,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Text('Oke, fokus lagi! 💪', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Punya PIN — tampilkan numpad verify
+    final verified = await showPatrolPinDialog(context, PatrolPinDialogMode.verify);
+    if (verified && mounted) {
+      await _exitPatrolUiLock();
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
+    return PopScope(
+      canPop: !_isPatrolMode,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (!didPop && _isPatrolMode) {
+          setState(() => _patrolTapCount++);
+          if (_patrolTapCount >= _patrolTapsRequired) {
+            setState(() => _patrolTapCount = 0);
+            await _showPatrolLockedDialog();
+          } else {
+            final remaining = _patrolTapsRequired - _patrolTapCount;
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Text('🔒', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Text(
+                      remaining == 1
+                        ? 'Tap sekali lagi untuk emergency exit'
+                        : 'Tap $remaining kali lagi untuk emergency exit',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.red.shade700,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      },
+      child: AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       color: _bgColor,
       child: Scaffold(
@@ -964,8 +1108,63 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
                     Row(
                       children: [
                         GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: const Icon(Icons.arrow_back, color: Color(0xFF111111), size: 24),
+                          onTap: () async {
+                            if (_isPatrolMode) {
+                              setState(() => _patrolTapCount++);
+                              if (_patrolTapCount >= _patrolTapsRequired) {
+                                setState(() => _patrolTapCount = 0);
+                                await _showPatrolLockedDialog();
+                              } else {
+                                final remaining = _patrolTapsRequired - _patrolTapCount;
+                                ScaffoldMessenger.of(context).clearSnackBars();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        const Text('🔒', style: TextStyle(fontSize: 16)),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          remaining == 1
+                                            ? 'Tap sekali lagi untuk emergency exit'
+                                            : 'Tap $remaining kali lagi untuk emergency exit',
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                    backgroundColor: Colors.red.shade700,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+                            Navigator.of(context).pop();
+                          },
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: _isPatrolMode
+                              ? Container(
+                                  key: const ValueKey('locked'),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFF111111), width: 2),
+                                    boxShadow: const [BoxShadow(color: Color(0xFF111111), offset: Offset(2, 2))],
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.lock, color: Colors.white, size: 16),
+                                      SizedBox(width: 4),
+                                      Text('LOCKED', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                                    ],
+                                  ),
+                                )
+                              : const Icon(Icons.arrow_back, color: Color(0xFF111111), size: 24, key: ValueKey('back')),
+                          ),
                         ),
                         const Spacer(),
                         if (kDebugMode)
@@ -1302,6 +1501,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -1311,7 +1511,8 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
 class _DoneEarlyDialog extends StatefulWidget {
   final String userName;
   final String durationText;
-  const _DoneEarlyDialog({required this.userName, required this.durationText});
+  final bool isPatrolMode;
+  const _DoneEarlyDialog({required this.userName, required this.durationText, this.isPatrolMode = false});
   @override
   State<_DoneEarlyDialog> createState() => _DoneEarlyDialogState();
 }
@@ -1385,7 +1586,26 @@ class _DoneEarlyDialogState extends State<_DoneEarlyDialog> with SingleTickerPro
                   const SizedBox(height: 12),
                   _DialogButton(label: 'Continue Studying', icon: Icons.menu_book_rounded, backgroundColor: Colors.white, textColor: const Color(0xFF111111), borderColor: const Color(0xFF111111), onTap: () => Navigator.of(context).pop('continue')),
                   const SizedBox(height: 12),
-                  _DialogButton(label: 'Exit', icon: Icons.logout_rounded, backgroundColor: const Color(0xFF111111), textColor: Colors.white, onTap: () => Navigator.of(context).pop('exit')),
+                  if (widget.isPatrolMode)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEEEEEE),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFBBBBBB), width: 2),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.lock, color: Color(0xFF999999), size: 18),
+                          SizedBox(width: 8),
+                          Text('Exit (Locked — Patrol Mode)', style: TextStyle(color: Color(0xFF999999), fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    )
+                  else
+                    _DialogButton(label: 'Exit', icon: Icons.logout_rounded, backgroundColor: const Color(0xFF111111), textColor: Colors.white, onTap: () => Navigator.of(context).pop('exit')),
                 ],
               ),
             ),
