@@ -1,0 +1,10 @@
+Moody Study Backend — JVM Memory Under Load Summary
+====================================================
+Tool        : Spring Actuator /actuator/metrics
+Metric      : jvm.memory.used (heap), jvm.memory.max (heap)
+Threshold   : No heap exhaustion during 5-min load test
+Load script : p95-latency-user-journey.js (50 VU, 5 menit)
+
+Max heap used selama test : 136.5 MB
+Heap exhaustion detected  : false
+OVERALL                   : PASS ✓
