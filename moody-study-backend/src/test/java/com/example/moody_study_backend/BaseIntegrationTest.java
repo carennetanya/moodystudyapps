@@ -1,5 +1,10 @@
 package com.example.moody_study_backend;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -8,24 +13,21 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import com.example.moody_study_backend.entity.AwardLevelUp;
 import com.example.moody_study_backend.entity.GeneratedQuiz;
-import com.example.moody_study_backend.entity.MoodObjectLog;
-import com.example.moody_study_backend.entity.MoodScale;
 import com.example.moody_study_backend.entity.Notification;
 import com.example.moody_study_backend.entity.SavedFile;
 import com.example.moody_study_backend.entity.Schedule;
-import com.example.moody_study_backend.entity.Stream;
 import com.example.moody_study_backend.entity.StudyMaterial;
 import com.example.moody_study_backend.entity.StudySession;
 import com.example.moody_study_backend.entity.SubjectPlan;
@@ -34,13 +36,10 @@ import com.example.moody_study_backend.entity.UserXp;
 import com.example.moody_study_backend.repository.AwardLevelUpRepository;
 import com.example.moody_study_backend.repository.DailyQuestRepository;
 import com.example.moody_study_backend.repository.GeneratedQuizRepository;
-import com.example.moody_study_backend.repository.MoodObjectLogRepository;
-import com.example.moody_study_backend.repository.MoodScaleRepository;
 import com.example.moody_study_backend.repository.NotificationRepository;
 import com.example.moody_study_backend.repository.SavedFileRepository;
 import com.example.moody_study_backend.repository.ScheduleRepository;
 import com.example.moody_study_backend.repository.StreakRepository;
-import com.example.moody_study_backend.repository.StreamRepository;
 import com.example.moody_study_backend.repository.StudyMaterialRepository;
 import com.example.moody_study_backend.repository.StudySessionRepository;
 import com.example.moody_study_backend.repository.SubjectPlanRepository;
@@ -49,11 +48,6 @@ import com.example.moody_study_backend.repository.UserRepository;
 import com.example.moody_study_backend.repository.UserXpRepository;
 import com.example.moody_study_backend.services.GeminiService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -98,25 +92,16 @@ public abstract class BaseIntegrationTest {
     protected StudySessionRepository studySessionRepository;
 
     @Autowired
-    protected StreamRepository streamRepository;
-
-    @Autowired
     protected StreakRepository streakRepository;
 
     @Autowired
     protected GeneratedQuizRepository generatedQuizRepository;
 
     @Autowired
-    protected MoodScaleRepository moodScaleRepository;
-
-    @Autowired
     protected UserProfileRepository userProfileRepository;
 
     @Autowired
     protected UserXpRepository userXpRepository;
-
-    @Autowired
-    private MoodObjectLogRepository moodObjectLogRepository;
 
     public static PostgreSQLContainer<?> postgres;
 
@@ -202,13 +187,10 @@ public abstract class BaseIntegrationTest {
         studyMaterialRepository.deleteAllInBatch();
         studySessionRepository.deleteAllInBatch();
         notificationRepository.deleteAllInBatch();
-        streamRepository.deleteAllInBatch();
         scheduleRepository.deleteAllInBatch();
         streakRepository.deleteAllInBatch();
         dailyQuestRepository.deleteAllInBatch();
         subjectPlanRepository.deleteAllInBatch();
-        moodObjectLogRepository.deleteAllInBatch();
-        moodScaleRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
 
         User user = User.builder()
@@ -266,29 +248,6 @@ public abstract class BaseIntegrationTest {
                 .build());
     }
 
-    protected MoodObjectLog seedMoodLog() {
-        return moodObjectLogRepository.save(MoodObjectLog.builder()
-                .user(testUser())
-                .subject("Matematika")
-                .moodFeel("happy")
-                .moodIntensity(3)
-                .moodDate(LocalDateTime.now())
-                .notes("Belajar lancar")
-                .build());
-    }
-
-    protected MoodScale seedMoodScale() {
-        return moodScaleRepository.save(MoodScale.builder()
-                .user(testUser())
-                .moodDate(LocalDateTime.now())
-                .moodType("study")
-                .moodValue(4)
-                .moodFeel("focused")
-                .moodIntensity(2)
-                .moodNote("Bagus")
-                .build());
-    }
-
     protected Schedule seedSchedule() {
         return scheduleRepository.save(Schedule.builder()
                 .user(testUser())
@@ -319,15 +278,6 @@ public abstract class BaseIntegrationTest {
                 .fileType("txt")
                 .content("isi file")
                 .savedAt(LocalDateTime.now())
-                .build());
-    }
-
-    protected Stream seedStream() {
-        return streamRepository.save(Stream.builder()
-                .user(testUser())
-                .streamId("stream-1")
-                .startTime(LocalDateTime.now().minusMinutes(5))
-                .status("active")
                 .build());
     }
 

@@ -4,6 +4,7 @@ import 'package:moody_study/services/notification_service.dart';
 import 'package:moody_study/services/profile_image_store.dart';
 import 'package:moody_study/services/profile_image_provider.dart';
 import 'package:moody_study/services/user_provider.dart';
+import 'package:moody_study/services/api_client.dart';
 import 'package:moody_study/utils/app_localizations.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/theme_selector_screen.dart';
@@ -13,6 +14,7 @@ void main() async {
   await NotificationService.instance.init();
   // Load foto profil yang tersimpan dari sesi sebelumnya
   await ProfileImageStore.instance.init();
+  await ApiClient.init(); 
   runApp(const MoodyStudyApp());
 }
 
