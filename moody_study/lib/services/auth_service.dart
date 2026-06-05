@@ -1,7 +1,8 @@
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 
-import '../core/failure.dart';
+import '../core/error/exception_mapper.dart';
+import '../core/error/failures.dart';
 import '../models/auth_user.dart';
 import 'api_client.dart';
 
@@ -15,7 +16,7 @@ class AuthService {
     }
   }
 
-  static Future<Either<AuthFailure, AuthUser>> register({
+  static Future<Either<AppFailure, AuthUser>> register({
     required String name,
     required String username,
     required String email,
@@ -36,12 +37,11 @@ class AuthService {
         email: email,
       ));
     } on DioException catch (e) {
-      final err = e.error;
-      return left(AuthFailure(err is ApiException ? err.message : 'Registrasi gagal.'));
+      return left(ExceptionMapper.mapAuth(e));
     }
   }
 
-  static Future<Either<AuthFailure, AuthUser>> login({
+  static Future<Either<AppFailure, AuthUser>> login({
     required String email,
     required String password,
   }) async {
@@ -60,8 +60,7 @@ class AuthService {
         email: email,
       ));
     } on DioException catch (e) {
-      final err = e.error;
-      return left(AuthFailure(err is ApiException ? err.message : 'Login gagal.'));
+      return left(ExceptionMapper.mapAuth(e));
     }
   }
 

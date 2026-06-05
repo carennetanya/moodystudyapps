@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dartz/dartz.dart' hide State;
-import 'package:moody_study/core/failure.dart';
-import 'package:moody_study/core/exception_handler.dart';
+import 'package:moody_study/core/error/exception_mapper.dart';
+import 'package:moody_study/core/error/failures.dart';
 import '../models/daily_quest_model.dart';
 import '../services/daily_quest_service.dart';
 import '../utils/app_localizations.dart';
@@ -27,11 +27,11 @@ class _DailyQuestScreenState extends State<DailyQuestScreen> {
     _loadQuests();
   }
 
-  Future<Either<Failure, DailyQuestModel>> _fetchQuests() async {
+  Future<Either<AppFailure, DailyQuestModel>> _fetchQuests() async {
     try {
       return Right(await DailyQuestService.getDailyQuests());
     } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -40,7 +40,7 @@ class _DailyQuestScreenState extends State<DailyQuestScreen> {
     final result = await _fetchQuests();
     if (!mounted) return;
     result.fold(
-      (failure) => setState(() { _error = failure.message; _loading = false; }),
+      (failure) => setState(() { _error = failure.localizedMessage(context); _loading = false; }),
       (data) => setState(() { _data = data; _loading = false; }),
     );
   }

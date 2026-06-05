@@ -212,6 +212,92 @@ class AppLocalizations {
   String get back => isId ? 'Kembali' : 'Back';
   String get langButtonLabel => isId ? 'EN' : 'ID';
   String get langTooltip => isId ? 'Ganti ke English' : 'Switch to Indonesian';
+
+  // ─── Error messages (dipakai oleh AppFailure.localizedMessage) ────────────
+
+  String get errorSpotifySdkNotInitialized => isId
+      ? 'Aplikasi Spotify tidak terdeteksi. Pastikan Spotify sudah terpasang.'
+      : 'Spotify app not found. Please make sure Spotify is installed.';
+
+  String get errorSpotifyConnectionFailed => isId
+      ? 'Gagal terhubung ke Spotify. Silakan coba lagi.'
+      : 'Failed to connect to Spotify. Please try again.';
+
+  String get errorSpotifyCancelled =>
+      isId ? 'Koneksi Spotify dibatalkan.' : 'Spotify connection was cancelled.';
+
+  String get errorSpotifyTokenExpired => isId
+      ? 'Sesi Spotify habis. Silakan hubungkan ulang.'
+      : 'Spotify session expired. Please reconnect.';
+
+  String get errorAuthInvalidCredentials => isId
+      ? 'Email atau kata sandi tidak sesuai.'
+      : 'Incorrect email or password.';
+
+  String get errorAuthUserNotFound =>
+      isId ? 'Akun tidak ditemukan.' : 'Account not found.';
+
+  String get errorAuthEmailAlreadyUsed => isId
+      ? 'Email ini sudah digunakan oleh akun lain.'
+      : 'This email is already in use.';
+
+  String get errorAuthWeakPassword => isId
+      ? 'Kata sandi terlalu lemah. Gunakan minimal 6 karakter.'
+      : 'Password is too weak. Use at least 6 characters.';
+
+  String get errorAuthTooManyRequests => isId
+      ? 'Terlalu banyak percobaan. Tunggu beberapa saat.'
+      : 'Too many attempts. Please wait a moment.';
+
+  String get errorAuthSessionExpired => isId
+      ? 'Sesi kamu telah habis. Silakan masuk kembali.'
+      : 'Your session has expired. Please log in again.';
+
+  String get errorNetworkOffline => isId
+      ? 'Tidak ada koneksi internet. Periksa jaringan kamu.'
+      : 'No internet connection. Check your network.';
+
+  String get errorNetworkTimeout => isId
+      ? 'Koneksi lambat atau timeout. Silakan coba lagi.'
+      : 'Connection timed out. Please try again.';
+
+  String get errorNetworkServerError => isId
+      ? 'Server sedang bermasalah. Coba lagi nanti.'
+      : 'Server error. Please try again later.';
+
+  String get errorValidationRequired =>
+      isId ? 'Field ini wajib diisi.' : 'This field is required.';
+
+  String get errorValidationInvalidEmail =>
+      isId ? 'Format email tidak valid.' : 'Invalid email format.';
+
+  String get errorValidationPasswordTooShort => isId
+      ? 'Kata sandi minimal 6 karakter.'
+      : 'Password must be at least 6 characters.';
+
+  String get errorUnknown =>
+      isId ? 'Terjadi kesalahan. Silakan coba lagi.' : 'Something went wrong. Please try again.';
+
+  /// Lookup by i18n key — dipakai oleh AppFailure.localizedMessage().
+  String errorForKey(String key) => switch (key) {
+        'errors.spotify.sdkNotInitialized' => errorSpotifySdkNotInitialized,
+        'errors.spotify.connectionFailed' => errorSpotifyConnectionFailed,
+        'errors.spotify.cancelled' => errorSpotifyCancelled,
+        'errors.spotify.tokenExpired' => errorSpotifyTokenExpired,
+        'errors.auth.invalidCredentials' => errorAuthInvalidCredentials,
+        'errors.auth.userNotFound' => errorAuthUserNotFound,
+        'errors.auth.emailAlreadyUsed' => errorAuthEmailAlreadyUsed,
+        'errors.auth.weakPassword' => errorAuthWeakPassword,
+        'errors.auth.tooManyRequests' => errorAuthTooManyRequests,
+        'errors.auth.sessionExpired' => errorAuthSessionExpired,
+        'errors.network.offline' => errorNetworkOffline,
+        'errors.network.timeout' => errorNetworkTimeout,
+        'errors.network.serverError' => errorNetworkServerError,
+        'errors.validation.required' => errorValidationRequired,
+        'errors.validation.invalidEmail' => errorValidationInvalidEmail,
+        'errors.validation.passwordTooShort' => errorValidationPasswordTooShort,
+        _ => errorUnknown,
+      };
 }
 
 /// Widget tombol globe untuk ganti bahasa — taruh di top bar.

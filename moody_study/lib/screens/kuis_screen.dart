@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dartz/dartz.dart' hide State;
-import 'package:moody_study/core/failure.dart';
-import 'package:moody_study/core/exception_handler.dart';
+import 'package:moody_study/core/error/exception_mapper.dart';
+import 'package:moody_study/core/error/failures.dart';
 import '../models/generated_quiz_response.dart';
 import '../services/material_service.dart';
 import 'oddy_flashcard_screen.dart';
@@ -25,11 +25,11 @@ class _KuisScreenState extends State<KuisScreen> {
     _loadSaved();
   }
 
-  Future<Either<Failure, List<GeneratedQuizResponse>>> _fetchSaved() async {
+  Future<Either<AppFailure, List<GeneratedQuizResponse>>> _fetchSaved() async {
     try {
       return Right(await MaterialService.getSavedQuizzes());
     } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -38,7 +38,7 @@ class _KuisScreenState extends State<KuisScreen> {
     final result = await _fetchSaved();
     if (!mounted) return;
     result.fold(
-      (failure) => setState(() { _error = failure.message; _loading = false; }),
+      (failure) => setState(() { _error = failure.localizedMessage(context); _loading = false; }),
       (quizzes) => setState(() { _savedQuizzes = quizzes; _loading = false; }),
     );
   }
@@ -266,11 +266,11 @@ class _KuisScreenState extends State<KuisScreen> {
     return normalized;
   }
 
-  Either<Failure, dynamic> _tryDecodeJson(String value) {
+  Either<AppFailure, dynamic> _tryDecodeJson(String value) {
     try {
       return Right(jsonDecode(value));
     } catch (e) {
-      return Left(ParseFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 

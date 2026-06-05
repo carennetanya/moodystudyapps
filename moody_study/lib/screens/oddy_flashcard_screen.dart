@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:dartz/dartz.dart' hide State;
-import 'package:moody_study/core/failure.dart';
-import 'package:moody_study/core/exception_handler.dart';
+import 'package:moody_study/core/error/exception_mapper.dart';
+import 'package:moody_study/core/error/failures.dart';
 import 'package:moody_study/models/generated_quiz_response.dart';
 import 'package:moody_study/services/material_service.dart';
 
@@ -46,7 +46,7 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
   GeneratedQuizResponse? _generatedQuiz;
   List<QuizCard> _cards = [];
 
-  Future<Either<Failure, GeneratedQuizResponse>> _fetchGeneratedQuiz() async {
+  Future<Either<AppFailure, GeneratedQuizResponse>> _fetchGeneratedQuiz() async {
     try {
       return Right(await MaterialService.generateQuiz(
         materialId: widget.materialId,
@@ -54,7 +54,7 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
         questionCount: _questionCount,
       ));
     } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -64,7 +64,7 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
     final result = await _fetchGeneratedQuiz();
     if (!mounted) return;
     result.fold(
-      (failure) => setState(() { _error = failure.message; _generating = false; }),
+      (failure) => setState(() { _error = failure.localizedMessage(context); _generating = false; }),
       (quiz) {
         final cards = _parseQuizContent(quiz.quizContent);
         setState(() { _generatedQuiz = quiz; _cards = cards; _generating = false; });
@@ -169,11 +169,11 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
     return normalized;
   }
 
-  Either<Failure, dynamic> _tryDecodeJson(String value) {
+  Either<AppFailure, dynamic> _tryDecodeJson(String value) {
     try {
       return Right(jsonDecode(value));
     } catch (e) {
-      return Left(ParseFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -450,12 +450,12 @@ class _FlashcardResultScreenState extends State<FlashcardResultScreen> {
     _isSaved = widget.isSaved;
   }
 
-  Future<Either<Failure, bool>> _doToggleSave() async {
+  Future<Either<AppFailure, bool>> _doToggleSave() async {
     try {
       final result = await MaterialService.toggleSaveQuiz(widget.quizId);
       return Right(result.saved);
     } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -468,7 +468,7 @@ class _FlashcardResultScreenState extends State<FlashcardResultScreen> {
       (f) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(f.message.isNotEmpty ? f.message : 'Gagal menyimpan flashcard. Silakan coba lagi.'),
+          content: Text(f.localizedMessage(context)),
           backgroundColor: const Color(0xFFEF5350),
         ));
       },

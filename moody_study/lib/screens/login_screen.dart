@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dartz/dartz.dart' hide State;
-import 'package:moody_study/core/failure.dart';
 import 'package:moody_study/core/exception_handler.dart';
+import 'package:moody_study/core/failure.dart' show AudioFailure, Failure;
 import 'package:moody_study/services/user_provider.dart';
 import 'character_intro_screen.dart';
 import 'theme_selector_screen.dart';
@@ -110,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen>
       (failure) {
         setState(() {
           _isLoading = false;
-          _errorMessage = failure.message;
+          _errorMessage = failure.localizedMessage(context);
         });
       },
       (user) {

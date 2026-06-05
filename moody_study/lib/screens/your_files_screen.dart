@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dartz/dartz.dart' hide State, OpenFile;
-import 'package:moody_study/core/failure.dart';
-import 'package:moody_study/core/exception_handler.dart';
+import 'package:moody_study/core/error/exception_mapper.dart';
+import 'package:moody_study/core/error/failures.dart';
 import 'package:moody_study/models/saved_file.dart';
 import 'package:moody_study/services/material_service.dart';
 import 'package:path_provider/path_provider.dart';
@@ -30,11 +30,11 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
     _loadFiles();
   }
 
-  Future<Either<Failure, List<SavedFile>>> _fetchFiles() async {
+  Future<Either<AppFailure, List<SavedFile>>> _fetchFiles() async {
     try {
       return Right(await MaterialService.fetchSavedFiles());
     } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -43,14 +43,14 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
     final result = await _fetchFiles();
     if (!mounted) return;
     result.fold(
-      (failure) => setState(() { _error = failure.message; _loading = false; }),
+      (failure) => setState(() { _error = failure.localizedMessage(context); _loading = false; }),
       (files) => setState(() { _files = files; _loading = false; }),
     );
   }
 
-  Future<Either<Failure, Directory>> _resolveTempDirectory() async {
+  Future<Either<AppFailure, Directory>> _resolveTempDirectory() async {
     if (kIsWeb) {
-      return Left(StorageFailure('Tidak mendukung operasi file sementara di web.'));
+      return const Left(UnknownFailure('web_unsupported'));
     }
     try {
       return Right(await getTemporaryDirectory());
@@ -74,18 +74,18 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
     if (!mounted) return;
     result.fold(
       (f) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(f.message)),
+        SnackBar(content: Text(f.localizedMessage(context))),
       ),
       (_) {},
     );
   }
 
-  Future<Either<Failure, void>> _doOpenFile(SavedFile file) async {
+  Future<Either<AppFailure, void>> _doOpenFile(SavedFile file) async {
     try {
       final bytes = base64Decode(file.content);
       final dirResult = await _resolveTempDirectory();
       if (dirResult.isLeft()) {
-        return Left(dirResult.fold((f) => f, (_) => const StorageFailure('')));
+        return Left(dirResult.fold((f) => f, (_) => const UnknownFailure('resolve_dir')));
       }
       final tempDir = dirResult.getOrElse(() => Directory.systemTemp);
       final safeName = file.fileName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
@@ -95,9 +95,9 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
       await OpenFile.open(filePath);
       return const Right(null);
     } on UnsupportedError catch (e) {
-      return Left(StorageFailure(e.message ?? 'Operasi tidak didukung.'));
+      return Left(UnknownFailure(e.toString()));
     } catch (e) {
-      return Left(StorageFailure('Gagal membuka file. Format mungkin tidak didukung.'));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -127,7 +127,7 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
       if (!mounted) return;
       result.fold(
         (f) => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message)),
+          SnackBar(content: Text(f.localizedMessage(context))),
         ),
         (_) async {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -139,12 +139,12 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
     }
   }
 
-  Future<Either<Failure, void>> _doDeleteFile(int id) async {
+  Future<Either<AppFailure, void>> _doDeleteFile(int id) async {
     try {
       await MaterialService.deleteSavedFile(id);
       return const Right(null);
     } catch (e) {
-      return Left(ServiceFailure('Gagal menghapus file. Silakan coba lagi.'));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -180,7 +180,7 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
       if (!mounted) return;
       result.fold(
         (f) => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message)),
+          SnackBar(content: Text(f.localizedMessage(context))),
         ),
         (_) async {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -192,12 +192,12 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
     }
   }
 
-  Future<Either<Failure, void>> _doRenameFile({required int id, required String newFileName}) async {
+  Future<Either<AppFailure, void>> _doRenameFile({required int id, required String newFileName}) async {
     try {
       await MaterialService.renameSavedFile(id: id, newFileName: newFileName);
       return const Right(null);
     } catch (e) {
-      return Left(ServiceFailure('Gagal mengganti nama. Silakan coba lagi.'));
+      return Left(ExceptionMapper.map(e));
     }
   }
 

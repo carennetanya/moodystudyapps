@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:dartz/dartz.dart' hide State;
-import 'package:moody_study/core/failure.dart';
 import 'package:moody_study/core/exception_handler.dart';
+import 'package:moody_study/core/failure.dart' show AudioFailure, Failure;
 import 'package:moody_study/services/auth_service.dart';
 import 'loading_screen.dart';
 import 'theme_selector_screen.dart';
@@ -152,7 +152,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       (failure) {
         setState(() {
           _isLoading = false;
-          _errorMessage = failure.message;
+          _errorMessage = failure.localizedMessage(context);
         });
       },
       (_) async {

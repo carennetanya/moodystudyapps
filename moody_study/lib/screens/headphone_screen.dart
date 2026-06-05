@@ -6,9 +6,11 @@ import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:spotify_sdk/spotify_sdk.dart';
 import 'package:spotify_sdk/models/player_state.dart' as sp;
 import 'package:dartz/dartz.dart' hide State;
-import 'package:moody_study/core/failure.dart';
-import 'package:moody_study/core/exception_handler.dart';
+import 'package:flutter/services.dart' show MissingPluginException;
+import 'package:moody_study/core/error/exception_mapper.dart';
+import 'package:moody_study/core/error/failures.dart';
 import 'package:moody_study/services/spotify_service.dart';
+import 'package:moody_study/utils/app_localizations.dart';
 
 class HeadphoneScreen extends StatefulWidget {
   final AudioPlayer audioPlayer;
@@ -57,28 +59,56 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
   }
 
   // ── Spotify connect ──────────────────────────────────────────────────────
+
+  /// Map SpotifyConnectionResult.message ke typed AppFailure tanpa menyentuh
+  /// SpotifyService (agar tidak bocor PlatformException.toString() ke UI).
+  AppFailure _failureFromConnectResult(SpotifyConnectionResult result) {
+    final msg = result.message.toLowerCase();
+    if (msg.contains('not installed') ||
+        msg.contains('couldnotfindspotifyapp')) {
+      return const SpotifySdkNotInitializedFailure();
+    }
+    if (msg.contains('failed to get') ||
+        msg.contains('authentication') ||
+        msg.contains('user closed')) {
+      return const SpotifyAuthCancelledFailure();
+    }
+    return const SpotifyConnectionFailure();
+  }
+
   Future<void> _connectSpotify() async {
-    setState(() => _spotifyStatus = 'Connecting...');
+    final l = AppLocalizations.of(context, listen: false);
+    setState(() => _spotifyStatus = l.loading);
 
     final result = await SpotifyService.connect();
     if (!mounted) return;
 
-    setState(() {
-      _spotifyConnected = result.success;
-      _spotifyStatus = result.message;
-    });
-
     if (result.success) {
+      setState(() {
+        _spotifyConnected = true;
+        _spotifyStatus = 'Connected';
+      });
       _subscribeSpotifyPlayerState();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connected to Spotify!'),
+          backgroundColor: Color(0xFF1DB954),
+        ),
+      );
+    } else {
+      final failure = _failureFromConnectResult(result);
+      final msg = failure.localizedMessage(context);
+      setState(() {
+        _spotifyConnected = false;
+        _spotifyStatus = msg;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: const Color(0xFFCC3333),
+        ),
+      );
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result.message),
-        backgroundColor:
-            result.success ? const Color(0xFF1DB954) : const Color(0xFFCC3333),
-      ),
-    );
   }
 
   void _subscribeSpotifyPlayerState() {
@@ -95,7 +125,7 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
   }
 
   // ── Spotify controls ─────────────────────────────────────────────────────
-  Future<Either<Failure, void>> _doToggleSpotify() async {
+  Future<Either<AppFailure, void>> _doToggleSpotify() async {
     try {
       if (_spotifyPlaying) {
         await SpotifyService.pause();
@@ -107,8 +137,10 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
         );
       }
       return const Right(null);
-    } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+    } on MissingPluginException {
+      return const Left(SpotifySdkNotInitializedFailure());
+    } catch (_) {
+      return const Left(SpotifyConnectionFailure());
     }
   }
 
@@ -119,22 +151,22 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
     result.fold(
       (f) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal mengontrol Spotify. Pastikan aplikasi Spotify terbuka.'),
+          content: Text(f.localizedMessage(context)),
           backgroundColor: const Color(0xFFCC3333),
         ),
       ),
-      (_) => setState(() => _spotifyPlaying = wasPlaying
-          ? false
-          : true),
+      (_) => setState(() => _spotifyPlaying = !wasPlaying),
     );
   }
 
-  Future<Either<Failure, void>> _doSkipNext() async {
+  Future<Either<AppFailure, void>> _doSkipNext() async {
     try {
       await SpotifyService.skipNext().timeout(const Duration(seconds: 3));
       return const Right(null);
-    } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+    } on MissingPluginException {
+      return const Left(SpotifySdkNotInitializedFailure());
+    } catch (_) {
+      return const Left(SpotifyConnectionFailure());
     }
   }
 
@@ -143,19 +175,21 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
       (f) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not skip. Make sure Spotify is open.')),
+          SnackBar(content: Text(f.localizedMessage(context))),
         );
       },
       (_) {},
     );
   }
 
-  Future<Either<Failure, void>> _doSkipPrev() async {
+  Future<Either<AppFailure, void>> _doSkipPrev() async {
     try {
       await SpotifyService.skipPrevious().timeout(const Duration(seconds: 3));
       return const Right(null);
-    } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+    } on MissingPluginException {
+      return const Left(SpotifySdkNotInitializedFailure());
+    } catch (_) {
+      return const Left(SpotifyConnectionFailure());
     }
   }
 
@@ -164,7 +198,7 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
       (f) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not skip. Make sure Spotify is open.')),
+          SnackBar(content: Text(f.localizedMessage(context))),
         );
       },
       (_) {},
@@ -178,7 +212,7 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
   }
 
   // ── Local audio controls ─────────────────────────────────────────────────
-  Future<Either<Failure, void>> _doToggleLocal() async {
+  Future<Either<AppFailure, void>> _doToggleLocal() async {
     try {
       if (_localPlaying) {
         await widget.audioPlayer.pause();
@@ -187,7 +221,7 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
       }
       return const Right(null);
     } catch (e) {
-      return Left(AudioFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -196,7 +230,7 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
       (f) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to start music. Please try again.')),
+          SnackBar(content: Text(f.localizedMessage(context))),
         );
       },
       (_) {},

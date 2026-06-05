@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:dartz/dartz.dart' hide State;
-import 'package:moody_study/core/failure.dart';
-import 'package:moody_study/core/exception_handler.dart';
+import 'package:moody_study/core/error/exception_mapper.dart';
+import 'package:moody_study/core/error/failures.dart';
 import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/streak_service.dart';
@@ -63,7 +63,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
     _loadAll();
   }
 
-  Future<Either<Failure, void>> _fetchAll() async {
+  Future<Either<AppFailure, void>> _fetchAll() async {
     try {
       await Future.wait([
         _loadStats(),
@@ -73,7 +73,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
       ]);
       return const Right(null);
     } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -82,7 +82,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
     final result = await _fetchAll();
     if (!mounted) return;
     result.fold(
-      (failure) => setState(() { _error = failure.message; _loading = false; }),
+      (failure) => setState(() { _error = failure.localizedMessage(context); _loading = false; }),
       (_) => setState(() => _loading = false),
     );
   }
@@ -939,7 +939,7 @@ class _LevelHistorySheetState extends State<_LevelHistorySheet> {
     _loadHistory();
   }
 
-  Future<Either<Failure, Map<String, dynamic>?>> _fetchHistory() async {
+  Future<Either<AppFailure, Map<String, dynamic>?>> _fetchHistory() async {
     try {
       final token = AuthService.token;
       final baseUrl = StreakService.baseUrl;
@@ -953,9 +953,12 @@ class _LevelHistorySheetState extends State<_LevelHistorySheet> {
       if (res.statusCode == 200) {
         return Right(jsonDecode(res.body) as Map<String, dynamic>);
       }
-      return Left(NetworkFailure('Gagal memuat data'));
+      if (res.statusCode == 401 || res.statusCode == 403) {
+        return const Left(SessionExpiredFailure());
+      }
+      return Left(ServerFailure(res.statusCode ?? 0));
     } catch (e) {
-      return Left(NetworkFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -963,7 +966,7 @@ class _LevelHistorySheetState extends State<_LevelHistorySheet> {
     final result = await _fetchHistory();
     if (!mounted) return;
     result.fold(
-      (failure) => setState(() { _error = failure.message; _loading = false; }),
+      (failure) => setState(() { _error = failure.localizedMessage(context); _loading = false; }),
       (data) => setState(() { _data = data; _loading = false; }),
     );
   }
