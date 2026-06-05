@@ -4,8 +4,8 @@ Tool: k6
 Scenario: 50 virtual users, constant load, 30 seconds
 Endpoint: GET /api/user/xp
 Base URL: http://localhost:8081
-Total requests: 70024
-Throughput: 2298.85 req/s
+Total requests: 65913
+Throughput: 2169.84 req/s
 Error rate: 0.00%
 HTTP 200 check rate: 100.00%
 Pass threshold >=100 req/s: PASS

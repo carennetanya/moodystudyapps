@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import '../widgets/moody_title.dart';
 import '../widgets/sub_tagline.dart';
 import '../widgets/sound_warning.dart';
@@ -119,6 +122,28 @@ class _LoadingScreenState extends State<LoadingScreen>
     setState(() => _showWarning = false);
   }
 
+  Future<Either<Failure, void>> _playAudio() async {
+    try {
+      await _audioPlayer.play(AssetSource(_audioFile));
+      return const Right(null);
+    } catch (e) {
+      return Left(AudioFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<Either<Failure, void>> _toggleAudioPlayback(bool play) async {
+    try {
+      if (play) {
+        await _audioPlayer.play(AssetSource(_audioFile));
+      } else {
+        await _audioPlayer.pause();
+      }
+      return const Right(null);
+    } catch (e) {
+      return Left(AudioFailure(sanitizeException(e)));
+    }
+  }
+
   void _onStartFromRegister() async {
     setState(() {
       _started = true;
@@ -129,11 +154,10 @@ class _LoadingScreenState extends State<LoadingScreen>
     });
     _startedController.forward();
 
-    try {
-      await _audioPlayer.play(AssetSource(_audioFile));
-    } catch (e) {
-      debugPrint('Audio play error: $e');
-    }
+    (await _playAudio()).fold(
+      (f) => debugPrint('Audio play error: ${f.message}'),
+      (_) {},
+    );
   }
 
   void _onStart() async {
@@ -147,12 +171,10 @@ class _LoadingScreenState extends State<LoadingScreen>
     });
     _startedController.forward();
 
-    // Play music first regardless of flow
-    try {
-      await _audioPlayer.play(AssetSource(_audioFile));
-    } catch (e) {
-      debugPrint('Audio play error: $e');
-    }
+    (await _playAudio()).fold(
+      (f) => debugPrint('Audio play error: ${f.message}'),
+      (_) {},
+    );
 
     if (!mounted) return;
 
@@ -177,15 +199,10 @@ class _LoadingScreenState extends State<LoadingScreen>
   void _onMusicToggle() async {
     final newState = !_isPlaying;
     setState(() => _isPlaying = newState);
-    try {
-      if (newState) {
-        await _audioPlayer.play(AssetSource(_audioFile));
-      } else {
-        await _audioPlayer.pause();
-      }
-    } catch (e) {
-      debugPrint('Audio toggle error: $e');
-    }
+    (await _toggleAudioPlayback(newState)).fold(
+      (f) => debugPrint('Audio toggle error: ${f.message}'),
+      (_) {},
+    );
   }
 
   void _onNameSubmit(String name) {

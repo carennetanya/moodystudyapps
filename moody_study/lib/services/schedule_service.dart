@@ -5,12 +5,36 @@ import 'api_client.dart';
 
 class ScheduleService {
   static Future<List<ScheduleItem>> fetchSchedules() async {
-    final res = await ApiClient.dio.get('/api/schedule');
-    final body = res.data;
-    if (body is List) {
-      return body.whereType<Map<String, dynamic>>().map(ScheduleItem.fromJson).toList();
+    final token = AuthService.token;
+    if (token == null) {
+      throw Exception('Authentication required. Please log in again.');
     }
-    return [];
+
+    final uri = Uri.parse('$baseUrl/api/schedule');
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body is List) {
+        return body
+            .whereType<Map<String, dynamic>>()
+            .map(ScheduleItem.fromJson)
+            .toList();
+      }
+      return [];
+    }
+
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('Authentication failed. Please log in again.');
+    }
+
+    throw Exception('Failed to load schedules: ${response.statusCode}.');
   }
 
   static Future<ScheduleItem> createSchedule({
@@ -21,9 +45,19 @@ class ScheduleService {
     String? location,
     String? mood,
   }) async {
-    final res = await ApiClient.dio.post(
-      '/api/schedule',
-      data: {
+    final token = AuthService.token;
+    if (token == null) {
+      throw Exception('Authentication required. Please log in again.');
+    }
+
+    final uri = Uri.parse('$baseUrl/api/schedule');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
         'subject': subject,
         'studyDate': studyDate,
         'startTime': startTime,
@@ -32,7 +66,20 @@ class ScheduleService {
         'mood': mood,
       },
     );
-    return ScheduleItem.fromJson(res.data as Map<String, dynamic>);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic>) {
+        return ScheduleItem.fromJson(body);
+      }
+      throw Exception('Invalid response from schedule API.');
+    }
+
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('Authentication failed. Please log in again.');
+    }
+
+    throw Exception('Failed to create schedule: ${response.statusCode}.');
   }
 
   static Future<List<ScheduleItem>> generateAutoSchedule({
@@ -43,9 +90,19 @@ class ScheduleService {
     required int durationMinutes,
     int daysAhead = 7,
   }) async {
-    final res = await ApiClient.dio.post(
-      '/api/schedule/auto',
-      data: {
+    final token = AuthService.token;
+    if (token == null) {
+      throw Exception('Authentication required. Please log in again.');
+    }
+
+    final uri = Uri.parse('$baseUrl/api/schedule/auto');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
         'subjects': subjects,
         'availableDays': availableDays,
         'startHour': startHour,
@@ -54,26 +111,96 @@ class ScheduleService {
         'daysAhead': daysAhead,
       },
     );
-    final body = res.data;
-    if (body is List) {
-      return body.whereType<Map<String, dynamic>>().map(ScheduleItem.fromJson).toList();
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body is List) {
+        return body
+            .whereType<Map<String, dynamic>>()
+            .map(ScheduleItem.fromJson)
+            .toList();
+      }
+      return [];
     }
-    return [];
+
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('Authentication failed. Please log in again.');
+    }
+
+    throw Exception('Failed to generate AI schedule: ${response.statusCode}.');
   }
 
   static Future<ScheduleItem> completeSchedule(int id) async {
-    final res = await ApiClient.dio.patch('/api/schedule/$id/complete');
-    return ScheduleItem.fromJson(res.data as Map<String, dynamic>);
+    final token = AuthService.token;
+    if (token == null) {
+      throw Exception('Authentication required. Please log in again.');
+    }
+
+    final uri = Uri.parse('$baseUrl/api/schedule/$id/complete');
+    final response = await http.patch(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic>) {
+        return ScheduleItem.fromJson(body);
+      }
+      throw Exception('Invalid response from schedule API.');
+    }
+
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('Authentication failed. Please log in again.');
+    }
+
+    throw Exception('Failed to complete schedule: ${response.statusCode}.');
   }
 
   static Future<void> deleteSchedule(int id) async {
-    await ApiClient.dio.delete('/api/schedule/$id');
+    final token = AuthService.token;
+    if (token == null) {
+      throw Exception('Authentication required. Please log in again.');
+    }
+
+    final uri = Uri.parse('$baseUrl/api/schedule/$id');
+    final response = await http.delete(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 204) {
+      return;
+    }
+
+    if (response.statusCode == 200) {
+      return;
+    }
+
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('Authentication failed. Please log in again.');
+    }
+
+    throw Exception('Failed to delete schedule: ${response.statusCode}.');
   }
 
   static Future<List<String>> parseSubjectsFromFile(
     String filePath,
     String fileName,
   ) async {
+    final token = AuthService.token;
+    if (token == null) {
+      throw Exception('Authentication required. Please log in again.');
+    }
+
+    final uri = Uri.parse('$baseUrl/api/schedule/parse-file');
+    final file = File(filePath);
     final ext = fileName.split('.').last.toLowerCase();
     MediaType mediaType;
     switch (ext) {
@@ -94,16 +221,24 @@ class ScheduleService {
       'file': await MultipartFile.fromFile(filePath, filename: fileName, contentType: mediaType),
     });
 
-    // Override Content-Type untuk multipart — Dio handle otomatis
-    final res = await ApiClient.dio.post(
-      '/api/schedule/parse-file',
-      data: formData,
-    );
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
 
-    final body = res.data;
-    final rawList = body['subjects'];
-    if (rawList is List) return rawList.whereType<String>().toList();
-    return [];
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      final rawList = body['subjects'];
+      if (rawList is List) {
+        return rawList.whereType<String>().toList();
+      }
+      return [];
+    }
+
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('Authentication failed. Please log in again.');
+    }
+
+    final errBody = jsonDecode(response.body);
+    throw Exception(errBody['error'] ?? 'Gagal memproses file: ${response.statusCode}');
   }
 }
 

@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import 'package:moody_study/models/generated_quiz_response.dart';
 import 'package:moody_study/services/material_service.dart';
 
@@ -43,49 +46,41 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
   GeneratedQuizResponse? _generatedQuiz;
   List<QuizCard> _cards = [];
 
-  Future<void> _generateFlashcards() async {
-    setState(() {
-      _generating = true;
-      _error = null;
-      _generatedQuiz = null;
-      _cards = [];
-    });
-
+  Future<Either<Failure, GeneratedQuizResponse>> _fetchGeneratedQuiz() async {
     try {
-      final quiz = await MaterialService.generateQuiz(
+      return Right(await MaterialService.generateQuiz(
         materialId: widget.materialId,
         quizType: _quizType,
         questionCount: _questionCount,
-      );
-
-      final cards = _parseQuizContent(quiz.quizContent);
-      setState(() {
-        _generatedQuiz = quiz;
-        _cards = cards;
-      });
-
-      if (mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => FlashcardResultScreen(
-              fileName: quiz.fileName,
-              cards: cards,
-              quizId: quiz.id,
-            ),
-          ),
-        );
-      }
+      ));
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _generating = false;
-        });
-      }
+      return Left(ServiceFailure(sanitizeException(e)));
     }
+  }
+
+  Future<void> _generateFlashcards() async {
+    setState(() { _generating = true; _error = null; _generatedQuiz = null; _cards = []; });
+
+    final result = await _fetchGeneratedQuiz();
+    if (!mounted) return;
+    result.fold(
+      (failure) => setState(() { _error = failure.message; _generating = false; }),
+      (quiz) {
+        final cards = _parseQuizContent(quiz.quizContent);
+        setState(() { _generatedQuiz = quiz; _cards = cards; _generating = false; });
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => FlashcardResultScreen(
+                fileName: quiz.fileName,
+                cards: cards,
+                quizId: quiz.id,
+              ),
+            ),
+          );
+        }
+      },
+    );
   }
 
   List<QuizCard> _parseQuizContent(String content) {
@@ -174,32 +169,38 @@ class _OddyFlashcardScreenState extends State<OddyFlashcardScreen> {
     return normalized;
   }
 
+  Either<Failure, dynamic> _tryDecodeJson(String value) {
+    try {
+      return Right(jsonDecode(value));
+    } catch (e) {
+      return Left(ParseFailure(sanitizeException(e)));
+    }
+  }
+
   dynamic _decodePotentialJson(String value) {
     var current = value.trim();
     for (var i = 0; i < 4; i++) {
-      try {
-        final decoded = jsonDecode(current);
-        if (decoded is String) {
-          current = decoded.trim();
-          continue;
-        }
-        return decoded;
-      } catch (_) {
-        if ((current.startsWith('"') && current.endsWith('"')) || (current.startsWith("'") && current.endsWith("'"))) {
+      final result = _tryDecodeJson(current);
+      if (result.isLeft()) {
+        if ((current.startsWith('"') && current.endsWith('"')) ||
+            (current.startsWith("'") && current.endsWith("'"))) {
           current = current.substring(1, current.length - 1).trim();
           continue;
         }
         break;
       }
+      final decoded = result.getOrElse(() => current);
+      if (decoded is String) {
+        current = decoded.trim();
+        continue;
+      }
+      return decoded;
     }
 
     final jsonMatch = RegExp(r'([\[{].*[\]}])', dotAll: true).firstMatch(current);
     if (jsonMatch != null) {
-      try {
-        return jsonDecode(jsonMatch.group(1)!);
-      } catch (_) {
-        // ignore
-      }
+      final result = _tryDecodeJson(jsonMatch.group(1)!);
+      if (result.isRight()) return result.getOrElse(() => current);
     }
 
     return current;
@@ -449,30 +450,38 @@ class _FlashcardResultScreenState extends State<FlashcardResultScreen> {
     _isSaved = widget.isSaved;
   }
 
+  Future<Either<Failure, bool>> _doToggleSave() async {
+    try {
+      final result = await MaterialService.toggleSaveQuiz(widget.quizId);
+      return Right(result.saved);
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
+  }
+
   Future<void> _toggleSave() async {
     if (_saving) return;
     setState(() => _saving = true);
-    try {
-      final result = await MaterialService.toggleSaveQuiz(widget.quizId);
-      setState(() => _isSaved = result.saved);
-      if (mounted) {
+    final result = await _doToggleSave();
+    if (!mounted) return;
+    result.fold(
+      (f) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(f.message.isNotEmpty ? f.message : 'Gagal menyimpan flashcard. Silakan coba lagi.'),
+          backgroundColor: const Color(0xFFEF5350),
+        ));
+      },
+      (saved) {
+        setState(() { _isSaved = saved; _saving = false; });
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(_isSaved ? '✅ Flashcard disimpan ke tab Kuis!' : 'Flashcard dihapus dari tab Kuis'),
           backgroundColor: _isSaved ? const Color(0xFF1EE86F) : const Color(0xFF555555),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Gagal: ${e.toString()}'),
-          backgroundColor: const Color(0xFFEF5350),
-        ));
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
+      },
+    );
   }
 
   @override

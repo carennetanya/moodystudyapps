@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:moody_study/services/notification_service.dart';
 import 'package:moody_study/services/schedule_service.dart';
@@ -494,25 +496,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           : () async {
                               if (uploadedFilePath == null) return;
                               setS(() => isProcessingFile = true);
-                              try {
-                                final parsed = await ScheduleService.parseSubjectsFromFile(
-                                  uploadedFilePath!,
-                                  uploadedFileName!,
-                                );
-                                setS(() {
-                                  for (final item in parsed) {
-                                    if (!subjects.contains(item)) subjects.add(item);
-                                  }
-                                  uploadedFileName = null;
-                                  uploadedFilePath = null;
-                                  uploadedFileContent = null;
-                                  isProcessingFile = false;
-                                  inputMode = 'single';
-                                });
-                              } catch (e) {
-                                setS(() => isProcessingFile = false);
-                                _showErrorSnack('Gagal proses file: $e');
-                              }
+                              final parseResult = await _doParseSubjectsFromFile(
+                                uploadedFilePath!,
+                                uploadedFileName!,
+                              );
+                              parseResult.fold(
+                                (f) {
+                                  setS(() => isProcessingFile = false);
+                                  _showErrorSnack(f.message.isNotEmpty ? f.message : 'Gagal memproses file. Silakan coba lagi.');
+                                },
+                                (parsed) {
+                                  setS(() {
+                                    for (final item in parsed) {
+                                      if (!subjects.contains(item)) subjects.add(item);
+                                    }
+                                    uploadedFileName = null;
+                                    uploadedFilePath = null;
+                                    uploadedFileContent = null;
+                                    isProcessingFile = false;
+                                    inputMode = 'single';
+                                  });
+                                },
+                              );
                             },
                       child: Container(
                         width: double.infinity,
@@ -935,44 +940,57 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ),
     );
 
+    final result = await _doGenerateAutoSchedule(
+      subjects: subjects,
+      availableDays: availableDays,
+      startHour: startHour,
+      endHour: endHour,
+      durationMinutes: durationMinutes,
+    );
+    if (!mounted) return;
+    Navigator.of(context).pop(); // close loading
+    result.fold(
+      (f) => _showErrorSnack(f.message.isNotEmpty ? f.message : 'Gagal membuat jadwal otomatis. Silakan coba lagi.'),
+      (aiScheduleItems) {
+        if (aiScheduleItems.isEmpty) {
+          _showErrorSnack('Oddy ga bisa buat jadwal. Coba lagi!');
+          return;
+        }
+        _showOddyResultDialog(aiScheduleItems);
+      },
+    );
+  }
+
+  Future<Either<Failure, List<_AiScheduleItem>>> _doGenerateAutoSchedule({
+    required List<String> subjects,
+    required List<String> availableDays,
+    required String startHour,
+    required String endHour,
+    required int durationMinutes,
+  }) async {
     try {
       final dayMap = {
         'Sen': 'Senin', 'Sel': 'Selasa', 'Rab': 'Rabu',
         'Kam': 'Kamis', 'Jum': 'Jumat', 'Sab': 'Sabtu', 'Min': 'Minggu'
       };
       final daysFull = availableDays.map((d) => dayMap[d] ?? d).toList();
-
-      final aiScheduleItems = (await ScheduleService.generateAutoSchedule(
+      final items = (await ScheduleService.generateAutoSchedule(
         subjects: subjects,
         availableDays: daysFull,
         startHour: startHour,
         endHour: endHour,
         durationMinutes: durationMinutes,
         daysAhead: 7,
-      ))
-          .map((scheduleItem) => _AiScheduleItem(
-                subject: scheduleItem.subject,
-                studyDate: scheduleItem.studyDate,
-                startTime: scheduleItem.startTime,
-                endTime: scheduleItem.endTime,
-                location: scheduleItem.location,
-              ))
-          .toList();
-
-      if (!mounted) return;
-      Navigator.of(context).pop(); // close loading
-
-      if (aiScheduleItems.isEmpty) {
-        _showErrorSnack('Oddy ga bisa buat jadwal. Coba lagi!');
-        return;
-      }
-
-      _showOddyResultDialog(aiScheduleItems);
+      )).map((s) => _AiScheduleItem(
+        subject: s.subject,
+        studyDate: s.studyDate,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        location: s.location,
+      )).toList();
+      return Right(items);
     } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop();
-        _showErrorSnack('Terjadi kesalahan: $e');
-      }
+      return Left(ServiceFailure(sanitizeException(e)));
     }
   }
 
@@ -983,6 +1001,45 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         backgroundColor: _kRed,
       ),
     );
+  }
+
+  Future<Either<Failure, List<String>>> _doParseSubjectsFromFile(String path, String name) async {
+    try {
+      return Right(await ScheduleService.parseSubjectsFromFile(path, name));
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<Either<Failure, void>> _doCreateManualSchedule({
+    required String subject,
+    required DateTime studyDate,
+    required TimeOfDay startTime,
+    required TimeOfDay endTime,
+    String? location,
+    String? mood,
+  }) async {
+    try {
+      final created = await ScheduleService.createSchedule(
+        subject: subject,
+        studyDate: _formatIsoDate(studyDate),
+        startTime: _formatIsoTime(startTime),
+        endTime: _formatIsoTime(endTime),
+        location: location,
+        mood: mood,
+      );
+      await NotificationService.instance.scheduleStudyNotification(
+        created.id,
+        created.subject,
+        _parseScheduleDateTime(created.studyDate, created.startTime),
+        mood: created.mood ?? 'happy',
+        location: created.location ?? 'home',
+        durationMinutes: _calcDurationMinutes(created.startTime, created.endTime),
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
   }
 
   // ── Oddy Result / Edit Dialog ──────────────────────────────────
@@ -1323,30 +1380,38 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
+  Future<Either<Failure, void>> _doCreateScheduleItem(_AiScheduleItem item) async {
+    try {
+      final created = await ScheduleService.createSchedule(
+        subject: item.subject,
+        studyDate: item.studyDate,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        location: item.location,
+        mood: null,
+      );
+      await NotificationService.instance.scheduleStudyNotification(
+        created.id,
+        created.subject,
+        _parseScheduleDateTime(created.studyDate, created.startTime),
+        mood: created.mood ?? 'happy',
+        location: created.location ?? 'home',
+        durationMinutes: _calcDurationMinutes(created.startTime, created.endTime),
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
+  }
+
   // ── Save all AI schedules ──────────────────────────────────────
   Future<void> _saveAllAiSchedules(List<_AiScheduleItem> items) async {
     int saved = 0;
     for (final item in items) {
-      try {
-        final created = await ScheduleService.createSchedule(
-          subject: item.subject,
-          studyDate: item.studyDate,
-          startTime: item.startTime,
-          endTime: item.endTime,
-          location: item.location,
-          mood: null,
-        );
-        await NotificationService.instance.scheduleStudyNotification(
-          created.id,
-          created.subject,
-          _parseScheduleDateTime(created.studyDate, created.startTime),
-          mood: created.mood ?? 'happy',
-          location: created.location ?? 'home',
-          durationMinutes: _calcDurationMinutes(created.startTime, created.endTime),
-        );
-    
-        saved++;
-      } catch (_) {}
+      (await _doCreateScheduleItem(item)).fold(
+        (_) {},
+        (_) => saved++,
+      );
     }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1557,38 +1622,31 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                   setDialogState(() => errorText = localizations.scheduleTimeRangeError);
                                   return;
                                 }
-                                try {
-                                  final created = await ScheduleService.createSchedule(
-                                    subject: subjectController.text.trim(),
-                                    studyDate: _formatIsoDate(studyDate!),
-                                    startTime: _formatIsoTime(startTime!),
-                                    endTime: _formatIsoTime(endTime!),
-                                    location: locationController.text.trim().isEmpty ? null : locationController.text.trim(),
-                                    mood: moodController.text.trim().isEmpty ? null : moodController.text.trim(),
-                                  );
-                                  await NotificationService.instance.scheduleStudyNotification(
-                                    created.id,
-                                    created.subject,
-                                    _parseScheduleDateTime(created.studyDate, created.startTime),
-                                    mood: created.mood ?? 'happy',
-                                    location: created.location ?? 'home',
-                                    durationMinutes: _calcDurationMinutes(created.startTime, created.endTime),
-                                  );
-                                  if (!mounted) return;
-                                  Navigator.of(context).pop();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        localizations.scheduleCreated,
-                                        style: const TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.w700),
+                                final createResult = await _doCreateManualSchedule(
+                                  subject: subjectController.text.trim(),
+                                  studyDate: studyDate!,
+                                  startTime: startTime!,
+                                  endTime: endTime!,
+                                  location: locationController.text.trim().isEmpty ? null : locationController.text.trim(),
+                                  mood: moodController.text.trim().isEmpty ? null : moodController.text.trim(),
+                                );
+                                if (!mounted) return;
+                                createResult.fold(
+                                  (f) => setDialogState(() => errorText = f.message.isNotEmpty ? f.message : 'Gagal membuat jadwal. Silakan coba lagi.'),
+                                  (_) {
+                                    Navigator.of(context).pop();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          localizations.scheduleCreated,
+                                          style: const TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.w700),
+                                        ),
+                                        backgroundColor: _kYellow,
                                       ),
-                                      backgroundColor: _kYellow,
-                                    ),
-                                  );
-                                  _refreshSchedules();
-                                } catch (e) {
-                                  setDialogState(() => errorText = e.toString());
-                                }
+                                    );
+                                    _refreshSchedules();
+                                  },
+                                );
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1721,35 +1779,44 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
-  int _calcDurationMinutes(String startTime, String endTime) {
+  Either<Failure, int> _tryCalcDurationMinutes(String startTime, String endTime) {
     try {
       final sParts = startTime.split(':');
       final eParts = endTime.split(':');
       final start = int.parse(sParts[0]) * 60 + int.parse(sParts[1]);
       final end   = int.parse(eParts[0]) * 60 + int.parse(eParts[1]);
       final diff  = end - start;
-      return diff > 0 ? diff : 60;
-    } catch (_) {
-      return 60;
+      return Right(diff > 0 ? diff : 60);
+    } catch (e) {
+      return Left(ParseFailure(sanitizeException(e)));
     }
   }
 
-  DateTime? _tryParseDate(String s) {
+  int _calcDurationMinutes(String startTime, String endTime) =>
+      _tryCalcDurationMinutes(startTime, endTime).getOrElse(() => 60);
+
+  Either<Failure, DateTime> _parseDate(String s) {
     try {
-      return DateTime.parse(s);
-    } catch (_) {
-      return null;
+      return Right(DateTime.parse(s));
+    } catch (e) {
+      return Left(ParseFailure(sanitizeException(e)));
     }
   }
 
-  TimeOfDay? _tryParseTime(String s) {
+  DateTime? _tryParseDate(String s) =>
+      _parseDate(s).fold((_) => null, (d) => d);
+
+  Either<Failure, TimeOfDay> _parseTime(String s) {
     try {
       final parts = s.split(':');
-      return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-    } catch (_) {
-      return null;
+      return Right(TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1])));
+    } catch (e) {
+      return Left(ParseFailure(sanitizeException(e)));
     }
   }
+
+  TimeOfDay? _tryParseTime(String s) =>
+      _parseTime(s).fold((_) => null, (t) => t);
 
   // ── Build ──────────────────────────────────────────────────────
   @override

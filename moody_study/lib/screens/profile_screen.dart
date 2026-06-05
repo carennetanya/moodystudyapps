@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import 'package:moody_study/utils/app_localizations.dart';
 import 'package:moody_study/services/profile_service.dart';
 import 'package:moody_study/services/profile_image_provider.dart';
@@ -69,112 +72,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _loadProfile() async {
-    final userProvider = context.read<UserProvider>();
-
-    // Isi controller dari UserProvider dulu (data yang sudah ada di state)
-    _nameController.text = userProvider.name ?? '';
-    _usernameController.text = userProvider.username ?? '';
-
+  Future<Either<Failure, void>> _fetchProfile() async {
     try {
-      // Refresh data terbaru dari server lewat UserProvider
+      final userProvider = context.read<UserProvider>();
       await userProvider.refreshUserInfo();
-
       if (mounted) {
         setState(() {
           _nameController.text = userProvider.name ?? '';
           _usernameController.text = userProvider.username ?? '';
         });
       }
-
-      // Jika belum ada foto lokal, coba load dari avatarUrl backend
       final imageProvider = context.read<ProfileImageProvider>();
       if (imageProvider.imageBytes == null) {
-        final result = await ProfileService.getUserInfo();
-        final avatarUrl = result['avatarUrl'] as String?;
+        final info = await ProfileService.getUserInfo();
+        final avatarUrl = info['avatarUrl'] as String?;
         if (avatarUrl != null && avatarUrl.isNotEmpty) {
           await _loadAvatarFromUrl(avatarUrl);
         }
       }
+      return const Right(null);
     } catch (e) {
-      debugPrint('Error loading profile: $e');
+      return Left(ServiceFailure(sanitizeException(e)));
     }
   }
 
-  /// Decode base64 data-URL atau fetch HTTP URL lalu simpan ke provider
-  Future<void> _loadAvatarFromUrl(String url) async {
+  Future<void> _loadProfile() async {
+    final userProvider = context.read<UserProvider>();
+    _nameController.text = userProvider.name ?? '';
+    _usernameController.text = userProvider.username ?? '';
+    (await _fetchProfile()).fold(
+      (f) => debugPrint('Error loading profile: ${f.message}'),
+      (_) {},
+    );
+  }
+
+  Future<Either<Failure, void>> _loadAvatarFromUrl(String url) async {
     try {
       Uint8List bytes;
       if (url.startsWith('data:')) {
         final commaIdx = url.indexOf(',');
-        if (commaIdx < 0) return;
+        if (commaIdx < 0) return const Right(null);
         bytes = base64Decode(url.substring(commaIdx + 1));
       } else {
         final fetched = await _httpGet(url);
-        if (fetched == null) return;
-        bytes = fetched;
+        if (fetched == null) return const Right(null);
+        bytes = fetched.getOrElse(() => Uint8List(0));
       }
       await context.read<ProfileImageProvider>().saveBytes(bytes);
       if (mounted) setState(() {});
+      return const Right(null);
     } catch (e) {
-      debugPrint('Error loading avatar from url: $e');
+      return Left(StorageFailure(sanitizeException(e)));
     }
   }
 
-  Future<Uint8List?> _httpGet(String url) async {
+  Future<Either<Failure, Uint8List>> _httpGet(String url) async {
     try {
       final uri = Uri.parse(url);
       final client = HttpClient();
       final request = await client.getUrl(uri);
       final response = await request.close();
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        client.close();
+        return Left(NetworkFailure('HTTP ${response.statusCode}'));
+      }
       final bytes = <int>[];
       await for (final chunk in response) {
         bytes.addAll(chunk);
       }
       client.close();
-      return Uint8List.fromList(bytes);
-    } catch (_) {
-      return null;
+      return Right(Uint8List.fromList(bytes));
+    } catch (e) {
+      return Left(NetworkFailure(sanitizeException(e)));
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<Either<Failure, void>> _doPickImage() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.image,
         allowMultiple: false,
         withData: true,
       );
-
-      if (result == null || result.files.isEmpty) return;
-
+      if (result == null || result.files.isEmpty) return const Right(null);
       final pickedFile = result.files.single;
       final bytes = pickedFile.bytes;
-
-      if (bytes == null) {
-        _showError('Gagal membaca file gambar');
-        return;
-      }
-
+      if (bytes == null) return Left(StorageFailure('Gagal membaca file gambar'));
       final sizeInMB = bytes.lengthInBytes / (1024 * 1024);
-      if (sizeInMB > 2) {
-        _showError('Ukuran foto maksimal 2MB');
-        return;
-      }
-
+      if (sizeInMB > 2) return Left(StorageFailure('Ukuran foto maksimal 2MB'));
       final ext = (pickedFile.extension ?? 'jpg').toLowerCase();
       final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
-
-      setState(() {
-        _pendingImageBytes = bytes;
-        _pendingImageMime = mime;
-      });
-
-      _showSuccess('Foto berhasil dipilih');
+      setState(() { _pendingImageBytes = bytes; _pendingImageMime = mime; });
+      return const Right(null);
     } catch (e) {
-      debugPrint('Pick image error: $e');
-      _showError('Gagal memilih foto');
+      return Left(StorageFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<void> _pickImage() async {
+    (await _doPickImage()).fold(
+      (f) {
+        debugPrint('Pick image error: ${f.message}');
+        _showError(f.message);
+      },
+      (_) => _showSuccess('Foto berhasil dipilih'),
+    );
+  }
+
+  Future<Either<Failure, void>> _doUploadAvatar(Uint8List bytes, String mime) async {
+    try {
+      final base64Image = 'data:$mime;base64,${base64Encode(bytes)}';
+      await ProfileService.updateAvatar(base64Image);
+      await context.read<ProfileImageProvider>().saveBytes(bytes);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
     }
   }
 
@@ -187,22 +199,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _successMessage = null;
-    });
+    setState(() { _isLoading = true; _errorMessage = null; _successMessage = null; });
 
-    try {
-      final mime = _pendingImageMime ?? 'image/jpeg';
-      final base64Image = 'data:$mime;base64,${base64Encode(_pendingImageBytes!)}';
-
-      await ProfileService.updateAvatar(base64Image);
-
-      // Simpan ke ProfileImageProvider — notifyListeners otomatis, semua widget ikut update
-      await imageProvider.saveBytes(_pendingImageBytes!);
-
-      if (mounted) {
+    final mime = _pendingImageMime ?? 'image/jpeg';
+    final result = await _doUploadAvatar(_pendingImageBytes!, mime);
+    if (!mounted) return;
+    result.fold(
+      (f) => setState(() { _errorMessage = f.message; _isLoading = false; }),
+      (_) {
         setState(() {
           _successMessage = 'Foto profil berhasil diperbarui!';
           _isLoading = false;
@@ -210,97 +214,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _pendingImageMime = null;
         });
         _clearSuccessMessage();
-      }
+      },
+    );
+  }
+
+  Future<Either<Failure, void>> _doUpdateProfile(String name, String username) async {
+    try {
+      await ProfileService.updateName(name);
+      await ProfileService.updateUsername(username);
+      final userProvider = context.read<UserProvider>();
+      userProvider.updateName(name);
+      userProvider.updateUsername(username);
+      return const Right(null);
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
-          _isLoading = false;
-        });
-      }
+      return Left(ServiceFailure(sanitizeException(e)));
     }
   }
 
   Future<void> _updateProfile() async {
-    if (_nameController.text.isEmpty) {
-      _showError('Nama tidak boleh kosong');
-      return;
-    }
+    if (_nameController.text.isEmpty) { _showError('Nama tidak boleh kosong'); return; }
+    if (_usernameController.text.isEmpty) { _showError('Username tidak boleh kosong'); return; }
 
-    if (_usernameController.text.isEmpty) {
-      _showError('Username tidak boleh kosong');
-      return;
-    }
+    setState(() { _isLoading = true; _errorMessage = null; _successMessage = null; });
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _successMessage = null;
-    });
-
-    try {
-      await ProfileService.updateName(_nameController.text);
-      await ProfileService.updateUsername(_usernameController.text);
-
-      // Update state global lewat UserProvider supaya widget lain ikut sinkron
-      final userProvider = context.read<UserProvider>();
-      userProvider.updateName(_nameController.text);
-      userProvider.updateUsername(_usernameController.text);
-
-      if (mounted) {
-        setState(() {
-          _successMessage = 'Profil berhasil diperbarui!';
-          _isLoading = false;
-        });
+    final result = await _doUpdateProfile(_nameController.text, _usernameController.text);
+    if (!mounted) return;
+    result.fold(
+      (f) => setState(() { _errorMessage = f.message; _isLoading = false; }),
+      (_) {
+        setState(() { _successMessage = 'Profil berhasil diperbarui!'; _isLoading = false; });
         _clearSuccessMessage();
-      }
+      },
+    );
+  }
+
+  Future<Either<Failure, Map<String, dynamic>>> _doUpdateEmail(String email, String password) async {
+    try {
+      return Right(await ProfileService.updateEmail(newEmail: email, password: password));
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
-          _isLoading = false;
-        });
-      }
+      return Left(ServiceFailure(sanitizeException(e)));
     }
   }
 
   Future<void> _updateEmail() async {
-    if (_emailController.text.isEmpty) {
-      _showError('Email tidak boleh kosong');
-      return;
-    }
+    if (_emailController.text.isEmpty) { _showError('Email tidak boleh kosong'); return; }
+    if (!_isValidEmail(_emailController.text)) { _showError('Format email tidak valid'); return; }
+    if (_emailPasswordController.text.isEmpty) { _showError('Password harus diisi untuk konfirmasi'); return; }
 
-    if (!_isValidEmail(_emailController.text)) {
-      _showError('Format email tidak valid');
-      return;
-    }
+    setState(() { _isLoading = true; _errorMessage = null; _successMessage = null; });
 
-    if (_emailPasswordController.text.isEmpty) {
-      _showError('Password harus diisi untuk konfirmasi');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _successMessage = null;
-    });
-
-    try {
-      final result = await ProfileService.updateEmail(
-        newEmail: _emailController.text,
-        password: _emailPasswordController.text,
-      );
-
-      // Sync email & token baru ke UserProvider
-      final userProvider = context.read<UserProvider>();
-      userProvider.updateEmail(_emailController.text);
-      final newToken = result['token'] as String?;
-      if (newToken != null && newToken.isNotEmpty) {
-        userProvider.updateToken(newToken);
-      }
-
-      if (mounted) {
+    final result = await _doUpdateEmail(_emailController.text, _emailPasswordController.text);
+    if (!mounted) return;
+    result.fold(
+      (f) => setState(() { _errorMessage = f.message; _isLoading = false; }),
+      (data) {
+        final userProvider = context.read<UserProvider>();
+        userProvider.updateEmail(_emailController.text);
+        final newToken = data['token'] as String?;
+        if (newToken != null && newToken.isNotEmpty) userProvider.updateToken(newToken);
         setState(() {
           _successMessage = 'Email berhasil diperbarui!';
           _isLoading = false;
@@ -308,14 +279,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _emailPasswordController.clear();
         });
         _clearSuccessMessage();
-      }
+      },
+    );
+  }
+
+  Future<Either<Failure, void>> _doUpdatePassword(String current, String newPw, String confirm) async {
+    try {
+      await ProfileService.updatePassword(
+        currentPassword: current,
+        newPassword: newPw,
+        confirmPassword: confirm,
+      );
+      return const Right(null);
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
-          _isLoading = false;
-        });
-      }
+      return Left(ServiceFailure(sanitizeException(e)));
     }
   }
 
@@ -326,30 +303,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _showError('Semua field harus diisi');
       return;
     }
+    if (_newPasswordController.text.length < 6) { _showError('Password minimal 6 karakter'); return; }
+    if (_newPasswordController.text != _confirmPasswordController.text) { _showError('Password tidak cocok'); return; }
 
-    if (_newPasswordController.text.length < 6) {
-      _showError('Password minimal 6 karakter');
-      return;
-    }
+    setState(() { _isPasswordLoading = true; _errorMessage = null; _successMessage = null; });
 
-    if (_newPasswordController.text != _confirmPasswordController.text) {
-      _showError('Password tidak cocok');
-      return;
-    }
-
-    setState(() {
-      _isPasswordLoading = true;
-      _errorMessage = null;
-      _successMessage = null;
-    });
-
-    try {
-      await ProfileService.updatePassword(
-        currentPassword: _currentPasswordController.text,
-        newPassword: _newPasswordController.text,
-        confirmPassword: _confirmPasswordController.text,
-      );
-      if (mounted) {
+    final result = await _doUpdatePassword(
+      _currentPasswordController.text,
+      _newPasswordController.text,
+      _confirmPasswordController.text,
+    );
+    if (!mounted) return;
+    result.fold(
+      (f) => setState(() { _errorMessage = f.message; _isPasswordLoading = false; }),
+      (_) {
         setState(() {
           _successMessage = 'Password berhasil diperbarui!';
           _isPasswordLoading = false;
@@ -358,15 +325,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _confirmPasswordController.clear();
         });
         _clearSuccessMessage();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
-          _isPasswordLoading = false;
-        });
-      }
-    }
+      },
+    );
   }
 
   Future<void> _loadPinStatus() async {

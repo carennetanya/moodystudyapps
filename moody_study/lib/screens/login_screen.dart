@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import 'package:moody_study/services/user_provider.dart';
 import 'character_intro_screen.dart';
 import 'theme_selector_screen.dart';
@@ -325,18 +328,26 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  void _onMusicToggle() async {
-    final newState = !_isPlaying;
-    setState(() => _isPlaying = newState);
+  Future<Either<Failure, void>> _toggleAudioPlayback(bool play) async {
     try {
-      if (newState) {
+      if (play) {
         await widget.audioPlayer?.play(AssetSource(_audioFile));
       } else {
         await widget.audioPlayer?.pause();
       }
+      return const Right(null);
     } catch (e) {
-      debugPrint('Audio toggle error: $e');
+      return Left(AudioFailure(sanitizeException(e)));
     }
+  }
+
+  void _onMusicToggle() async {
+    final newState = !_isPlaying;
+    setState(() => _isPlaying = newState);
+    (await _toggleAudioPlayback(newState)).fold(
+      (f) => debugPrint('Audio toggle error: ${f.message}'),
+      (_) {},
+    );
   }
 
   Widget _buildHeader(bool isDark) {

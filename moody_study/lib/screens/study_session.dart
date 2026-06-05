@@ -4,6 +4,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'theme_selector_screen.dart';
 import 'active_study_session.dart';
@@ -726,21 +729,38 @@ class _StudySessionState extends State<StudySession> {
     );
   }
 
+  Future<Either<Failure, String?>> _tryReadTextBytes(PlatformFile file) async {
+    try {
+      final raw = file.bytes ?? (file.path != null ? await File(file.path!).readAsBytes() : null);
+      if (raw == null) return const Right(null);
+      return _decodeUtf8(raw).fold(
+        (f) => Left(f),
+        (s) => Right<Failure, String?>(s),
+      );
+    } catch (e) {
+      return Left(StorageFailure(sanitizeException(e)));
+    }
+  }
+
   Future<String> _readPreviewContent(PlatformFile file) async {
     final extension = file.extension?.toLowerCase() ?? '';
 
     if (extension == 'txt' || extension == 'md' || extension == 'csv') {
-      try {
-        final raw = file.bytes ?? (file.path != null ? await File(file.path!).readAsBytes() : null);
-        if (raw != null) return _decodeUtf8(raw);
-      } catch (_) {}
-      return 'Unable to read text preview from this file.';
+      final result = await _tryReadTextBytes(file);
+      return result.fold(
+        (_) => 'Unable to read text preview from this file.',
+        (text) => text ?? 'Unable to read text preview from this file.',
+      );
     }
 
     if (extension == 'docx') {
       final preview = await _extractDocxText(file);
-      if (preview != null && preview.trim().isNotEmpty) return preview.trim();
-      return 'Could not extract text from this DOCX file.\nFile name: ${file.name}';
+      return preview.fold(
+        (_) => 'Could not extract text from this DOCX file.\nFile name: ${file.name}',
+        (text) => (text != null && text.trim().isNotEmpty)
+            ? text.trim()
+            : 'Could not extract text from this DOCX file.\nFile name: ${file.name}',
+      );
     }
 
     if (extension == 'pdf') {
@@ -750,22 +770,21 @@ class _StudySessionState extends State<StudySession> {
     return 'Preview is not available for this file type.\n\nFile name: ${file.name}';
   }
 
-  String _decodeUtf8(List<int> bytes) {
+  Either<Failure, String> _decodeUtf8(List<int> bytes) {
     try {
-      return utf8.decode(bytes, allowMalformed: true);
-    } catch (_) {
-      return 'Could not decode file contents as text.';
+      return Right(utf8.decode(bytes, allowMalformed: true));
+    } catch (e) {
+      return Left(ParseFailure(sanitizeException(e)));
     }
   }
 
-  Future<String?> _extractDocxText(PlatformFile file) async {
+  Future<Either<Failure, String?>> _extractDocxText(PlatformFile file) async {
     try {
-      // Prefer in-memory bytes (works on web & mobile); fall back to file path
       final List<int>? bytes = file.bytes != null
           ? file.bytes!
           : (file.path != null ? await File(file.path!).readAsBytes() : null);
 
-      if (bytes == null) return null;
+      if (bytes == null) return const Right(null);
 
       final archive = ZipDecoder().decodeBytes(bytes);
 
@@ -776,16 +795,16 @@ class _StudySessionState extends State<StudySession> {
           break;
         }
       }
-      if (documentEntry == null) return null;
+      if (documentEntry == null) return const Right(null);
 
       final content = documentEntry.content;
-      if (content == null) return null;
+      if (content == null) return const Right(null);
 
       final xml = utf8.decode(content is List<int> ? content : List<int>.from(content), allowMalformed: true);
       final text = _stripXmlText(xml).trim();
-      return text.isEmpty ? null : text;
+      return Right(text.isEmpty ? null : text);
     } catch (e) {
-      return null;
+      return Left(StorageFailure(sanitizeException(e)));
     }
   }
 

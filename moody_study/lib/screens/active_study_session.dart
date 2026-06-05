@@ -18,6 +18,7 @@ import 'package:moody_study/screens/oddy_flashcard_screen.dart';
 import 'package:moody_study/screens/your_files_screen.dart';
 import 'package:moody_study/screens/headphone_screen.dart';
 import 'package:moody_study/services/material_service.dart';
+import 'package:moody_study/models/material_response.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:moody_study/services/spotify_service.dart';
@@ -26,6 +27,9 @@ import 'package:spotify_sdk/spotify_sdk.dart';
 import 'package:moody_study/services/streak_service.dart';
 import 'package:moody_study/services/auth_service.dart';
 import 'package:moody_study/screens/life_lost_popup.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import 'package:http/http.dart' as http;
 import 'character_intro_screen.dart';
 import 'level_up_screen.dart';
@@ -197,23 +201,31 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     await _notifPlugin.cancel(42);
   }
 
-  Future<void> _loadInitialStreak() async {
+  Future<Either<Failure, StreakInfo>> _fetchInitialStreak() async {
     try {
-      final streakInfo = await StreakService.fetchStreak();
-      if (!mounted) return;
-      setState(() {
-        _initialStreak = streakInfo.currentStreak;
-        _initialLife = streakInfo.life;
-      });
-    } catch (_) {}
+      return Right(await StreakService.fetchStreak());
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
   }
 
-  /// Fetch check-login untuk dapat data lengkap (livesLost, sessionsToRecover, dll)
-  /// lalu tampilkan LifeLostPopup
-  Future<void> _checkAndShowLifeLost() async {
+  Future<void> _loadInitialStreak() async {
+    (await _fetchInitialStreak()).fold(
+      (_) {},
+      (streakInfo) {
+        if (!mounted) return;
+        setState(() {
+          _initialStreak = streakInfo.currentStreak;
+          _initialLife = streakInfo.life;
+        });
+      },
+    );
+  }
+
+  Future<Either<Failure, LoginCheckResult?>> _fetchLoginCheck() async {
     try {
       final token = AuthService.token;
-      if (token == null) return;
+      if (token == null) return const Right(null);
       final res = await http.post(
         Uri.parse('${StreakService.baseUrl}/api/streak/check-login'),
         headers: {
@@ -221,17 +233,29 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
           'Authorization': 'Bearer $token',
         },
       );
-      if (res.statusCode == 200 && mounted) {
-        final result = LoginCheckResult.fromJson(
+      if (res.statusCode == 200) {
+        return Right(LoginCheckResult.fromJson(
           jsonDecode(res.body) as Map<String, dynamic>,
-        );
-        if (result.livesLost > 0 || result.leveledDown) {
-          if (mounted) await showLifeLostPopup(context, result);
-        }
+        ));
       }
+      return const Right(null);
     } catch (e) {
-      debugPrint('_checkAndShowLifeLost error: $e');
+      return Left(NetworkFailure(sanitizeException(e)));
     }
+  }
+
+  Future<void> _checkAndShowLifeLost() async {
+    final result = await _fetchLoginCheck();
+    await result.fold(
+      (f) async => debugPrint('_checkAndShowLifeLost error: ${f.message}'),
+      (loginResult) async {
+        if (loginResult != null && mounted) {
+          if (loginResult.livesLost > 0 || loginResult.leveledDown) {
+            if (mounted) await showLifeLostPopup(context, loginResult);
+          }
+        }
+      },
+    );
   }
 
   Future<void> _loadSummary() async {
@@ -261,28 +285,58 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
       return;
     }
  
+    final summaryResult = await _fetchSummary(file.name, originalText);
+    if (!mounted) return;
+    summaryResult.fold(
+      (f) {
+        final sanitized = _sanitizeError(f.message);
+        setState(() {
+          _loadingSummary = false;
+          _summaryError = sanitized;
+          _summary = 'Summary failed to load.';
+        });
+        debugPrint('Gemini summary error: ${f.message}');
+      },
+      (response) {
+        setState(() {
+          _loadingSummary = false;
+          _summary = response.summary;
+          _materialId = response.id;
+          _summaryError = null;
+        });
+        _startTimer();
+      },
+    );
+  }
+
+  Future<Either<Failure, MaterialResponse>> _fetchSummary(String fileName, String originalText) async {
     try {
-      final response = await MaterialService.summarizeMaterial(
-        fileName: file.name,
+      return Right(await MaterialService.summarizeMaterial(
+        fileName: fileName,
         originalText: originalText,
-      );
-      if (!mounted) return;
-      setState(() {
-        _loadingSummary = false;
-        _summary = response.summary;
-        _materialId = response.id;
-        _summaryError = null;
-      });
-      _startTimer();
+      ));
     } catch (e) {
-      if (!mounted) return;
-      final sanitized = _sanitizeError(e.toString());
-      setState(() {
-        _loadingSummary = false;
-        _summaryError = sanitized;
-        _summary = 'Summary failed to load.';
-      });
-      print('Gemini summary error: ${e.toString()}');
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<Either<Failure, SessionResult>> _doCompleteSession({
+    required String mood,
+    required String location,
+    required int durationMinutes,
+    required int focusSeconds,
+    required int distractionSeconds,
+  }) async {
+    try {
+      return Right(await StreakService.completeSession(
+        mood: mood,
+        location: location,
+        durationMinutes: durationMinutes,
+        focusSeconds: focusSeconds,
+        distractionSeconds: distractionSeconds,
+      ));
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
     }
   }
  
@@ -401,23 +455,62 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     await _handleReturnFromBackground(awayDuration);
   }
 
-  Future<void> _handleReturnFromBackground(Duration awayDuration) async {
-    // Pause musik
-    _musicWasPausedByAlarm = false;
+  Future<Either<Failure, void>> _tryPauseMusicPlayer() async {
     try {
       if (_musicPlayer.state == PlayerState.playing) {
         await _musicPlayer.pause();
-        _musicWasPausedByAlarm = true;
       }
-    } catch (_) {}
+      return const Right(null);
+    } catch (e) {
+      return Left(AudioFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<Either<Failure, bool>> _tryPauseSpotify() async {
     try {
       final spState = await SpotifySdk.getPlayerState()
           .timeout(const Duration(seconds: 2));
       if (spState != null && !spState.isPaused) {
         await SpotifyService.pause();
-        _musicWasPausedByAlarm = true;
+        return const Right(true);
       }
-    } catch (_) {}
+      return const Right(false);
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<Either<Failure, void>> _tryResumeMusicPlayer() async {
+    try {
+      await _musicPlayer.resume();
+      return const Right(null);
+    } catch (e) {
+      return Left(AudioFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<Either<Failure, void>> _tryResumeSpotify() async {
+    try {
+      await SpotifyService.resume();
+      return const Right(null);
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<void> _handleReturnFromBackground(Duration awayDuration) async {
+    // Pause musik
+    _musicWasPausedByAlarm = false;
+    (await _tryPauseMusicPlayer()).fold(
+      (_) {},
+      (_) {
+        if (_musicPlayer.state == PlayerState.playing) _musicWasPausedByAlarm = true;
+      },
+    );
+    (await _tryPauseSpotify()).fold(
+      (_) {},
+      (paused) { if (paused) _musicWasPausedByAlarm = true; },
+    );
 
     if (_isLibraryLocation) {
       _startFlashEffect();
@@ -441,12 +534,34 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
 
     // Resume musik
     if (_musicWasPausedByAlarm) {
-      try { await _musicPlayer.resume(); } catch (_) {}
-      try { await SpotifyService.resume(); } catch (_) {}
+      (await _tryResumeMusicPlayer()).fold((_) {}, (_) {});
+      (await _tryResumeSpotify()).fold((_) {}, (_) {});
       _musicWasPausedByAlarm = false;
     }
   }
- 
+
+  Future<Either<Failure, void>> _tryCancelVibration() async {
+    try {
+      if (await Vibration.hasVibrator() == true) {
+        await Vibration.cancel();
+      }
+      return const Right(null);
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<Either<Failure, void>> _tryStopAlarmPlayer() async {
+    try {
+      await _awayAlarmPlayer?.stop();
+      await _awayAlarmPlayer?.dispose();
+      _awayAlarmPlayer = null;
+      return const Right(null);
+    } catch (e) {
+      return Left(AudioFailure(sanitizeException(e)));
+    }
+  }
+
   Future<void> _stopAwayAlarm() async {
     // Hentikan loop alarm
     _alarmShouldLoop = false;
@@ -455,16 +570,8 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
 
     _vibrationTimer?.cancel();
     _vibrationTimer = null;
-    try {
-      if (await Vibration.hasVibrator() ?? false) {
-        await Vibration.cancel();
-      }
-    } catch (_) {}
-    try {
-      await _awayAlarmPlayer?.stop();
-      await _awayAlarmPlayer?.dispose();
-      _awayAlarmPlayer = null;
-    } catch (_) {}
+    (await _tryCancelVibration()).fold((_) {}, (_) {});
+    (await _tryStopAlarmPlayer()).fold((_) {}, (_) {});
   }
 
   void _startFlashEffect() {
@@ -580,14 +687,13 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     _loopAlarm();
   }
 
-  Future<void> _loopAlarm() async {
-    if (!_alarmShouldLoop) return;
+  Future<Either<Failure, void>> _doLoopAlarm() async {
     try {
       await _awayAlarmPlayer?.stop();
       await _awayAlarmPlayer?.dispose();
       _awayAlarmPlayer = null;
 
-      if (!_alarmShouldLoop) return;
+      if (!_alarmShouldLoop) return const Right(null);
 
       _awayAlarmPlayer = AudioPlayer();
       _alarmLoopSubscription = _awayAlarmPlayer!.onPlayerComplete.listen((_) {
@@ -596,8 +702,37 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
 
       await _awayAlarmPlayer!.setVolume(1.0);
       await _awayAlarmPlayer!.play(AssetSource('audio/alarm.mp3'));
+      return const Right(null);
     } catch (e) {
-      debugPrint('=== ALARM audio failed: $e ===');
+      return Left(AudioFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<void> _loopAlarm() async {
+    if (!_alarmShouldLoop) return;
+    (await _doLoopAlarm()).fold(
+      (f) => debugPrint('=== ALARM audio failed: ${f.message} ==='),
+      (_) {},
+    );
+  }
+
+  Future<Either<Failure, void>> _tryVibrate() async {
+    try {
+      if (await Vibration.hasVibrator() == true) {
+        await Vibration.vibrate(duration: 500);
+      }
+      return const Right(null);
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<Either<Failure, void>> _tryHaptic() async {
+    try {
+      HapticFeedback.vibrate();
+      return const Right(null);
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
     }
   }
 
@@ -606,16 +741,12 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     _vibrationTimer = null;
 
     final hasVibrator = await Vibration.hasVibrator();
-    if (hasVibrator ?? false) {
+    if (hasVibrator == true) {
       await Vibration.vibrate(duration: 500);
       _vibrationTimer = Timer.periodic(
         const Duration(seconds: 1),
         (_) async {
-          try {
-            if (await Vibration.hasVibrator() ?? false) {
-              await Vibration.vibrate(duration: 500);
-            }
-          } catch (_) {}
+          (await _tryVibrate()).fold((_) {}, (_) {});
         },
       );
     } else {
@@ -623,9 +754,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
       _vibrationTimer = Timer.periodic(
         const Duration(seconds: 1),
         (_) async {
-          try {
-            HapticFeedback.vibrate();
-          } catch (_) {}
+          (await _tryHaptic()).fold((_) {}, (_) {});
         },
       );
     }
@@ -640,11 +769,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     _startTimer();
   }
  
-  Future<void> _saveCurrentFileAsPdf() async {
-    if (widget.files.isEmpty) return;
-    final file = widget.files.first;
-    if (!mounted) return;
-    setState(() => _savingPdf = true);
+  Future<Either<Failure, String>> _doSaveCurrentFileAsPdf(PlatformFile file) async {
     try {
       final pdfBytes = await _createPdfBytes(file);
       final pdfFileName = _normalizePdfFileName(file.name);
@@ -654,18 +779,28 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
         fileType: 'pdf',
         base64Content: base64Content,
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('File "$pdfFileName" saved to Your Files.')),
-      );
+      return Right(pdfFileName);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save PDF: ${e.toString()}')),
-      );
-    } finally {
-      if (mounted) setState(() => _savingPdf = false);
+      return Left(ServiceFailure(sanitizeException(e)));
     }
+  }
+
+  Future<void> _saveCurrentFileAsPdf() async {
+    if (widget.files.isEmpty) return;
+    final file = widget.files.first;
+    if (!mounted) return;
+    setState(() => _savingPdf = true);
+    final result = await _doSaveCurrentFileAsPdf(file);
+    if (!mounted) return;
+    result.fold(
+      (f) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(f.message.isNotEmpty ? f.message : 'Gagal menyimpan PDF. Silakan coba lagi.')),
+      ),
+      (fileName) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('File "$fileName" berhasil disimpan ke Your Files.')),
+      ),
+    );
+    if (mounted) setState(() => _savingPdf = false);
   }
  
   Future<List<int>> _createPdfBytes(PlatformFile file) async {
@@ -747,28 +882,29 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     );
     if (action == null || action == 'continue') return;
     SessionResult? sessionResult;
-    try {
-      sessionResult = await StreakService.completeSession(
-        mood: widget.mood,
-        location: widget.location,
-        durationMinutes: studyDuration.inMinutes,
-        focusSeconds: studyDuration.inSeconds,
-        distractionSeconds: _totalDistractionSeconds,
-      );
-    } catch (e) {
-      debugPrint('Failed to save session to database: $e');
-    }
+    final sessionResult2 = await _doCompleteSession(
+      mood: widget.mood,
+      location: widget.location,
+      durationMinutes: studyDuration.inMinutes,
+      focusSeconds: studyDuration.inSeconds,
+      distractionSeconds: _totalDistractionSeconds,
+    );
+    sessionResult2.fold(
+      (f) => debugPrint('Failed to save session to database: ${f.message}'),
+      (result) => sessionResult = result,
+    );
     if (!mounted) return;
-    final shouldShowStreak = sessionResult != null &&
-        sessionResult.currentStreak > 0 &&
-        (_initialStreak == null || sessionResult.currentStreak > _initialStreak!);
+    final sr = sessionResult; // non-nullable local for null promotion
+    final shouldShowStreak = sr != null &&
+        sr.currentStreak > 0 &&
+        (_initialStreak == null || sr.currentStreak > _initialStreak!);
     final previousLife = _initialLife;
     if (shouldShowStreak) {
       await Navigator.of(context).push(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => StreakCounterScreen(
-            previousStreak: (sessionResult!.currentStreak - 1).clamp(0, sessionResult.currentStreak),
-            newStreak: sessionResult.currentStreak,
+            previousStreak: (sr.currentStreak - 1).clamp(0, sr.currentStreak),
+            newStreak: sr.currentStreak,
             userName: widget.userName,
             onContinue: () => Navigator.of(context).pop(),
           ),
@@ -778,17 +914,17 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
       );
       if (!mounted) return;
     }
-    if (sessionResult != null) {
-      _initialStreak = sessionResult.currentStreak;
-      _initialLife = sessionResult.life;
+    if (sr != null) {
+      _initialStreak = sr.currentStreak;
+      _initialLife = sr.life;
     }
-    if (sessionResult != null && sessionResult.leveledUp) {
+    if (sr != null && sr.leveledUp) {
       await Navigator.of(context).push(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => LevelUpScreen(
-            newLevel: sessionResult!.newLevel,
-            newLevelName: sessionResult.newLevelName ?? _levelName(sessionResult.newLevel),
-            xpEarnedInLevel: sessionResult.xpEarnedInLevel,
+            newLevel: sr.newLevel,
+            newLevelName: sr.newLevelName ?? _levelName(sr.newLevel),
+            xpEarnedInLevel: sr.xpEarnedInLevel,
             userName: widget.userName,
             onContinue: () => Navigator.of(context).pop(),
           ),
@@ -798,10 +934,10 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
       );
       if (!mounted) return;
     }
-    if (sessionResult != null && previousLife != null && sessionResult.life > previousLife) {
-      await showLifeRecoveredPopup(context, sessionResult.life);
+    if (sr != null && previousLife != null && sr.life > previousLife) {
+      await showLifeRecoveredPopup(context, sr.life);
     }
-    if (sessionResult != null && previousLife != null && sessionResult.life < previousLife) {
+    if (sr != null && previousLife != null && sr.life < previousLife) {
       if (mounted) await _checkAndShowLifeLost();
     }
     if (action == 'save') {
@@ -846,43 +982,67 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     return '$mm:$ss';
   }
  
+  Future<Either<Failure, void>> _tryDeleteFile(String path) async {
+    try {
+      await File(path).delete();
+      return const Right(null);
+    } catch (e) {
+      return Left(StorageFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<Either<Failure, String>> _tryExtractPdfText(PlatformFile file) async {
+    try {
+      final bytes = file.bytes;
+      if (bytes != null) {
+        final tempPath = await _writeBytesToTempPdf(bytes, file.name);
+        try {
+          final doc = await PDFDoc.fromPath(tempPath);
+          return Right((await doc.text).trim());
+        } finally {
+          (await _tryDeleteFile(tempPath)).fold((_) {}, (_) {});
+        }
+      }
+      if (file.path != null) {
+        final doc = await PDFDoc.fromPath(file.path!);
+        return Right((await doc.text).trim());
+      }
+      return const Right('');
+    } catch (e) {
+      return Left(StorageFailure(sanitizeException(e)));
+    }
+  }
+
   Future<String> _extractTextFromFile(PlatformFile file) async {
     final extension = file.extension?.toLowerCase() ?? '';
     if (extension == 'txt' || extension == 'md' || extension == 'csv') {
       final raw = file.bytes ?? (file.path != null ? await File(file.path!).readAsBytes() : null);
-      if (raw != null) return _decodeUtf8(raw);
+      if (raw != null) return _decodeUtf8(raw).getOrElse(() => '');
       return '';
     }
     if (extension == 'docx') {
-      final preview = await _extractDocxText(file);
-      return preview?.trim() ?? '';
+      final result = await _extractDocxText(file);
+      return result.fold((_) => '', (text) => text?.trim() ?? '');
     }
     if (extension == 'pdf') {
-      try {
-        final bytes = file.bytes;
-        if (bytes != null) {
-          final tempPath = await _writeBytesToTempPdf(bytes, file.name);
-          try {
-            final doc = await PDFDoc.fromPath(tempPath);
-            return (await doc.text).trim();
-          } finally {
-            try { await File(tempPath).delete(); } catch (_) {}
-          }
-        }
-        if (file.path != null) {
-          final doc = await PDFDoc.fromPath(file.path!);
-          return (await doc.text).trim();
-        }
-      } catch (e) {
-        debugPrint('PDF text extraction failed: $e');
-      }
-      return '';
+      final result = await _tryExtractPdfText(file);
+      return result.fold(
+        (f) {
+          debugPrint('PDF text extraction failed: ${f.message}');
+          return '';
+        },
+        (text) => text,
+      );
     }
     return '';
   }
- 
-  String _decodeUtf8(List<int> bytes) {
-    try { return utf8.decode(bytes, allowMalformed: true); } catch (_) { return ''; }
+
+  Either<Failure, String> _decodeUtf8(List<int> bytes) {
+    try {
+      return Right(utf8.decode(bytes, allowMalformed: true));
+    } catch (e) {
+      return Left(ParseFailure(sanitizeException(e)));
+    }
   }
  
   Future<String> _writeBytesToTempPdf(List<int> bytes, String originalFileName) async {
@@ -894,20 +1054,22 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     return tempFile.path;
   }
  
-  Future<String?> _extractDocxText(PlatformFile file) async {
+  Future<Either<Failure, String?>> _extractDocxText(PlatformFile file) async {
     try {
       final bytes = file.bytes ?? (file.path != null ? await File(file.path!).readAsBytes() : null);
-      if (bytes == null) return null;
+      if (bytes == null) return const Right(null);
       final archive = ZipDecoder().decodeBytes(bytes);
       ArchiveFile? documentEntry;
       for (final entry in archive.files) {
         if (entry.name == 'word/document.xml') { documentEntry = entry; break; }
       }
-      if (documentEntry == null || documentEntry.content == null) return null;
+      if (documentEntry == null || documentEntry.content == null) return const Right(null);
       final xml = utf8.decode(documentEntry.content as List<int>, allowMalformed: true);
       final text = _stripXmlText(xml).trim();
-      return text.isEmpty ? null : text;
-    } catch (_) { return null; }
+      return Right(text.isEmpty ? null : text);
+    } catch (e) {
+      return Left(StorageFailure(sanitizeException(e)));
+    }
   }
  
   String _stripXmlText(String xml) {

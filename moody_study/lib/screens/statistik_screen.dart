@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/streak_service.dart';
@@ -60,8 +63,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
     _loadAll();
   }
 
-  Future<void> _loadAll() async {
-    setState(() { _loading = true; _error = null; });
+  Future<Either<Failure, void>> _fetchAll() async {
     try {
       await Future.wait([
         _loadStats(),
@@ -69,11 +71,20 @@ class _StatistikScreenState extends State<StatistikScreen> {
         _loadAwards(),
         _loadQuest(),
       ]);
+      return const Right(null);
     } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      return Left(ServiceFailure(sanitizeException(e)));
     }
+  }
+
+  Future<void> _loadAll() async {
+    setState(() { _loading = true; _error = null; });
+    final result = await _fetchAll();
+    if (!mounted) return;
+    result.fold(
+      (failure) => setState(() { _error = failure.message; _loading = false; }),
+      (_) => setState(() => _loading = false),
+    );
   }
 
   Future<void> _loadStats() async {
@@ -928,7 +939,7 @@ class _LevelHistorySheetState extends State<_LevelHistorySheet> {
     _loadHistory();
   }
 
-  Future<void> _loadHistory() async {
+  Future<Either<Failure, Map<String, dynamic>?>> _fetchHistory() async {
     try {
       final token = AuthService.token;
       final baseUrl = StreakService.baseUrl;
@@ -940,15 +951,21 @@ class _LevelHistorySheetState extends State<_LevelHistorySheet> {
         },
       );
       if (res.statusCode == 200) {
-        setState(() => _data = jsonDecode(res.body) as Map<String, dynamic>);
-      } else {
-        setState(() => _error = 'Gagal memuat data');
+        return Right(jsonDecode(res.body) as Map<String, dynamic>);
       }
+      return Left(NetworkFailure('Gagal memuat data'));
     } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      return Left(NetworkFailure(sanitizeException(e)));
     }
+  }
+
+  Future<void> _loadHistory() async {
+    final result = await _fetchHistory();
+    if (!mounted) return;
+    result.fold(
+      (failure) => setState(() { _error = failure.message; _loading = false; }),
+      (data) => setState(() { _data = data; _loading = false; }),
+    );
   }
 
   String _formatMinutes(int m) {

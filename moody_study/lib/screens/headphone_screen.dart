@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:spotify_sdk/spotify_sdk.dart';
 import 'package:spotify_sdk/models/player_state.dart' as sp;
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import 'package:moody_study/services/spotify_service.dart';
 
 class HeadphoneScreen extends StatefulWidget {
@@ -92,59 +95,80 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
   }
 
   // ── Spotify controls ─────────────────────────────────────────────────────
-  Future<void> _toggleSpotify() async {
+  Future<Either<Failure, void>> _doToggleSpotify() async {
     try {
-      // Cek apakah ada track aktif via stream state dulu
       if (_spotifyPlaying) {
         await SpotifyService.pause();
-        if (!mounted) return;
-        setState(() => _spotifyPlaying = false);
       } else if (_spotifyTrackName.isNotEmpty) {
-        // Ada track yang di-pause → resume
         await SpotifyService.resume();
-        if (!mounted) return;
-        setState(() => _spotifyPlaying = true);
       } else {
-        // Belum ada track sama sekali → play Deep Focus playlist
         await SpotifyService.play(
           spotifyUri: 'spotify:playlist:37i9dQZF1DWZeKCadgRdKQ',
         );
-        if (!mounted) return;
-        setState(() => _spotifyPlaying = true);
       }
+      return const Right(null);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
+  }
+
+  Future<void> _toggleSpotify() async {
+    final wasPlaying = _spotifyPlaying;
+    final result = await _doToggleSpotify();
+    if (!mounted) return;
+    result.fold(
+      (f) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not control Spotify: $e'),
+          content: Text('Gagal mengontrol Spotify. Pastikan aplikasi Spotify terbuka.'),
           backgroundColor: const Color(0xFFCC3333),
         ),
-      );
+      ),
+      (_) => setState(() => _spotifyPlaying = wasPlaying
+          ? false
+          : true),
+    );
+  }
+
+  Future<Either<Failure, void>> _doSkipNext() async {
+    try {
+      await SpotifyService.skipNext().timeout(const Duration(seconds: 3));
+      return const Right(null);
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
     }
   }
 
   Future<void> _skipNext() async {
+    (await _doSkipNext()).fold(
+      (f) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not skip. Make sure Spotify is open.')),
+        );
+      },
+      (_) {},
+    );
+  }
+
+  Future<Either<Failure, void>> _doSkipPrev() async {
     try {
-      await SpotifyService.skipNext()
-          .timeout(const Duration(seconds: 3));
+      await SpotifyService.skipPrevious().timeout(const Duration(seconds: 3));
+      return const Right(null);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not skip. Make sure Spotify is open.')),
-      );
+      return Left(ServiceFailure(sanitizeException(e)));
     }
   }
 
   Future<void> _skipPrev() async {
-    try {
-      await SpotifyService.skipPrevious()
-          .timeout(const Duration(seconds: 3));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not skip. Make sure Spotify is open.')),
-      );
-    }
+    (await _doSkipPrev()).fold(
+      (f) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not skip. Make sure Spotify is open.')),
+        );
+      },
+      (_) {},
+    );
   }
 
   Future<void> _setSpotifyVolume(double value) async {
@@ -154,19 +178,29 @@ class _HeadphoneScreenState extends State<HeadphoneScreen> {
   }
 
   // ── Local audio controls ─────────────────────────────────────────────────
-  Future<void> _toggleLocal() async {
+  Future<Either<Failure, void>> _doToggleLocal() async {
     try {
       if (_localPlaying) {
         await widget.audioPlayer.pause();
       } else {
         await widget.audioPlayer.play(AssetSource(_audioFile));
       }
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to start music. Please try again.')),
-      );
+      return const Right(null);
+    } catch (e) {
+      return Left(AudioFailure(sanitizeException(e)));
     }
+  }
+
+  Future<void> _toggleLocal() async {
+    (await _doToggleLocal()).fold(
+      (f) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to start music. Please try again.')),
+        );
+      },
+      (_) {},
+    );
   }
 
   Future<void> _setLocalVolume(double value) async {

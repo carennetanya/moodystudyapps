@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import '../models/generated_quiz_response.dart';
 import '../services/material_service.dart';
 import 'oddy_flashcard_screen.dart';
@@ -22,16 +25,22 @@ class _KuisScreenState extends State<KuisScreen> {
     _loadSaved();
   }
 
+  Future<Either<Failure, List<GeneratedQuizResponse>>> _fetchSaved() async {
+    try {
+      return Right(await MaterialService.getSavedQuizzes());
+    } catch (e) {
+      return Left(ServiceFailure(sanitizeException(e)));
+    }
+  }
+
   Future<void> _loadSaved() async {
     setState(() { _loading = true; _error = null; });
-    try {
-      final quizzes = await MaterialService.getSavedQuizzes();
-      if (mounted) setState(() => _savedQuizzes = quizzes);
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    final result = await _fetchSaved();
+    if (!mounted) return;
+    result.fold(
+      (failure) => setState(() { _error = failure.message; _loading = false; }),
+      (quizzes) => setState(() { _savedQuizzes = quizzes; _loading = false; }),
+    );
   }
 
   @override
@@ -257,29 +266,32 @@ class _KuisScreenState extends State<KuisScreen> {
     return normalized;
   }
 
+  Either<Failure, dynamic> _tryDecodeJson(String value) {
+    try {
+      return Right(jsonDecode(value));
+    } catch (e) {
+      return Left(ParseFailure(sanitizeException(e)));
+    }
+  }
+
   dynamic _decodePotentialJson(String value) {
     var current = value.trim();
     for (var i = 0; i < 3; i++) {
-      try {
-        final decoded = jsonDecode(current);
-        if (decoded is String) {
-          current = decoded.trim();
-          continue;
-        }
-        return decoded;
-      } catch (_) {
-        break;
+      final result = _tryDecodeJson(current);
+      if (result.isLeft()) break;
+      final decoded = result.getOrElse(() => current);
+      if (decoded is String) {
+        current = decoded.trim();
+        continue;
       }
+      return decoded;
     }
 
     // Try to recover JSON content inside a text block.
     final jsonMatch = RegExp(r'([\[{].*[\]}])', dotAll: true).firstMatch(current);
     if (jsonMatch != null) {
-      try {
-        return jsonDecode(jsonMatch.group(1)!);
-      } catch (_) {
-        // ignore
-      }
+      final result = _tryDecodeJson(jsonMatch.group(1)!);
+      if (result.isRight()) return result.getOrElse(() => current);
     }
 
     return current;

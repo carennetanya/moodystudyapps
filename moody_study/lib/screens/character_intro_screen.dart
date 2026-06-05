@@ -21,6 +21,9 @@ import 'package:moody_study/services/profile_image_provider.dart';
 import 'life_lost_popup.dart';
 import 'package:moody_study/services/daily_quest_service.dart';
 import 'package:moody_study/utils/app_localizations.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import 'schedule_screen.dart';
 
 class CharacterIntroScreen extends StatefulWidget {
@@ -124,10 +127,10 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
     _checkLoginStatus();
   }
 
-  Future<void> _checkLoginStatus() async {
+  Future<Either<Failure, LoginCheckResult?>> _fetchLoginStatus() async {
     try {
       final token = AuthService.token;
-      if (token == null) return;
+      if (token == null) return const Right(null);
       final baseUrl = StreakService.baseUrl;
       final res = await http.post(
         Uri.parse('$baseUrl/api/streak/check-login'),
@@ -136,19 +139,30 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
           'Authorization': 'Bearer $token',
         },
       );
-      if (res.statusCode == 200 && mounted) {
-        final result = LoginCheckResult.fromJson(
+      if (res.statusCode == 200) {
+        return Right(LoginCheckResult.fromJson(
           jsonDecode(res.body) as Map<String, dynamic>,
-        );
-        // Tampilkan popup jika ada nyawa yang hilang ATAU level turun
-        if (result.livesLost > 0 || result.leveledDown) {
-          await Future.delayed(const Duration(milliseconds: 600));
-          if (mounted) await showLifeLostPopup(context, result);
-        }
+        ));
       }
+      return const Right(null);
     } catch (e) {
-      debugPrint('checkLogin error: $e');
+      return Left(NetworkFailure(sanitizeException(e)));
     }
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final result = await _fetchLoginStatus();
+    await result.fold(
+      (f) async => debugPrint('checkLogin error: ${f.message}'),
+      (loginResult) async {
+        if (loginResult != null && mounted) {
+          if (loginResult.livesLost > 0 || loginResult.leveledDown) {
+            await Future.delayed(const Duration(milliseconds: 600));
+            if (mounted) await showLifeLostPopup(context, loginResult);
+          }
+        }
+      },
+    );
   }
 
   @override

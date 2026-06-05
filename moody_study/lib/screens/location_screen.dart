@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:dartz/dartz.dart' hide State;
+import 'package:moody_study/core/failure.dart';
+import 'package:moody_study/core/exception_handler.dart';
 import 'theme_selector_screen.dart';
 import 'upload_screen.dart';
 import '../utils/app_localizations.dart';
@@ -110,7 +113,10 @@ class _LocationScreenState extends State<LocationScreen>
     _bannerController.forward(from: 0);
 
     // Start fading out background music if available
-    _fadeOutAudio();
+    _fadeOutAudio().then((result) => result.fold(
+      (f) => debugPrint('Audio fade error: ${f.message}'),
+      (_) {},
+    ));
 
     // Auto-hide banner setelah 3 detik
     Future.delayed(const Duration(seconds: 3), () {
@@ -143,9 +149,9 @@ class _LocationScreenState extends State<LocationScreen>
     });
   }
 
-  Future<void> _fadeOutAudio({int durationMs = 700}) async {
+  Future<Either<Failure, void>> _fadeOutAudio({int durationMs = 700}) async {
     final player = widget.audioPlayer;
-    if (player == null) return;
+    if (player == null) return const Right(null);
     try {
       const steps = 8;
       final stepDur = Duration(milliseconds: (durationMs / steps).round());
@@ -156,8 +162,9 @@ class _LocationScreenState extends State<LocationScreen>
       }
       await player.pause();
       await player.setVolume(1.0);
+      return const Right(null);
     } catch (e) {
-      debugPrint('Audio fade error: $e');
+      return Left(AudioFailure(sanitizeException(e)));
     }
   }
 
