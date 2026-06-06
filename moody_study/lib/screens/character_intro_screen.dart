@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -25,6 +26,81 @@ import 'package:dartz/dartz.dart' hide State;
 import 'package:moody_study/core/failure.dart';
 import 'package:moody_study/core/exception_handler.dart';
 import 'schedule_screen.dart';
+
+// ── Time-slot theme ───────────────────────────────────────────────
+enum IntroTimeSlot { pagi, siang, sore, malam }
+
+class _SlotPalette {
+  final Color bg;
+  final Color accent;
+  final Color textColor;
+  final Color stripeColor;
+  final List<Shadow> headlineShadows;
+
+  const _SlotPalette({
+    required this.bg,
+    required this.accent,
+    required this.textColor,
+    required this.stripeColor,
+    required this.headlineShadows,
+  });
+}
+
+const _kDayShadows = <Shadow>[
+  Shadow(color: Color(0xFFFFFFFF), offset: Offset(-3, -3), blurRadius: 0),
+  Shadow(color: Color(0xFFFFFFFF), offset: Offset(3, -3), blurRadius: 0),
+  Shadow(color: Color(0xFFFFFFFF), offset: Offset(-3, 3), blurRadius: 0),
+  Shadow(color: Color(0xFFFFFFFF), offset: Offset(3, 3), blurRadius: 0),
+];
+
+const _kNightShadows = <Shadow>[];
+
+extension _IntroTimeSlotX on IntroTimeSlot {
+  _SlotPalette get palette {
+    switch (this) {
+      case IntroTimeSlot.pagi:
+        return const _SlotPalette(
+          bg: Color(0xFFFFE8B0),
+          accent: Color(0xFFFF9E6B),
+          textColor: Color(0xFF333333),
+          stripeColor: Color(0x0D000000),
+          headlineShadows: _kDayShadows,
+        );
+      case IntroTimeSlot.siang:
+        return const _SlotPalette(
+          bg: Color(0xFFFFF8E1),
+          accent: Color(0xFFFFB300),
+          textColor: Color(0xFF333333),
+          stripeColor: Color(0x0D000000),
+          headlineShadows: _kDayShadows,
+        );
+      case IntroTimeSlot.sore:
+        return const _SlotPalette(
+          bg: Color(0xFFFFB07A),
+          accent: Color(0xFFD84315),
+          textColor: Color(0xFF333333),
+          stripeColor: Color(0x0D000000),
+          headlineShadows: _kDayShadows,
+        );
+      case IntroTimeSlot.malam:
+        return const _SlotPalette(
+          bg: Color(0xFF1A237E),
+          accent: Color(0xFF7986CB),
+          textColor: Color(0xFFECEFF1),
+          stripeColor: Color(0x14FFFFFF),
+          headlineShadows: _kNightShadows,
+        );
+    }
+  }
+}
+
+IntroTimeSlot _slotFromNow() {
+  final h = DateTime.now().hour;
+  if (h >= 3 && h < 10) return IntroTimeSlot.pagi;
+  if (h >= 10 && h < 15) return IntroTimeSlot.siang;
+  if (h >= 15 && h < 18) return IntroTimeSlot.sore;
+  return IntroTimeSlot.malam;
+}
 
 class CharacterIntroScreen extends StatefulWidget {
   final String userName;
@@ -234,14 +310,11 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
             FadeTransition(
               opacity: _landingFadeAnim,
               child: _LandingPage(
-                heroContent: _HeroContent(
-                  userName: widget.userName,
-                  onStartNow: _onStartNow,
-                  onScheduleTap: _onScheduleTap,
-                ),
                 userName: widget.userName,
                 theme: widget.theme,
                 audioPlayer: widget.audioPlayer,
+                onStartNow: _onStartNow,
+                onScheduleTap: _onScheduleTap,
               ),
             ),
           if (!_showLandingPage && _showGreeting && _greetingText.isNotEmpty)
@@ -275,16 +348,18 @@ class _CharacterIntroScreenState extends State<CharacterIntroScreen>
 
 // ── Landing Page ──────────────────────────────────────────────────
 class _LandingPage extends StatefulWidget {
-  final Widget heroContent;
   final String userName;
   final AppTheme theme;
   final AudioPlayer? audioPlayer;
+  final VoidCallback? onStartNow;
+  final VoidCallback? onScheduleTap;
 
   const _LandingPage({
-    required this.heroContent,
     required this.userName,
     required this.theme,
     this.audioPlayer,
+    this.onStartNow,
+    this.onScheduleTap,
   });
 
   @override
@@ -293,6 +368,24 @@ class _LandingPage extends StatefulWidget {
 
 class _LandingPageState extends State<_LandingPage> {
   int _selectedNav = 0; // 0 = Home
+  late IntroTimeSlot _slot;
+  Timer? _slotTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _slot = _slotFromNow();
+    _slotTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      final newSlot = _slotFromNow();
+      if (newSlot != _slot) setState(() => _slot = newSlot);
+    });
+  }
+
+  @override
+  void dispose() {
+    _slotTimer?.cancel();
+    super.dispose();
+  }
 
   void _onNavTap(BuildContext context, int index) {
     if (index == 0) {
@@ -362,20 +455,33 @@ class _LandingPageState extends State<_LandingPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFE5E81E),
+    final palette = _slot.palette;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 500),
+      color: palette.bg,
       width: double.infinity,
       height: double.infinity,
       child: Stack(
         children: [
-          CustomPaint(size: Size.infinite, painter: _DiagonalStripePainter()),
+          CustomPaint(
+            size: Size.infinite,
+            painter: _DiagonalStripePainter(stripeColor: palette.stripeColor),
+          ),
 
           // Main content
           SafeArea(
             bottom: false,
             child: Column(
               children: [
-                Expanded(child: widget.heroContent),
+                Expanded(
+                  child: _HeroContent(
+                    userName: widget.userName,
+                    onStartNow: widget.onStartNow,
+                    onScheduleTap: widget.onScheduleTap,
+                    textColor: palette.textColor,
+                    headlineShadows: palette.headlineShadows,
+                  ),
+                ),
               ],
             ),
           ),
@@ -603,7 +709,16 @@ class _HeroContent extends StatelessWidget {
   final String userName;
   final VoidCallback? onStartNow;
   final VoidCallback? onScheduleTap;
-  const _HeroContent({required this.userName, this.onStartNow, this.onScheduleTap});
+  final Color textColor;
+  final List<Shadow> headlineShadows;
+
+  const _HeroContent({
+    required this.userName,
+    this.onStartNow,
+    this.onScheduleTap,
+    required this.textColor,
+    required this.headlineShadows,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -627,7 +742,7 @@ class _HeroContent extends StatelessWidget {
                   fontFamily: 'Nunito',
                   fontWeight: FontWeight.w700,
                   fontSize: isSmall ? 13.0 : 15.0,
-                  color: const Color(0xFF333333),
+                  color: textColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -647,7 +762,11 @@ class _HeroContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              _HeadlineText(isSmall: isSmall),
+              _HeadlineText(
+                isSmall: isSmall,
+                textColor: textColor,
+                shadows: headlineShadows,
+              ),
               const SizedBox(height: 14),
               Text(
                 AppLocalizations.of(context).homeSubtitle,
@@ -656,7 +775,7 @@ class _HeroContent extends StatelessWidget {
                   fontFamily: 'Nunito',
                   fontWeight: FontWeight.w700,
                   fontSize: isSmall ? 12.0 : 14.0,
-                  color: const Color(0xFF444444),
+                  color: textColor,
                   height: 1.8,
                 ),
               ),
@@ -728,14 +847,14 @@ class _ScheduleButtonState extends State<_ScheduleButton> {
 
 class _HeadlineText extends StatelessWidget {
   final bool isSmall;
-  const _HeadlineText({required this.isSmall});
+  final Color textColor;
+  final List<Shadow> shadows;
 
-  static const _whiteShadows = [
-    Shadow(color: Colors.white, offset: Offset(-3, -3), blurRadius: 0),
-    Shadow(color: Colors.white, offset: Offset(3, -3), blurRadius: 0),
-    Shadow(color: Colors.white, offset: Offset(-3, 3), blurRadius: 0),
-    Shadow(color: Colors.white, offset: Offset(3, 3), blurRadius: 0),
-  ];
+  const _HeadlineText({
+    required this.isSmall,
+    required this.textColor,
+    required this.shadows,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -748,10 +867,10 @@ class _HeadlineText extends StatelessWidget {
             fontFamily: 'BlackHanSans',
             fontSize: isSmall ? 28.0 : 34.0,
             fontStyle: FontStyle.italic,
-            color: const Color(0xFF111111),
+            color: textColor,
             letterSpacing: -1,
             height: 1,
-            shadows: _whiteShadows,
+            shadows: shadows,
           ),
         ),
         RichText(
@@ -759,20 +878,20 @@ class _HeadlineText extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'BlackHanSans',
               fontSize: isSmall ? 18.0 : 22.0,
-              color: const Color(0xFF111111),
+              color: textColor,
               letterSpacing: 0.2,
               height: 1.25,
-              shadows: _whiteShadows,
+              shadows: shadows,
             ),
-            children: const [
-              TextSpan(text: 'study time '),
+            children: [
+              const TextSpan(text: 'study time '),
               TextSpan(
                 text: '✦',
                 style: TextStyle(
                     fontFamily: null,
                     fontSize: 16,
-                    color: Color(0xFF111111),
-                    shadows: []),
+                    color: textColor,
+                    shadows: const []),
               ),
             ],
           ),
@@ -1379,10 +1498,13 @@ class _LivesBox extends StatelessWidget {
 
 // ── Diagonal Stripe Painter ───────────────────────────────────────
 class _DiagonalStripePainter extends CustomPainter {
+  final Color stripeColor;
+  const _DiagonalStripePainter({required this.stripeColor});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.black.withOpacity(0.05)
+      ..color = stripeColor
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     const gap = 24.0;
@@ -1393,7 +1515,8 @@ class _DiagonalStripePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _DiagonalStripePainter old) =>
+      old.stripeColor != stripeColor;
 }
 
 class _StatPlaceholderScreen extends StatelessWidget {
