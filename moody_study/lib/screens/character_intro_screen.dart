@@ -367,9 +367,16 @@ class _LandingPage extends StatefulWidget {
 }
 
 class _LandingPageState extends State<_LandingPage> {
-  int _selectedNav = 0; // 0 = Home
+  int _selectedNav = 0;
   late IntroTimeSlot _slot;
   Timer? _slotTimer;
+
+  AudioPlayer? _ownedPlayer;
+  bool _isPlaying = false;
+
+  AudioPlayer? get _player => widget.audioPlayer ?? _ownedPlayer;
+
+  static const String _audioFile = 'audio/SZA - Good Days (Audio).mp3';
 
   @override
   void initState() {
@@ -379,11 +386,38 @@ class _LandingPageState extends State<_LandingPage> {
       final newSlot = _slotFromNow();
       if (newSlot != _slot) setState(() => _slot = newSlot);
     });
+    _initMusic();
+  }
+
+  void _initMusic() async {
+    if (widget.audioPlayer != null) {
+      // Reuse player dari LoadingScreen yang sudah berjalan
+      if (mounted) setState(() => _isPlaying = true);
+    } else {
+      // Buat player sendiri (flow register langsung)
+      _ownedPlayer = AudioPlayer();
+      try {
+        await _ownedPlayer!.play(AssetSource(_audioFile));
+        if (mounted) setState(() => _isPlaying = true);
+      } catch (_) {}
+    }
+  }
+
+  void _toggleMusic() async {
+    final p = _player;
+    if (p == null) return;
+    if (_isPlaying) {
+      await p.pause();
+    } else {
+      await p.resume();
+    }
+    if (mounted) setState(() => _isPlaying = !_isPlaying);
   }
 
   @override
   void dispose() {
     _slotTimer?.cancel();
+    _ownedPlayer?.dispose();
     super.dispose();
   }
 
@@ -499,7 +533,11 @@ class _LandingPageState extends State<_LandingPage> {
                   children: [
                     const _StatsBadge(),
                     const Spacer(),
-                    // ✅ Ganti _GlobeButton() → LanguageToggleButton()
+                    _MusicToggleButton(
+                      isPlaying: _isPlaying,
+                      onTap: _toggleMusic,
+                    ),
+                    const SizedBox(width: 8),
                     const LanguageToggleButton(),
                     const SizedBox(width: 8),
                     const _LivesBox(),
@@ -574,6 +612,37 @@ class _BottomNavBar extends StatelessWidget {
               );
             }),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Music Toggle Button ───────────────────────────────────────────
+class _MusicToggleButton extends StatelessWidget {
+  final bool isPlaying;
+  final VoidCallback onTap;
+
+  const _MusicToggleButton({required this.isPlaying, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF111111), width: 2),
+          boxShadow: const [
+            BoxShadow(color: Color(0xFF111111), offset: Offset(2, 2), blurRadius: 0),
+          ],
+        ),
+        child: Icon(
+          isPlaying ? Icons.music_note_rounded : Icons.music_off_rounded,
+          size: 14,
+          color: const Color(0xFF111111),
         ),
       ),
     );

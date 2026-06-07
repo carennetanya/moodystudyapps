@@ -15,13 +15,14 @@ import 'login_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
   final AppTheme theme;
-
   final bool fromRegister;
+  final String? userName;
 
   const LoadingScreen({
     super.key,
     this.theme = AppTheme.green,
     this.fromRegister = false,
+    this.userName,
   });
 
   @override
@@ -148,7 +149,6 @@ class _LoadingScreenState extends State<LoadingScreen>
     setState(() {
       _started = true;
       _showMusicUI = true;
-      _showNameForm = true;
       _isPlaying = true;
       _showWarning = false;
     });
@@ -158,6 +158,9 @@ class _LoadingScreenState extends State<LoadingScreen>
       (f) => debugPrint('Audio play error: ${f.message}'),
       (_) {},
     );
+
+    if (!mounted) return;
+    _navigateToIntro(widget.userName ?? '');
   }
 
   void _onStart() async {
@@ -192,7 +195,7 @@ class _LoadingScreenState extends State<LoadingScreen>
         ),
       );
     } else {
-      setState(() => _showNameForm = true);
+      _navigateToIntro(widget.userName ?? '');
     }
   }
 
@@ -205,10 +208,8 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
   }
 
-  void _onNameSubmit(String name) {
-    setState(() => _showNameForm = false);
+  void _navigateToIntro(String name) {
     _audioPlayerTransferred = true;
-
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
@@ -222,6 +223,11 @@ class _LoadingScreenState extends State<LoadingScreen>
         transitionDuration: const Duration(milliseconds: 400),
       ),
     );
+  }
+
+  void _onNameSubmit(String name) {
+    setState(() => _showNameForm = false);
+    _navigateToIntro(name);
   }
 
   @override

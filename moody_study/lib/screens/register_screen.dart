@@ -4,7 +4,7 @@ import 'package:dartz/dartz.dart' hide State;
 import 'package:moody_study/core/exception_handler.dart';
 import 'package:moody_study/core/failure.dart' show AudioFailure, Failure;
 import 'package:moody_study/services/auth_service.dart';
-import 'loading_screen.dart';
+import 'character_intro_screen.dart';
 import 'theme_selector_screen.dart';
 import 'login_screen.dart';
 import '../widgets/music_visualizer_widget.dart';
@@ -162,8 +162,10 @@ class _RegisterScreenState extends State<RegisterScreen>
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) =>
-                LoadingScreen(theme: widget.theme, fromRegister: true),
+            pageBuilder: (_, __, ___) => CharacterIntroScreen(
+              userName: _nameController.text.trim(),
+              theme: widget.theme,
+            ),
             transitionsBuilder: (_, anim, __, child) =>
                 FadeTransition(opacity: anim, child: child),
             transitionDuration: const Duration(milliseconds: 400),
