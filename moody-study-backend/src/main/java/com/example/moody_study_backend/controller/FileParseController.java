@@ -76,4 +76,34 @@ public class FileParseController {
                     .body(Map.of("error", "Gagal memproses file: " + e.getMessage()));
         }
     }
+
+    /**
+     * POST /api/schedule/extract-text
+     *
+     * Mengekstrak raw text dari file PDF/DOCX/TXT/CSV menggunakan Apache PDFBox / Apache POI.
+     * Dipakai Flutter untuk mendapatkan teks PDF sebelum dikirim ke Gemini summarizer.
+     *
+     * Response: { "text": "..." }
+     */
+    @PostMapping(
+        value = "/extract-text",
+        consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<?> extractText(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "File kosong"));
+        }
+        if (file.getSize() > 10 * 1024 * 1024) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Ukuran file melebihi 10 MB."));
+        }
+        try {
+            String text = extractorService.extractRawText(file);
+            return ResponseEntity.ok(Map.of("text", text != null ? text : ""));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Gagal mengekstrak teks: " + e.getMessage()));
+        }
+    }
 }

@@ -118,19 +118,13 @@ class _StudySessionState extends State<StudySession> {
     try {
       await FilePicker.platform.clearTemporaryFiles();
       final result = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
+        allowMultiple: false,
         type: FileType.custom,
         allowedExtensions: ['pdf', 'docx', 'txt'],
         withData: true,
       );
       if (result != null && result.files.isNotEmpty) {
-        setState(() {
-          for (final f in result.files) {
-            if (!_files.any((e) => e.name == f.name)) {
-              _files.add(f);
-            }
-          }
-        });
+        setState(() => _files = [result.files.first]);
       }
     } finally {
       if (mounted) setState(() => _pickingFiles = false);

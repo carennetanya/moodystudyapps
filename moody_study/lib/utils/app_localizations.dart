@@ -278,6 +278,22 @@ class AppLocalizations {
   String get errorUnknown =>
       isId ? 'Terjadi kesalahan. Silakan coba lagi.' : 'Something went wrong. Please try again.';
 
+  String get errorPdfTooLarge => isId
+      ? 'Ukuran file PDF melebihi 10 MB. Coba kompres atau pisahkan dokumennya.'
+      : 'PDF file exceeds 10 MB. Try compressing or splitting the document.';
+
+  String get errorPdfCorrupted => isId
+      ? 'File PDF tidak dapat dibaca. File mungkin rusak atau tidak valid.'
+      : 'Could not read the PDF file. It may be corrupted or invalid.';
+
+  String get errorPdfScannedNotSupported => isId
+      ? 'PDF ini tampaknya berupa gambar scan. Teks tidak dapat diekstrak secara otomatis.'
+      : 'This PDF appears to be a scanned image. Text cannot be extracted automatically.';
+
+  String get errorPdfPasswordProtected => isId
+      ? 'PDF ini dilindungi kata sandi. Hapus proteksi terlebih dahulu, lalu coba lagi.'
+      : 'This PDF is password-protected. Please remove the protection and try again.';
+
   /// Lookup by i18n key — dipakai oleh AppFailure.localizedMessage().
   String errorForKey(String key) => switch (key) {
         'errors.spotify.sdkNotInitialized' => errorSpotifySdkNotInitialized,
@@ -296,6 +312,10 @@ class AppLocalizations {
         'errors.validation.required' => errorValidationRequired,
         'errors.validation.invalidEmail' => errorValidationInvalidEmail,
         'errors.validation.passwordTooShort' => errorValidationPasswordTooShort,
+        'errors.pdf.tooLarge' => errorPdfTooLarge,
+        'errors.pdf.corrupted' => errorPdfCorrupted,
+        'errors.pdf.scannedNotSupported' => errorPdfScannedNotSupported,
+        'errors.pdf.passwordProtected' => errorPdfPasswordProtected,
         _ => errorUnknown,
       };
 }

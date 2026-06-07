@@ -60,6 +60,34 @@ class ExceptionMapper {
     return const SpotifyConnectionFailure();
   }
 
+  /// Untuk error dari endpoint PDF extraction (/api/schedule/extract-text).
+  ///
+  /// Mapping:
+  ///   400 "Ukuran file melebihi" → [PdfTooLargeFailure]
+  ///   400 "Format tidak didukung" → [ValidationFailure]
+  ///   401 / 403                  → [SessionExpiredFailure]
+  ///   5xx "Gagal mengekstrak"    → [PdfCorruptedFailure]
+  ///   5xx "password/encrypt"     → [PdfPasswordProtectedFailure]
+  static AppFailure mapPdf(Object e) {
+    if (e is DioException && e.type == DioExceptionType.badResponse) {
+      final status = e.response?.statusCode;
+      final msg = _serverMessage(e);
+      if (status == 400) {
+        if (msg.contains('Ukuran file melebihi')) return const PdfTooLargeFailure();
+        if (msg.contains('Format tidak didukung')) return const ValidationFailure('format');
+      }
+      if (status == 401 || status == 403) return const SessionExpiredFailure();
+      if (status != null && status >= 500) {
+        final lower = msg.toLowerCase();
+        if (lower.contains('password') || lower.contains('encrypt')) {
+          return const PdfPasswordProtectedFailure();
+        }
+        return const PdfCorruptedFailure();
+      }
+    }
+    return map(e);
+  }
+
   /// Gunakan di auth context (login/register) di mana 400 = kredensial salah.
   static AppFailure mapAuth(Object e) {
     if (e is DioException) {
@@ -71,6 +99,12 @@ class ExceptionMapper {
   }
 
   // ─── Internal ─────────────────────────────────────────────────────────────
+
+  static String _serverMessage(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) return (data['error'] as String? ?? '');
+    return '';
+  }
 
   static AppFailure _mapDio(DioException e) {
     switch (e.type) {

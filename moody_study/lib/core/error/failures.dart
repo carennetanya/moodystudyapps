@@ -108,6 +108,32 @@ final class ValidationFailure extends AppFailure {
   String get messageKey => 'errors.validation.required';
 }
 
+// ─── PDF ──────────────────────────────────────────────────────────────────────
+
+final class PdfTooLargeFailure extends AppFailure {
+  const PdfTooLargeFailure();
+  @override
+  String get messageKey => 'errors.pdf.tooLarge';
+}
+
+final class PdfCorruptedFailure extends AppFailure {
+  const PdfCorruptedFailure();
+  @override
+  String get messageKey => 'errors.pdf.corrupted';
+}
+
+final class PdfScannedNotSupportedFailure extends AppFailure {
+  const PdfScannedNotSupportedFailure();
+  @override
+  String get messageKey => 'errors.pdf.scannedNotSupported';
+}
+
+final class PdfPasswordProtectedFailure extends AppFailure {
+  const PdfPasswordProtectedFailure();
+  @override
+  String get messageKey => 'errors.pdf.passwordProtected';
+}
+
 // ─── Fallback ─────────────────────────────────────────────────────────────────
 
 final class UnknownFailure extends AppFailure {

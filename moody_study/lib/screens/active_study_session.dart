@@ -11,9 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:vibration/vibration.dart';
-import 'package:flutter_pdf_text/flutter_pdf_text.dart';
 import 'package:moody_study/screens/oddy_flashcard_screen.dart';
 import 'package:moody_study/screens/your_files_screen.dart';
 import 'package:moody_study/screens/headphone_screen.dart';
@@ -130,7 +128,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     await _notifPlugin.initialize(
       const InitializationSettings(android: androidSettings, iOS: iosSettings),
     );
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       final android = _notifPlugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       await android?.requestNotificationsPermission();
@@ -146,9 +144,11 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
         ? 'Library Distraction Alert'
         : 'Distraction Alarm';
 
-    final vibrationPattern = _isLibraryLocation
-        ? Int64List.fromList([0, 400, 200, 400, 200, 400, 200, 400])
-        : Int64List.fromList([0, 500, 500]);
+    final Int64List? vibrationPattern = kIsWeb
+        ? null
+        : (_isLibraryLocation
+            ? Int64List.fromList([0, 400, 200, 400, 200, 400, 200, 400])
+            : Int64List.fromList([0, 500, 500]));
 
     final androidChannel = AndroidNotificationChannel(
       channelId,
@@ -982,37 +982,6 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     return '$mm:$ss';
   }
  
-  Future<Either<Failure, void>> _tryDeleteFile(String path) async {
-    try {
-      await File(path).delete();
-      return const Right(null);
-    } catch (e) {
-      return Left(StorageFailure(sanitizeException(e)));
-    }
-  }
-
-  Future<Either<Failure, String>> _tryExtractPdfText(PlatformFile file) async {
-    try {
-      final bytes = file.bytes;
-      if (bytes != null) {
-        final tempPath = await _writeBytesToTempPdf(bytes, file.name);
-        try {
-          final doc = await PDFDoc.fromPath(tempPath);
-          return Right((await doc.text).trim());
-        } finally {
-          (await _tryDeleteFile(tempPath)).fold((_) {}, (_) {});
-        }
-      }
-      if (file.path != null) {
-        final doc = await PDFDoc.fromPath(file.path!);
-        return Right((await doc.text).trim());
-      }
-      return const Right('');
-    } catch (e) {
-      return Left(StorageFailure(sanitizeException(e)));
-    }
-  }
-
   Future<String> _extractTextFromFile(PlatformFile file) async {
     final extension = file.extension?.toLowerCase() ?? '';
     if (extension == 'txt' || extension == 'md' || extension == 'csv') {
@@ -1025,14 +994,11 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
       return result.fold((_) => '', (text) => text?.trim() ?? '');
     }
     if (extension == 'pdf') {
-      final result = await _tryExtractPdfText(file);
-      return result.fold(
-        (f) {
-          debugPrint('PDF text extraction failed: ${f.message}');
-          return '';
-        },
-        (text) => text,
-      );
+      try {
+        return await MaterialService.extractTextFromFile(file);
+      } catch (_) {
+        return '';
+      }
     }
     return '';
   }
@@ -1043,15 +1009,6 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
     } catch (e) {
       return Left(ParseFailure(sanitizeException(e)));
     }
-  }
- 
-  Future<String> _writeBytesToTempPdf(List<int> bytes, String originalFileName) async {
-    final tempDir = await getTemporaryDirectory();
-    final safeName = originalFileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-    final tempFile = File('${tempDir.path}${Platform.pathSeparator}${safeName.isNotEmpty ? safeName : 'temp_pdf'}.pdf');
-    await tempFile.create(recursive: true);
-    await tempFile.writeAsBytes(bytes, flush: true);
-    return tempFile.path;
   }
  
   Future<Either<Failure, String?>> _extractDocxText(PlatformFile file) async {

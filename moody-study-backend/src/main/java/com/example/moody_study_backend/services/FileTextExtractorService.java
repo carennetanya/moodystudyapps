@@ -37,6 +37,23 @@ public class FileTextExtractorService {
     }
 
     /**
+     * Ekstrak raw text dari file (PDF/DOCX/TXT/CSV) tanpa Gemini.
+     * Dipakai oleh endpoint /extract-text untuk keperluan summarization Flutter.
+     */
+    public String extractRawText(MultipartFile file) throws IOException {
+        String filename = file.getOriginalFilename() != null
+                ? file.getOriginalFilename().toLowerCase()
+                : "";
+        if (filename.endsWith(".pdf")) {
+            return extractFromPdf(file.getInputStream());
+        } else if (filename.endsWith(".docx")) {
+            return extractFromDocx(file.getInputStream());
+        } else {
+            return new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+    }
+
+    /**
      * Entry point — ekstrak raw text lalu minta Gemini identifikasi mata kuliah.
      */
     public List<String> extractSubjects(MultipartFile file) throws IOException {

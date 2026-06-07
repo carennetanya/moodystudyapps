@@ -294,34 +294,36 @@ class _UploadBox extends StatefulWidget {
 class _UploadBoxState extends State<_UploadBox> {
   bool _isLoading = false;
 
-  Future<void> _pickFiles() async {
+  Future<void> _pickFile() async {
     setState(() => _isLoading = true);
     try {
       final result = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
+        allowMultiple: false,
         type: FileType.custom,
         allowedExtensions: ['pdf', 'docx', 'txt'],
-        withData: true,   // ← wajib agar file.bytes tersedia untuk preview
+        withData: true,
       );
       if (result != null && result.files.isNotEmpty) {
-        final merged = [...widget.files];
-        for (final f in result.files) {
-          // hindari duplikat nama
-          if (!merged.any((e) => e.name == f.name)) {
-            merged.add(f);
-          }
-        }
-        widget.onFilesChanged(merged);
+        widget.onFilesChanged([result.files.first]);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  Color _extensionColor(String? ext) {
+    switch (ext?.toLowerCase()) {
+      case 'pdf':  return const Color(0xFFFFCDD2);
+      case 'docx': return const Color(0xFFBBDEFB);
+      case 'txt':  return const Color(0xFFE8F5E9);
+      default:     return const Color(0xFFF5F5F5);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _pickFiles,
+      onTap: widget.files.isEmpty ? _pickFile : null,
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
@@ -330,169 +332,207 @@ class _UploadBoxState extends State<_UploadBox> {
         ),
         child: Stack(
           children: [
-            // Dashed border overlay
             Positioned.fill(
-              child: CustomPaint(
-                painter: _DashedBorderPainter(),
-              ),
+              child: CustomPaint(painter: _DashedBorderPainter()),
             ),
+            widget.files.isEmpty ? _buildEmpty(context) : _buildFilled(context),
+          ],
+        ),
+      ),
+    );
+  }
 
-            // Content
-            widget.files.isEmpty
-                ? Center(
-                    child: _isLoading
-                        ? const Padding(
-                            padding: EdgeInsets.all(40),
-                            child: CircularProgressIndicator(
-                              color: Color(0xFF111111),
-                              strokeWidth: 3,
-                            ),
-                          )
-                        : Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.insert_drive_file_outlined,
-                                size: 48,
-                                color: Color(0xFF888888),
-                              ),
-                              const SizedBox(height: 14),
-                              Text(
-                                AppLocalizations.of(context).uploadClickFiles,
-                                style: const TextStyle(
-                                  fontFamily: 'BlackHanSans',
-                                  fontSize: 17,
-                                  color: Color(0xFF111111),
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                AppLocalizations.of(context).uploadFormats,
-                                style: const TextStyle(
-                                  fontFamily: 'BlackHanSans',
-                                  fontSize: 13,
-                                  color: Color(0xFF888888),
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                AppLocalizations.of(context).uploadMaxSize,
-                                style: const TextStyle(
-                                  fontFamily: 'BlackHanSans',
-                                  fontSize: 12,
-                                  color: Color(0xFFAAAAAA),
-                                ),
-                              ),
-                            ],
+  Widget _buildEmpty(BuildContext context) {
+    return Center(
+      child: _isLoading
+          ? const Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator(
+                color: Color(0xFF111111),
+                strokeWidth: 3,
+              ),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF111111), width: 2),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0xFF111111), offset: Offset(3, 3), blurRadius: 0),
+                    ],
+                  ),
+                  child: const Icon(Icons.upload_file_rounded, size: 32, color: Color(0xFF111111)),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context).uploadClickFiles,
+                  style: const TextStyle(
+                    fontFamily: 'BlackHanSans',
+                    fontSize: 17,
+                    color: Color(0xFF111111),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppLocalizations.of(context).uploadFormats,
+                  style: const TextStyle(
+                    fontFamily: 'BlackHanSans',
+                    fontSize: 13,
+                    color: Color(0xFF888888),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  AppLocalizations.of(context).uploadMaxSize,
+                  style: const TextStyle(
+                    fontFamily: 'BlackHanSans',
+                    fontSize: 12,
+                    color: Color(0xFFAAAAAA),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildFilled(BuildContext context) {
+    final f = widget.files.first;
+    final sizeStr = f.size > 0
+        ? '${(f.size / 1024 / 1024).toStringAsFixed(2)} MB'
+        : '';
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // File card
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFF111111), width: 2.5),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(color: Color(0xFF111111), offset: Offset(4, 4), blurRadius: 0),
+              ],
+            ),
+            child: Row(
+              children: [
+                // File type badge
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: _extensionColor(f.extension),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF111111), width: 1.5),
+                  ),
+                  child: Center(
+                    child: Text(
+                      (f.extension ?? 'FILE').toUpperCase(),
+                      style: const TextStyle(
+                        fontFamily: 'BlackHanSans',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF111111),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        f.name,
+                        style: const TextStyle(
+                          fontFamily: 'BlackHanSans',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF222222),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      if (sizeStr.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          sizeStr,
+                          style: const TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 11,
+                            color: Color(0xFF888888),
                           ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Ready indicator
+                const Icon(Icons.check_circle_rounded, color: Color(0xFF1EE86F), size: 24),
+                const SizedBox(width: 6),
+                // Remove button
+                GestureDetector(
+                  onTap: () => widget.onFileRemoved(0),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFEEEE),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF111111), width: 1.5),
+                    ),
+                    child: const Icon(Icons.close, size: 14, color: Color(0xFFCC2222)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Change file button
+          GestureDetector(
+            onTap: _isLoading ? null : _pickFile,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+              decoration: BoxDecoration(
+                color: _isLoading ? const Color(0xFFEEEEEE) : Colors.white,
+                border: Border.all(color: const Color(0xFF111111), width: 1.5),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111111)),
+                    )
+                  : const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // File list
-                        ...widget.files.asMap().entries.map((entry) {
-                          final i = entry.key;
-                          final f = entry.value;
-                          final sizeStr = f.size > 0
-                              ? '${(f.size / 1024 / 1024).toStringAsFixed(1)} MB'
-                              : '';
-                          return Container(
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              border: Border.all(
-                                  color: const Color(0xFF111111), width: 2),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0xFF111111),
-                                  offset: Offset(3, 3),
-                                  blurRadius: 0,
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.insert_drive_file_outlined,
-                                    size: 20, color: Color(0xFF555555)),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        f.name,
-                                        style: const TextStyle(
-                                          fontFamily: 'BlackHanSans',
-                                          fontSize: 13,
-                                          color: Color(0xFF222222),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (sizeStr.isNotEmpty)
-                                        Text(
-                                          sizeStr,
-                                          style: const TextStyle(
-                                            fontFamily: 'BlackHanSans',
-                                            fontSize: 11,
-                                            color: Color(0xFF888888),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () => widget.onFileRemoved(i),
-                                  child: const Icon(Icons.close,
-                                      size: 18, color: Color(0xFF888888)),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                        // Add more button
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: _pickFiles,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.8),
-                              border: Border.all(
-                                  color: const Color(0xFF111111), width: 2),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.add, size: 16,
-                                    color: Color(0xFF111111)),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Add more',
-                                  style: TextStyle(
-                                    fontFamily: 'BlackHanSans',
-                                    fontSize: 12,
-                                    color: Color(0xFF111111),
-                                  ),
-                                ),
-                              ],
-                            ),
+                        Icon(Icons.swap_horiz_rounded, size: 15, color: Color(0xFF111111)),
+                        SizedBox(width: 5),
+                        Text(
+                          'Ganti File',
+                          style: TextStyle(
+                            fontFamily: 'BlackHanSans',
+                            fontSize: 12,
+                            color: Color(0xFF111111),
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
                     ),
-                  ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }

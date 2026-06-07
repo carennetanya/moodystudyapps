@@ -1,9 +1,44 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
+
 import 'api_client.dart';
+import '../core/error/exception_mapper.dart';
+import '../core/error/failures.dart';
 import '../models/generated_quiz_response.dart';
 import '../models/material_response.dart';
 import '../models/saved_file.dart';
 
 class MaterialService {
+  /// Ekstrak teks dari PDF via backend (Apache PDFBox).
+  /// Throws [AppFailure] subclass untuk error spesifik:
+  ///   [PdfTooLargeFailure], [PdfCorruptedFailure],
+  ///   [PdfPasswordProtectedFailure], [PdfScannedNotSupportedFailure]
+  static Future<String> extractTextFromFile(PlatformFile file) async {
+    final bytes = file.bytes ??
+        (file.path != null ? await File(file.path!).readAsBytes() : null);
+    if (bytes == null || bytes.isEmpty) return '';
+
+    final formData = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: file.name),
+    });
+
+    try {
+      final res = await ApiClient.dio.post(
+        '/api/schedule/extract-text',
+        data: formData,
+      );
+      final text = (res.data as Map<String, dynamic>)['text'] as String? ?? '';
+      if (text.trim().length < 10) throw const PdfScannedNotSupportedFailure();
+      return text;
+    } on AppFailure {
+      rethrow;
+    } on DioException catch (e) {
+      throw ExceptionMapper.mapPdf(e);
+    }
+  }
+
   static Future<MaterialResponse> summarizeMaterial({
     required String fileName,
     required String originalText,
