@@ -2,6 +2,7 @@ package com.example.moody_study_backend.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -11,7 +12,6 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Handle error umum (email sudah terdaftar, user tidak ditemukan, dll)
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException e) {
         return ResponseEntity
@@ -19,19 +19,19 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", e.getMessage()));
     }
 
-    // Handle validation error (@NotBlank, @Email, dll)
+    // Returns only the message key so the Flutter client can translate it.
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationException(
             MethodArgumentNotValidException e) {
-        String message = e.getBindingResult()
+        String key = e.getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .map(err -> err.getField() + ": " + err.getDefaultMessage())
+                .map(FieldError::getDefaultMessage)
                 .findFirst()
-                .orElse("Validasi gagal");
+                .orElse("validation.failed");
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("error", message));
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(Map.of("error", key));
     }
 }

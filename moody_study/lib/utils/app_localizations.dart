@@ -294,6 +294,57 @@ class AppLocalizations {
       ? 'PDF ini dilindungi kata sandi. Hapus proteksi terlebih dahulu, lalu coba lagi.'
       : 'This PDF is password-protected. Please remove the protection and try again.';
 
+  // ─── Validation inline ────────────────────────────────────────────────────
+  String get validationNameEmpty =>
+      isId ? 'Nama tidak boleh kosong.' : 'Name is required.';
+
+  String get validationNameTooLong => isId
+      ? 'Nama tidak boleh lebih dari 30 karakter.'
+      : 'Name must not exceed 30 characters.';
+
+  String get validationUsernameTooShort => isId
+      ? 'Username harus terdiri dari 3 hingga 16 karakter.'
+      : 'Username must be between 3 and 16 characters.';
+
+  String get validationUsernameTooLong => isId
+      ? 'Username harus terdiri dari 3 hingga 16 karakter.'
+      : 'Username must be between 3 and 16 characters.';
+
+  String get validationUsernameFormat => isId
+      ? 'Username hanya boleh huruf kecil, angka, dan karakter . _ -'
+      : 'Username may only contain lowercase letters, numbers, and . _ -';
+
+  String get validationUsernameContainsSpace => isId
+      ? 'Username tidak boleh mengandung spasi.'
+      : 'Username cannot contain spaces.';
+
+  String get validationUsernameAlreadyTaken => isId
+      ? 'Username ini sudah terdaftar. Silakan gunakan username lain.'
+      : 'This username is already taken. Please choose a different one.';
+
+  String get validationEmailEmpty =>
+      isId ? 'Email tidak boleh kosong.' : 'Email is required.';
+
+  String get validationEmailFormat => isId
+      ? 'Format email tidak valid (contoh: nama@email.com)'
+      : 'Invalid email format (e.g. name@email.com)';
+
+  String get validationEmailContainsSpace => isId
+      ? 'Email tidak boleh mengandung spasi.'
+      : 'Email cannot contain spaces.';
+
+  String get validationEmailAlreadyRegistered => isId
+      ? 'Alamat email ini sudah terdaftar. Silakan masuk atau gunakan email lain.'
+      : 'This email is already registered. Please sign in or use a different email.';
+
+  String get validationPasswordTooShort => isId
+      ? 'Password minimal 6 karakter.'
+      : 'Password must be at least 6 characters.';
+
+  String get bannerOffline => isId
+      ? 'Kamu sedang offline. Verifikasi tidak tersedia.'
+      : "You're offline. Verification is unavailable.";
+
   /// Lookup by i18n key — dipakai oleh AppFailure.localizedMessage().
   String errorForKey(String key) => switch (key) {
         'errors.spotify.sdkNotInitialized' => errorSpotifySdkNotInitialized,
@@ -316,7 +367,98 @@ class AppLocalizations {
         'errors.pdf.corrupted' => errorPdfCorrupted,
         'errors.pdf.scannedNotSupported' => errorPdfScannedNotSupported,
         'errors.pdf.passwordProtected' => errorPdfPasswordProtected,
+        'errors.validation.name.empty' => validationNameEmpty,
+        'errors.validation.name.tooLong' => validationNameTooLong,
+        'errors.validation.username.tooShort' => validationUsernameTooShort,
+        'errors.validation.username.tooLong' => validationUsernameTooLong,
+        'errors.validation.username.format' => validationUsernameFormat,
+        'errors.validation.username.containsSpace' => validationUsernameContainsSpace,
+        'errors.validation.username.taken' => validationUsernameAlreadyTaken,
+        'errors.validation.email.empty' => validationEmailEmpty,
+        'errors.validation.email.format' => validationEmailFormat,
+        'errors.validation.email.containsSpace' => validationEmailContainsSpace,
+        'errors.validation.email.taken' => validationEmailAlreadyRegistered,
+        'errors.validation.password.tooShort' => validationPasswordTooShort,
+        'errors.validation.offline' => bannerOffline,
         _ => errorUnknown,
+      };
+
+  // ─── Generic error getters ────────────────────────────────────────────────
+
+  String get errNetworkOffline =>
+      isId ? 'Kamu sedang offline.' : 'You are offline.';
+
+  String get errNetworkTimeout =>
+      isId ? 'Koneksi timeout. Periksa jaringan kamu.' : 'Connection timed out. Check your network.';
+
+  String get errSessionExpired =>
+      isId ? 'Sesi habis, silakan login ulang.' : 'Session expired, please log in again.';
+
+  String get errServerProblem =>
+      isId ? 'Server sedang bermasalah. Coba lagi nanti.' : 'Server error. Please try again later.';
+
+  String get errUnknown =>
+      isId ? 'Terjadi kesalahan. Silakan coba lagi.' : 'An error occurred. Please try again.';
+
+  // ─── Map-based resolver (dipakai oleh ApiException.localizedMessage) ─────
+
+  /// Resolve key backend (format "validation.xxx" atau "errors.xxx") ke
+  /// string ramah. Return [errUnknown] kalau key tidak dikenal.
+  String errorByKey(String? key) {
+    if (key == null || key.isEmpty) return errUnknown;
+    return _errorMap[key] ?? errUnknown;
+  }
+
+  Map<String, String> get _errorMap => isId ? _errorMapId : _errorMapEn;
+
+  Map<String, String> get _errorMapId => {
+        // ── Validation (backend keys) ──
+        'validation.username.taken': 'Username ini sudah digunakan. Silakan pilih nama lain.',
+        'validation.username.tooShort': 'Username minimal 3 karakter.',
+        'validation.username.tooLong': 'Username maksimal 16 karakter.',
+        'validation.username.blank': 'Username tidak boleh kosong.',
+        'validation.username.pattern': 'Username hanya boleh huruf kecil, angka, dan karakter . _ -',
+        'validation.email.taken': 'Alamat email ini sudah terdaftar. Silakan masuk atau gunakan email lain.',
+        'validation.email.invalid': 'Format email tidak valid (contoh: nama@email.com).',
+        'validation.email.blank': 'Email tidak boleh kosong.',
+        'validation.name.empty': 'Nama tidak boleh kosong.',
+        'validation.name.blank': 'Nama tidak boleh kosong.',
+        'validation.name.tooLong': 'Nama maksimal 30 karakter.',
+        'validation.password.tooShort': 'Password minimal 6 karakter.',
+        'validation.password.wrong': 'Password saat ini salah.',
+        'validation.credentials.invalid': 'Email atau kata sandi tidak sesuai.',
+        // ── Generic network/server ──
+        'errors.network.timeout': 'Koneksi timeout. Periksa jaringan kamu.',
+        'errors.network.offline': 'Tidak dapat terhubung ke server.',
+        'errors.session.expired': 'Sesi habis, silakan login ulang.',
+        'errors.notFound': 'Data tidak ditemukan.',
+        'errors.server.problem': 'Server sedang bermasalah. Coba lagi nanti.',
+        'errors.unknown': 'Terjadi kesalahan. Silakan coba lagi.',
+      };
+
+  Map<String, String> get _errorMapEn => {
+        // ── Validation (backend keys) ──
+        'validation.username.taken': 'This username is already taken. Please choose another.',
+        'validation.username.tooShort': 'Username must be at least 3 characters.',
+        'validation.username.tooLong': 'Username must be at most 16 characters.',
+        'validation.username.blank': 'Username is required.',
+        'validation.username.pattern': 'Username may only contain lowercase letters, numbers, and . _ -',
+        'validation.email.taken': 'This email is already registered. Please sign in or use a different email.',
+        'validation.email.invalid': 'Invalid email format (example: name@email.com).',
+        'validation.email.blank': 'Email is required.',
+        'validation.name.empty': 'Name cannot be empty.',
+        'validation.name.blank': 'Name cannot be empty.',
+        'validation.name.tooLong': 'Name must be at most 30 characters.',
+        'validation.password.tooShort': 'Password must be at least 6 characters.',
+        'validation.password.wrong': 'Current password is incorrect.',
+        'validation.credentials.invalid': 'Incorrect email or password.',
+        // ── Generic network/server ──
+        'errors.network.timeout': 'Connection timed out. Check your network.',
+        'errors.network.offline': 'Cannot connect to server.',
+        'errors.session.expired': 'Session expired, please log in again.',
+        'errors.notFound': 'Data not found.',
+        'errors.server.problem': 'Server error. Please try again later.',
+        'errors.unknown': 'An error occurred. Please try again.',
       };
 }
 

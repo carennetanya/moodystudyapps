@@ -10,7 +10,9 @@ import 'failures.dart';
 
 /// Memetakan exception mentah ke [AppFailure] yang typed.
 ///
-/// Gunakan di repository/service layer:
+/// Untuk DioException dari [ApiClient], baca [ApiException] yang sudah
+/// di-set oleh [_ErrorInterceptor] → return [ApiFailure] dengan key i18n.
+///
 /// ```dart
 /// } catch (e) {
 ///   return Left(ExceptionMapper.map(e));
@@ -61,6 +63,8 @@ class ExceptionMapper {
   }
 
   /// Untuk error dari endpoint PDF extraction (/api/schedule/extract-text).
+  /// Baca body response langsung karena endpoint itu masih return pesan
+  /// Indonesian (belum pakai key i18n).
   ///
   /// Mapping:
   ///   400 "Ukuran file melebihi" → [PdfTooLargeFailure]
@@ -71,7 +75,7 @@ class ExceptionMapper {
   static AppFailure mapPdf(Object e) {
     if (e is DioException && e.type == DioExceptionType.badResponse) {
       final status = e.response?.statusCode;
-      final msg = _serverMessage(e);
+      final msg = _rawBodyMessage(e);
       if (status == 400) {
         if (msg.contains('Ukuran file melebihi')) return const PdfTooLargeFailure();
         if (msg.contains('Format tidak didukung')) return const ValidationFailure('format');
@@ -88,23 +92,7 @@ class ExceptionMapper {
     return map(e);
   }
 
-  /// Gunakan di auth context (login/register) di mana 400 = kredensial salah.
-  static AppFailure mapAuth(Object e) {
-    if (e is DioException) {
-      final status = e.response?.statusCode;
-      if (status == 400) return const InvalidCredentialsFailure();
-      if (status == 429) return const TooManyRequestsFailure();
-    }
-    return map(e);
-  }
-
   // ─── Internal ─────────────────────────────────────────────────────────────
-
-  static String _serverMessage(DioException e) {
-    final data = e.response?.data;
-    if (data is Map) return (data['error'] as String? ?? '');
-    return '';
-  }
 
   static AppFailure _mapDio(DioException e) {
     switch (e.type) {
@@ -115,7 +103,19 @@ class ExceptionMapper {
       case DioExceptionType.connectionError:
         return const NetworkOfflineFailure();
       case DioExceptionType.badResponse:
-        return _mapStatus(e);
+        // Pass-through: baca ApiException yang di-set _ErrorInterceptor
+        final apiErr = e.error as ApiException?;
+        if (apiErr != null) {
+          return ApiFailure(
+            messageKey: apiErr.messageKey ?? apiErr.fallbackMessage,
+            statusCode: apiErr.statusCode,
+          );
+        }
+        // Fallback kalau DioException datang di luar ApiClient interceptor
+        return ApiFailure(
+          messageKey: 'errors.unknown',
+          statusCode: e.response?.statusCode,
+        );
       default:
         final apiErr = e.error;
         return UnknownFailure(
@@ -124,14 +124,12 @@ class ExceptionMapper {
     }
   }
 
-  static AppFailure _mapStatus(DioException e) {
-    final status = e.response?.statusCode;
-    return switch (status) {
-      401 || 403 => const SessionExpiredFailure(),
-      429 => const TooManyRequestsFailure(),
-      _ when status != null && status >= 500 => ServerFailure(status),
-      _ => UnknownFailure('HTTP $status'),
-    };
+  /// Baca `data['error']` langsung dari response body — hanya untuk
+  /// endpoint yang belum pakai key i18n (PDF extraction).
+  static String _rawBodyMessage(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) return (data['error'] as String? ?? '');
+    return '';
   }
 
   static void debugLog(Object e) {

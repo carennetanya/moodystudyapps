@@ -10,7 +10,7 @@ public class UpdatePasswordRequest {
     private String currentPassword;
 
     @NotBlank
-    @Size(min = 6, message = "Password harus minimal 6 karakter")
+    @Size(min = 6, message = "validation.password.tooShort")
     private String newPassword;
 
     @NotBlank

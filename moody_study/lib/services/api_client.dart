@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_config.dart';
+import '../utils/app_localizations.dart';
 
 /// Singleton Dio client dengan interceptor lengkap:
 ///   1. JWT injection otomatis di setiap request
@@ -116,81 +118,81 @@ class _ErrorInterceptor extends Interceptor {
 
 /// Exception yang dilempar oleh semua service yang pakai [ApiClient].
 ///
+/// Carry [messageKey] (key i18n dari backend, format "validation.xxx.yyy")
+/// dan [fallbackMessage] (key generic untuk network/server error).
+///
 /// ```dart
 /// try {
 ///   final res = await ApiClient.dio.get('/api/profile/info');
 /// } on DioException catch (e) {
 ///   final err = e.error as ApiException;
-///   print(err.message);   // pesan user-friendly
-///   print(err.statusCode); // nullable int
+///   final msg = err.localizedMessage(context); // pesan user-friendly
+///   print(err.statusCode);                     // nullable int
 /// }
 /// ```
 class ApiException implements Exception {
-  final String message;
+  /// Key i18n dari body backend (`"validation.xxx.yyy"`), atau null kalau
+  /// tidak ada body terstruktur.
+  final String? messageKey;
+
+  /// Key generic fallback untuk error jaringan/server — selalu non-null.
+  final String fallbackMessage;
+
   final int? statusCode;
-  final String? serverMessage;
 
   const ApiException({
-    required this.message,
+    this.messageKey,
+    required this.fallbackMessage,
     this.statusCode,
-    this.serverMessage,
   });
 
   factory ApiException.fromDioException(DioException err) {
     final response = err.response;
     final statusCode = response?.statusCode;
 
-    // Coba ambil pesan dari body backend
-    String? serverMsg;
+    // Ambil key i18n dari body backend — hanya kalau format "validation.*"
+    String? key;
     try {
       final data = response?.data;
       if (data is Map<String, dynamic>) {
-        serverMsg = data['message'] as String? ??
-            data['error'] as String?;
+        final raw = data['error'] as String?;
+        if (raw != null && raw.startsWith('validation.')) {
+          key = raw;
+        }
       }
     } catch (_) {}
 
-    // Pesan user-friendly berdasarkan status code
-    final message = _humanMessage(err.type, statusCode, serverMsg);
-
     return ApiException(
-      message: message,
+      messageKey: key,
+      fallbackMessage: _genericFallback(err.type, statusCode),
       statusCode: statusCode,
-      serverMessage: serverMsg,
     );
   }
 
-  static String _humanMessage(
-    DioExceptionType type,
-    int? statusCode,
-    String? serverMsg,
-  ) {
-    // Gunakan pesan server kalau ada dan bukan pesan teknis
-    if (serverMsg != null && serverMsg.isNotEmpty) return serverMsg;
+  static String _genericFallback(DioExceptionType type, int? statusCode) {
+    return switch (type) {
+      DioExceptionType.connectionTimeout ||
+      DioExceptionType.sendTimeout ||
+      DioExceptionType.receiveTimeout =>
+        'errors.network.timeout',
+      DioExceptionType.connectionError => 'errors.network.offline',
+      DioExceptionType.badResponse => switch (statusCode) {
+          401 || 403 => 'errors.session.expired',
+          404 => 'errors.notFound',
+          500 || 502 || 503 => 'errors.server.problem',
+          _ => 'errors.unknown',
+        },
+      _ => 'errors.unknown',
+    };
+  }
 
-    switch (type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return 'Koneksi timeout. Periksa jaringan kamu.';
-      case DioExceptionType.connectionError:
-        return 'Tidak dapat terhubung ke server.';
-      case DioExceptionType.badResponse:
-        return switch (statusCode) {
-          400 => 'Request tidak valid.',
-          401 => 'Sesi habis, silakan login ulang.',
-          403 => 'Kamu tidak punya akses ke fitur ini.',
-          404 => 'Data tidak ditemukan.',
-          422 => 'Data yang dikirim tidak sesuai.',
-          429 => 'Terlalu banyak request. Coba lagi sebentar.',
-          500 || 502 || 503 => 'Server sedang bermasalah. Coba lagi nanti.',
-          _ => 'Terjadi kesalahan (kode: $statusCode).',
-        };
-      default:
-        return 'Terjadi kesalahan yang tidak diketahui.';
-    }
+  /// Resolve ke pesan ramah berdasarkan bahasa aktif.
+  /// Panggil dari UI layer dengan BuildContext.
+  String localizedMessage(BuildContext context) {
+    final l = AppLocalizations.of(context, listen: false);
+    return l.errorByKey(messageKey ?? fallbackMessage);
   }
 
   @override
-  String toString() => 'ApiException($statusCode): $message';
+  String toString() => 'ApiException($statusCode): key=$messageKey, fallback=$fallbackMessage';
 }

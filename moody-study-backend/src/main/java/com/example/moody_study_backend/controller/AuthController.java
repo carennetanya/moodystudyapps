@@ -5,6 +5,7 @@ import com.example.moody_study_backend.dto.LoginRequest;
 import com.example.moody_study_backend.dto.RegisterRequest;
 import com.example.moody_study_backend.dto.UpdateEmailRequest;
 import com.example.moody_study_backend.dto.UpdatePasswordRequest;
+import com.example.moody_study_backend.repository.UserRepository;
 import com.example.moody_study_backend.services.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRepository userRepository;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -45,5 +47,23 @@ public class AuthController {
             @Valid @RequestBody UpdatePasswordRequest request,
             Authentication authentication) {
         return ResponseEntity.ok(authService.updatePassword(authentication.getName(), request));
+    }
+
+    @GetMapping("/check-email")
+    public ResponseEntity<Map<String, Object>> checkEmail(@RequestParam String email) {
+        boolean taken = userRepository.existsByEmailIgnoreCase(email);
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("available", !taken);
+        if (taken) body.put("reason", "validation.email.taken");
+        return ResponseEntity.ok(body);
+    }
+
+    @GetMapping("/check-username")
+    public ResponseEntity<Map<String, Object>> checkUsername(@RequestParam String username) {
+        boolean taken = userRepository.existsByUsernameIgnoreCase(username);
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("available", !taken);
+        if (taken) body.put("reason", "validation.username.taken");
+        return ResponseEntity.ok(body);
     }
 }

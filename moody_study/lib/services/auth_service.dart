@@ -37,7 +37,7 @@ class AuthService {
         email: email,
       ));
     } on DioException catch (e) {
-      return left(ExceptionMapper.mapAuth(e));
+      return left(ExceptionMapper.map(e));
     }
   }
 
@@ -60,7 +60,7 @@ class AuthService {
         email: email,
       ));
     } on DioException catch (e) {
-      return left(ExceptionMapper.mapAuth(e));
+      return left(ExceptionMapper.map(e));
     }
   }
 

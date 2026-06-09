@@ -12,4 +12,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     boolean existsByUsername(String username);
+
+    // Case-insensitive checks — used for register uniqueness validation
+    boolean existsByEmailIgnoreCase(String email);
+    boolean existsByUsernameIgnoreCase(String username);
+
+    // Self-excluding checks — used for profile update (exclude current user)
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
+    boolean existsByUsernameIgnoreCaseAndIdNot(String username, Long id);
 }

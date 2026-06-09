@@ -134,6 +134,86 @@ final class PdfPasswordProtectedFailure extends AppFailure {
   String get messageKey => 'errors.pdf.passwordProtected';
 }
 
+// ─── Validation inline ────────────────────────────────────────────────────────
+
+final class NameEmptyFailure extends AppFailure {
+  const NameEmptyFailure();
+  @override
+  String get messageKey => 'errors.validation.name.empty';
+}
+
+final class NameTooLongFailure extends AppFailure {
+  const NameTooLongFailure();
+  @override
+  String get messageKey => 'errors.validation.name.tooLong';
+}
+
+final class UsernameTooShortFailure extends AppFailure {
+  const UsernameTooShortFailure();
+  @override
+  String get messageKey => 'errors.validation.username.tooShort';
+}
+
+final class UsernameTooLongFailure extends AppFailure {
+  const UsernameTooLongFailure();
+  @override
+  String get messageKey => 'errors.validation.username.tooLong';
+}
+
+final class UsernameFormatInvalidFailure extends AppFailure {
+  const UsernameFormatInvalidFailure();
+  @override
+  String get messageKey => 'errors.validation.username.format';
+}
+
+final class UsernameContainsSpaceFailure extends AppFailure {
+  const UsernameContainsSpaceFailure();
+  @override
+  String get messageKey => 'errors.validation.username.containsSpace';
+}
+
+final class UsernameAlreadyTakenFailure extends AppFailure {
+  const UsernameAlreadyTakenFailure();
+  @override
+  String get messageKey => 'errors.validation.username.taken';
+}
+
+final class EmailEmptyFailure extends AppFailure {
+  const EmailEmptyFailure();
+  @override
+  String get messageKey => 'errors.validation.email.empty';
+}
+
+final class EmailFormatInvalidFailure extends AppFailure {
+  const EmailFormatInvalidFailure();
+  @override
+  String get messageKey => 'errors.validation.email.format';
+}
+
+final class EmailContainsSpaceFailure extends AppFailure {
+  const EmailContainsSpaceFailure();
+  @override
+  String get messageKey => 'errors.validation.email.containsSpace';
+}
+
+final class EmailAlreadyRegisteredFailure extends AppFailure {
+  const EmailAlreadyRegisteredFailure();
+  @override
+  String get messageKey => 'errors.validation.email.taken';
+}
+
+final class PasswordTooShortFailure extends AppFailure {
+  const PasswordTooShortFailure();
+  @override
+  String get messageKey => 'errors.validation.password.tooShort';
+}
+
+final class OfflineCheckFailure extends AppFailure {
+  const OfflineCheckFailure();
+  @override
+  String get messageKey => 'errors.validation.offline';
+}
+
 // ─── Fallback ─────────────────────────────────────────────────────────────────
 
 final class UnknownFailure extends AppFailure {
@@ -142,4 +222,24 @@ final class UnknownFailure extends AppFailure {
   const UnknownFailure(this.debugMessage);
   @override
   String get messageKey => 'errors.unknown';
+}
+
+// ─── API (backend response) ───────────────────────────────────────────────────
+
+/// Failure untuk semua error dari backend yang sudah dinormalisasi lewat
+/// [ApiException]. Carry key i18n (`"validation.xxx"` atau `"errors.xxx"`)
+/// dan resolve via [AppLocalizations.errorByKey] — bukan [errorForKey].
+final class ApiFailure extends AppFailure {
+  final String _key;
+  final int? statusCode;
+
+  const ApiFailure({required String messageKey, this.statusCode})
+      : _key = messageKey;
+
+  @override
+  String get messageKey => _key;
+
+  @override
+  String localizedMessage(BuildContext context) =>
+      AppLocalizations.of(context, listen: false).errorByKey(_key);
 }

@@ -42,8 +42,11 @@ public class AuthService {
 
     // ── Register ─────────────────────────────────────────────────────────────
     public AuthResponse register(RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new RuntimeException("validation.username.taken");
+        }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email sudah terdaftar");
+            throw new RuntimeException("validation.email.taken");
         }
 
         User user = User.builder()
@@ -63,10 +66,10 @@ public class AuthService {
     // ── Login ─────────────────────────────────────────────────────────────────
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Email tidak ditemukan"));
+                .orElseThrow(() -> new RuntimeException("validation.credentials.invalid"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Password salah");
+            throw new RuntimeException("validation.credentials.invalid");
         }
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
@@ -76,14 +79,14 @@ public class AuthService {
     // ── Update email — returns NEW token with updated email as subject ────────
     public AuthResponse updateEmail(String currentEmail, UpdateEmailRequest request) {
         User user = userRepository.findByEmail(currentEmail)
-                .orElseThrow(() -> new RuntimeException("User tidak ditemukan"));
+                .orElseThrow(() -> new RuntimeException("validation.user.notFound"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Password salah");
+            throw new RuntimeException("validation.credentials.invalid");
         }
 
         if (userRepository.existsByEmail(request.getNewEmail())) {
-            throw new RuntimeException("Email sudah terdaftar");
+            throw new RuntimeException("validation.email.taken");
         }
 
         String oldEmail = user.getEmail();
@@ -101,14 +104,14 @@ public class AuthService {
     // ── Update password ───────────────────────────────────────────────────────
     public Map<String, String> updatePassword(String email, UpdatePasswordRequest request) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User tidak ditemukan"));
+                .orElseThrow(() -> new RuntimeException("validation.user.notFound"));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new RuntimeException("Password saat ini salah");
+            throw new RuntimeException("validation.credentials.invalid");
         }
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new RuntimeException("Password baru tidak cocok");
+            throw new RuntimeException("validation.password.mismatch");
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));

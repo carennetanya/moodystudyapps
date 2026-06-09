@@ -70,4 +70,22 @@ public class UserProfileController {
                 userProfileService.getNickname(authentication.getName())
         );
     }
+
+    @GetMapping("/check-email-available")
+    public ResponseEntity<Map<String, Object>> checkEmailAvailable(
+            @RequestParam String email,
+            Authentication authentication) {
+        return ResponseEntity.ok(
+                userProfileService.checkEmailAvailable(authentication.getName(), email)
+        );
+    }
+
+    @GetMapping("/check-username-available")
+    public ResponseEntity<Map<String, Object>> checkUsernameAvailable(
+            @RequestParam String username,
+            Authentication authentication) {
+        return ResponseEntity.ok(
+                userProfileService.checkUsernameAvailable(authentication.getName(), username)
+        );
+    }
 }
