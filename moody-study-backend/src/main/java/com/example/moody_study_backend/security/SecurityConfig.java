@@ -76,6 +76,7 @@ public class SecurityConfig {
         configuration.addAllowedMethod("GET");
         configuration.addAllowedMethod("POST");
         configuration.addAllowedMethod("PUT");
+        configuration.addAllowedMethod("PATCH");
         configuration.addAllowedMethod("DELETE");
         configuration.addAllowedMethod("OPTIONS");
         configuration.addAllowedHeader("*");

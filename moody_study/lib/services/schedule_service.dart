@@ -163,4 +163,15 @@ class ScheduleItem {
       isCompleted: json['isCompleted'] == true,
     );
   }
+
+  ScheduleItem copyWith({bool? isCompleted}) => ScheduleItem(
+        id: id,
+        subject: subject,
+        studyDate: studyDate,
+        startTime: startTime,
+        endTime: endTime,
+        location: location,
+        mood: mood,
+        isCompleted: isCompleted ?? this.isCompleted,
+      );
 }

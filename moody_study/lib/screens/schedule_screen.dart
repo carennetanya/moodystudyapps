@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dartz/dartz.dart' hide State;
-import 'package:moody_study/core/failure.dart';
-import 'package:moody_study/core/exception_handler.dart';
+import 'package:moody_study/core/error/exception_mapper.dart';
+import 'package:moody_study/core/error/failures.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:moody_study/services/notification_service.dart';
 import 'package:moody_study/services/schedule_service.dart';
@@ -84,7 +84,9 @@ class ScheduleScreen extends StatefulWidget {
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
-  late Future<List<ScheduleItem>> _schedulesFuture;
+  List<ScheduleItem> _schedules = [];
+  bool _isLoadingSchedules = false;
+  Object? _schedulesError;
 
   @override
   void initState() {
@@ -92,9 +94,39 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _refreshSchedules();
   }
 
-  void _refreshSchedules() {
+  Future<void> _refreshSchedules() async {
     setState(() {
-      _schedulesFuture = ScheduleService.fetchSchedules();
+      _isLoadingSchedules = true;
+      _schedulesError = null;
+    });
+    try {
+      final list = await ScheduleService.fetchSchedules();
+      if (!mounted) return;
+      setState(() {
+        _isLoadingSchedules = false;
+        _schedules = _sortedSchedules(list);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingSchedules = false;
+        _schedulesError = e;
+      });
+    }
+  }
+
+  List<ScheduleItem> _sortedSchedules(List<ScheduleItem> list) {
+    final incomplete = list.where((s) => !s.isCompleted).toList();
+    final complete = list.where((s) => s.isCompleted).toList();
+    return [...incomplete, ...complete];
+  }
+
+  void _markDoneLocally(int scheduleId) {
+    setState(() {
+      final idx = _schedules.indexWhere((s) => s.id == scheduleId);
+      if (idx == -1) return;
+      final item = _schedules.removeAt(idx);
+      _schedules.add(item.copyWith(isCompleted: true));
     });
   }
 
@@ -503,7 +535,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                               parseResult.fold(
                                 (f) {
                                   setS(() => isProcessingFile = false);
-                                  _showErrorSnack(f.message.isNotEmpty ? f.message : 'Gagal memproses file. Silakan coba lagi.');
+                                  _showErrorSnack(f.localizedMessage(context));
                                 },
                                 (parsed) {
                                   setS(() {
@@ -950,7 +982,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (!mounted) return;
     Navigator.of(context).pop(); // close loading
     result.fold(
-      (f) => _showErrorSnack(f.message.isNotEmpty ? f.message : 'Gagal membuat jadwal otomatis. Silakan coba lagi.'),
+      (f) => _showErrorSnack(f.localizedMessage(context)),
       (aiScheduleItems) {
         if (aiScheduleItems.isEmpty) {
           _showErrorSnack('Oddy ga bisa buat jadwal. Coba lagi!');
@@ -961,7 +993,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Future<Either<Failure, List<_AiScheduleItem>>> _doGenerateAutoSchedule({
+  Future<Either<AppFailure,List<_AiScheduleItem>>> _doGenerateAutoSchedule({
     required List<String> subjects,
     required List<String> availableDays,
     required String startHour,
@@ -990,7 +1022,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       )).toList();
       return Right(items);
     } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -1003,15 +1035,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Future<Either<Failure, List<String>>> _doParseSubjectsFromFile(String path, String name) async {
+  Future<Either<AppFailure,List<String>>> _doParseSubjectsFromFile(String path, String name) async {
     try {
       return Right(await ScheduleService.parseSubjectsFromFile(path, name));
     } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
-  Future<Either<Failure, void>> _doCreateManualSchedule({
+  Future<Either<AppFailure,void>> _doCreateManualSchedule({
     required String subject,
     required DateTime studyDate,
     required TimeOfDay startTime,
@@ -1038,7 +1070,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
       return const Right(null);
     } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -1380,7 +1412,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Future<Either<Failure, void>> _doCreateScheduleItem(_AiScheduleItem item) async {
+  Future<Either<AppFailure,void>> _doCreateScheduleItem(_AiScheduleItem item) async {
     try {
       final created = await ScheduleService.createSchedule(
         subject: item.subject,
@@ -1400,7 +1432,25 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
       return const Right(null);
     } catch (e) {
-      return Left(ServiceFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
+    }
+  }
+
+  Future<Either<AppFailure,void>> _doCompleteSchedule(int id) async {
+    try {
+      await ScheduleService.completeSchedule(id);
+      return const Right(null);
+    } catch (e) {
+      return Left(ExceptionMapper.map(e));
+    }
+  }
+
+  Future<Either<AppFailure,void>> _doDeleteSchedule(int id) async {
+    try {
+      await ScheduleService.deleteSchedule(id);
+      return const Right(null);
+    } catch (e) {
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -1632,7 +1682,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                 );
                                 if (!mounted) return;
                                 createResult.fold(
-                                  (f) => setDialogState(() => errorText = f.message.isNotEmpty ? f.message : 'Gagal membuat jadwal. Silakan coba lagi.'),
+                                  (f) => setDialogState(() => errorText = f.localizedMessage(context)),
                                   (_) {
                                     Navigator.of(context).pop();
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1750,8 +1800,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
     if (confirmed == true) {
       await NotificationService.instance.cancelNotification(item.id);
-      await ScheduleService.deleteSchedule(item.id);
-      _refreshSchedules();
+      final result = await _doDeleteSchedule(item.id);
+      if (!mounted) return;
+      result.fold(
+        (f) => _showErrorSnack(f.localizedMessage(context)),
+        (_) => _refreshSchedules(),
+      );
     }
   }
 
@@ -1779,7 +1833,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
-  Either<Failure, int> _tryCalcDurationMinutes(String startTime, String endTime) {
+  Either<AppFailure,int> _tryCalcDurationMinutes(String startTime, String endTime) {
     try {
       final sParts = startTime.split(':');
       final eParts = endTime.split(':');
@@ -1788,30 +1842,30 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       final diff  = end - start;
       return Right(diff > 0 ? diff : 60);
     } catch (e) {
-      return Left(ParseFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
   int _calcDurationMinutes(String startTime, String endTime) =>
       _tryCalcDurationMinutes(startTime, endTime).getOrElse(() => 60);
 
-  Either<Failure, DateTime> _parseDate(String s) {
+  Either<AppFailure,DateTime> _parseDate(String s) {
     try {
       return Right(DateTime.parse(s));
     } catch (e) {
-      return Left(ParseFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
   DateTime? _tryParseDate(String s) =>
       _parseDate(s).fold((_) => null, (d) => d);
 
-  Either<Failure, TimeOfDay> _parseTime(String s) {
+  Either<AppFailure,TimeOfDay> _parseTime(String s) {
     try {
       final parts = s.split(':');
       return Right(TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1])));
     } catch (e) {
-      return Left(ParseFailure(sanitizeException(e)));
+      return Left(ExceptionMapper.map(e));
     }
   }
 
@@ -1895,88 +1949,98 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
             // Schedule list
             Expanded(
-              child: FutureBuilder<List<ScheduleItem>>(
-                future: _schedulesFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: _kBlack, strokeWidth: 2.5),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('😵', style: TextStyle(fontSize: 40)),
-                          const SizedBox(height: 12),
-                          Text(
-                            l.error,
-                            style: const TextStyle(
-                              fontFamily: 'BlackHanSans',
-                              fontSize: 16,
-                              color: _kBlack,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          GestureDetector(
-                            onTap: _refreshSchedules,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                              decoration: _neoBox(bg: _kYellow, radius: 8),
-                              child: Text(
-                                l.retry,
-                                style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 14, color: _kBlack),
+              child: _isLoadingSchedules && _schedules.isEmpty
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: _kBlack, strokeWidth: 2.5),
+                    )
+                  : _schedulesError != null && _schedules.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('😵',
+                                  style: TextStyle(fontSize: 40)),
+                              const SizedBox(height: 12),
+                              Text(
+                                l.error,
+                                style: const TextStyle(
+                                  fontFamily: 'BlackHanSans',
+                                  fontSize: 16,
+                                  color: _kBlack,
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: _refreshSchedules,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 10),
+                                  decoration:
+                                      _neoBox(bg: _kYellow, radius: 8),
+                                  child: Text(
+                                    l.retry,
+                                    style: const TextStyle(
+                                        fontFamily: 'BlackHanSans',
+                                        fontSize: 14,
+                                        color: _kBlack),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  final schedules = snapshot.data ?? [];
-
-                  if (schedules.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.calendar_month_rounded, size: 64, color: _kBlack),
-                          const SizedBox(height: 16),
-                          Text(
-                            l.scheduleNoSchedules,
-                            style: const TextStyle(
-                              fontFamily: 'Nunito',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF666666),
+                        )
+                      : _schedules.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                      Icons.calendar_month_rounded,
+                                      size: 64,
+                                      color: _kBlack),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    l.scheduleNoSchedules,
+                                    style: const TextStyle(
+                                      fontFamily: 'Nunito',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF666666),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: _schedules.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 14),
+                              itemBuilder: (context, index) {
+                                final schedule = _schedules[index];
+                                return _ScheduleCard(
+                                  key: ValueKey(schedule.id),
+                                  schedule: schedule,
+                                  l: l,
+                                  onComplete: () async {
+                                    _markDoneLocally(schedule.id);
+                                    final result =
+                                        await _doCompleteSchedule(schedule.id);
+                                    if (!mounted) return;
+                                    result.fold(
+                                      (f) {
+                                        _showErrorSnack(
+                                            f.localizedMessage(context));
+                                        _refreshSchedules();
+                                      },
+                                      (_) => NotificationService.instance
+                                          .cancelNotification(schedule.id),
+                                    );
+                                  },
+                                  onDelete: () => _confirmDelete(schedule),
+                                );
+                              },
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return ListView.separated(
-                    itemCount: schedules.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 14),
-                    itemBuilder: (context, index) {
-                      final schedule = schedules[index];
-                      return _ScheduleCard(
-                        schedule: schedule,
-                        l: l,
-                        onComplete: () async {
-                          await ScheduleService.completeSchedule(schedule.id);
-                          await NotificationService.instance.cancelNotification(schedule.id);
-                          _refreshSchedules();
-                        },
-                        onDelete: () => _confirmDelete(schedule),
-                      );
-                    },
-                  );
-                },
-              ),
             ),
           ],
         ),
@@ -2019,6 +2083,7 @@ class _ScheduleCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const _ScheduleCard({
+    super.key,
     required this.schedule,
     required this.l,
     required this.onComplete,
@@ -2028,6 +2093,7 @@ class _ScheduleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool done = schedule.isCompleted;
+
     return Container(
       decoration: _neoBox(
         bg: done ? const Color(0xFFF0FFF4) : _kWhite,
@@ -2037,7 +2103,7 @@ class _ScheduleCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Yellow/Green top accent bar
+          // Top accent bar
           Container(
             height: 6,
             decoration: BoxDecoration(
@@ -2060,17 +2126,23 @@ class _ScheduleCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         schedule.subject,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'BlackHanSans',
                           fontSize: 18,
-                          color: _kBlack,
+                          color: done ? const Color(0xFF888888) : _kBlack,
                           letterSpacing: 0.3,
+                          decoration: done
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          decorationColor: const Color(0xFF888888),
+                          decorationThickness: 2.5,
                         ),
                       ),
                     ),
                     if (done)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: _kDoneGreen,
                           borderRadius: BorderRadius.circular(20),
@@ -2092,16 +2164,19 @@ class _ScheduleCard extends StatelessWidget {
 
                 // Date & time chip
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: _kBg,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: _kBlack.withOpacity(0.2), width: 1.5),
+                    border: Border.all(
+                        color: _kBlack.withValues(alpha: 0.2), width: 1.5),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.calendar_today_rounded, size: 13, color: _kBlack),
+                      const Icon(Icons.calendar_today_rounded,
+                          size: 13, color: _kBlack),
                       const SizedBox(width: 5),
                       Text(
                         '${schedule.studyDate}  ·  ${schedule.startTime} – ${schedule.endTime}',
@@ -2121,7 +2196,8 @@ class _ScheduleCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_rounded, size: 14, color: Color(0xFF888888)),
+                      const Icon(Icons.location_on_rounded,
+                          size: 14, color: Color(0xFF888888)),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
@@ -2142,7 +2218,8 @@ class _ScheduleCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.mood_rounded, size: 14, color: Color(0xFF888888)),
+                      const Icon(Icons.mood_rounded,
+                          size: 14, color: Color(0xFF888888)),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
@@ -2167,12 +2244,15 @@ class _ScheduleCard extends StatelessWidget {
                       GestureDetector(
                         onTap: onComplete,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: _neoBox(bg: _kBlack, radius: 8, shadowOffset: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration:
+                              _neoBox(bg: _kBlack, radius: 8, shadowOffset: 2),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.check_rounded, size: 15, color: _kYellow),
+                              const Icon(Icons.check_rounded,
+                                  size: 15, color: _kYellow),
                               const SizedBox(width: 6),
                               Text(
                                 l.scheduleComplete,
@@ -2194,9 +2274,11 @@ class _ScheduleCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: _kWhite,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: _kRed.withOpacity(0.5), width: 1.5),
+                          border: Border.all(
+                              color: _kRed.withValues(alpha: 0.5), width: 1.5),
                         ),
-                        child: const Icon(Icons.delete_outline_rounded, size: 18, color: _kRed),
+                        child: const Icon(Icons.delete_outline_rounded,
+                            size: 18, color: _kRed),
                       ),
                     ),
                   ],
