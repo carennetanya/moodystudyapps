@@ -1,12 +1,15 @@
 package com.example.moody_study_backend.controller;
 
+import com.example.moody_study_backend.dto.MeResponse;
 import com.example.moody_study_backend.dto.NicknameRequest;
 import com.example.moody_study_backend.dto.UpdateNameRequest;
 import com.example.moody_study_backend.dto.UpdateUsernameRequest;
 import com.example.moody_study_backend.dto.UpdateAvatarRequest;
+import com.example.moody_study_backend.repository.UserRepository;
 import com.example.moody_study_backend.services.UserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +23,16 @@ import java.util.Map;
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
+    private final UserRepository userRepository;
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getMe(Authentication authentication) {
+        return userRepository.findByEmail(authentication.getName())
+                .<ResponseEntity<?>>map(user -> ResponseEntity.ok(
+                        new MeResponse(user.getEmail(), user.getUsername(), user.getName())))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "validation.user.notFound")));
+    }
 
     @GetMapping("/info")
     public ResponseEntity<Map<String, Object>> getUserInfo(Authentication authentication) {

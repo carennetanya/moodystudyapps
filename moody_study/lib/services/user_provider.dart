@@ -81,6 +81,14 @@ class UserProvider extends ChangeNotifier {
     );
   }
 
+  void setUser(AuthUser user) {
+    _token = user.token.isEmpty ? _token : user.token;
+    _name = user.name;
+    _username = user.username;
+    _email = user.email;
+    notifyListeners();
+  }
+
   void logout() {
     AuthService.logout();
     _token = null;

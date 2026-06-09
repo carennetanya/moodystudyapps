@@ -64,6 +64,21 @@ class AuthService {
     }
   }
 
+  static Future<Either<AppFailure, AuthUser>> getCurrentUser() async {
+    try {
+      final res = await ApiClient.dio.get('/api/profile/me');
+      final body = res.data as Map<String, dynamic>;
+      return right(AuthUser(
+        token: ApiClient.currentToken ?? '',
+        name: body['name'] as String?,
+        username: body['username'] as String?,
+        email: body['email'] as String?,
+      ));
+    } on DioException catch (e) {
+      return left(ExceptionMapper.map(e));
+    }
+  }
+
   static Future<void> logout() async {
     await ApiClient.clearToken();
   }

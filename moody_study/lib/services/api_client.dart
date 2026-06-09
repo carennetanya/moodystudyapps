@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_config.dart';
+import 'session_expired_notifier.dart';
 import '../utils/app_localizations.dart';
 
 /// Singleton Dio client dengan interceptor lengkap:
@@ -102,6 +103,12 @@ class _AuthInterceptor extends Interceptor {
 class _ErrorInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
+    // Detect 401 saat user sedang aktif pakai app (bukan saat login)
+    if (err.response?.statusCode == 401 && ApiClient.hasToken) {
+      SessionExpiredNotifier.instance.notify();
+      ApiClient.clearToken(); // fire-and-forget: hapus token dari storage
+    }
+
     // Ubah semua DioException → ApiException yang seragam
     handler.reject(
       DioException(
