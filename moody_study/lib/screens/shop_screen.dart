@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:moody_study/services/api_client.dart';
 import 'package:moody_study/screens/collection_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Enums
@@ -139,6 +140,7 @@ class _ShopScreenState extends State<ShopScreen> {
   void initState() {
     super.initState();
     _loadCollection();
+    _loadActiveSkin();
   }
 
   Future<void> _loadCollection() async {
@@ -199,6 +201,20 @@ class _ShopScreenState extends State<ShopScreen> {
 
   void _equipSkin(ShopItem item) {
     setState(() => _activeSkinId = item.id);
+    _saveActiveSkin(item.id);
+  }
+
+  Future<void> _saveActiveSkin(String skinId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('active_skin_id', skinId);
+  }
+
+  Future<void> _loadActiveSkin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('active_skin_id');
+    if (saved != null && _skinAvatarMap.containsKey(saved)) {
+      setState(() => _activeSkinId = saved);
+    }
   }
 
   List<ShopItem> get _filteredItems {
@@ -304,7 +320,7 @@ class _ShopScreenState extends State<ShopScreen> {
           Container(
             width: 52, height: 52,
             decoration: BoxDecoration(
-              color: _kYellow,
+              color: Colors.transparent,
               shape: BoxShape.circle,
               border: Border.all(color: _kBlack, width: 2),
             ),
@@ -335,7 +351,7 @@ class _ShopScreenState extends State<ShopScreen> {
                 ],
               ),
               const SizedBox(height: 2),
-              Text('\${_ownedIds.length} item dimiliki', style: const TextStyle(fontFamily: 'Nunito', fontSize: 11, color: Color(0xFF888888))),
+              Text('${_ownedIds.length} item dimiliki', style: const TextStyle(fontFamily: 'Nunito', fontSize: 11, color: Color(0xFF888888))),
             ],
           ),
         ],
@@ -432,13 +448,10 @@ class _ShopScreenState extends State<ShopScreen> {
         // ── Avatar preview besar ──
         Expanded(
           child: Center(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: Container(
-                key: ValueKey(_currentAvatarFile),
+            child: Container(
                 width: 220, height: 220,
                 decoration: BoxDecoration(
-                  color: _kYellow,
+                  color: Colors.transparent,
                   shape: BoxShape.circle,
                   border: Border.all(color: _kBlack, width: 3),
                   boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(4, 4), blurRadius: 0)],
@@ -453,7 +466,6 @@ class _ShopScreenState extends State<ShopScreen> {
                   ),
                 ),
               ),
-            ),
           ),
         ),
         // ── Label nama skin aktif ──
