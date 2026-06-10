@@ -62,11 +62,11 @@ class ShopItem {
 
 const kShopItems = [
   // ── SKIN (semua free) ──
-  ShopItem(id: 's_fair',   name: 'Fair',        icon: Icons.face_rounded,           price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFFFF4D6), avatarFile: 'fair.avif'),
-  ShopItem(id: 's_warm',   name: 'Warm Beige',  icon: Icons.face_3_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFFFE4C4), avatarFile: 'warm-beige.avif'),
-  ShopItem(id: 's_honey',  name: 'Honey',       icon: Icons.face_4_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFFFD59E), avatarFile: 'honey.avif'),
-  ShopItem(id: 's_brown',  name: 'Brown Sugar', icon: Icons.face_5_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFE8C49A), avatarFile: 'brown-sugar.avif'),
-  ShopItem(id: 's_deep',   name: 'Deep',        icon: Icons.face_6_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFD4956A), avatarFile: 'deep.avif'),
+  ShopItem(id: 's_fair',   name: 'Fair',        icon: Icons.face_rounded,           price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFFFF4D6), avatarFile: 'fair.png'),
+  ShopItem(id: 's_warm',   name: 'Warm Beige',  icon: Icons.face_3_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFFFE4C4), avatarFile: 'warm-beige.png'),
+  ShopItem(id: 's_honey',  name: 'Honey',       icon: Icons.face_4_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFFFD59E), avatarFile: 'honey.png'),
+  ShopItem(id: 's_brown',  name: 'Brown Sugar', icon: Icons.face_5_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFE8C49A), avatarFile: 'brown-sugar.png'),
+  ShopItem(id: 's_deep',   name: 'Deep',        icon: Icons.face_6_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFD4956A), avatarFile: 'deep.png'),
   // ── HAIR ──
   ShopItem(id: 'h_black',   name: 'Jet Black',   icon: Icons.person_rounded,        price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFE8E8E8)),
   ShopItem(id: 'h_brown',   name: 'Choco Brown', icon: Icons.person_2_rounded,      price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFF5E6D3)),
@@ -121,15 +121,15 @@ class _ShopScreenState extends State<ShopScreen> {
   String _activeSkinId = 's_fair';
 
   static const _skinAvatarMap = {
-    's_fair':  'fair.avif',
-    's_warm':  'warm-beige.avif',
-    's_honey': 'honey.avif',
-    's_brown': 'brown-sugar.avif',
-    's_deep':  'deep.avif',
+    's_fair':  'fair.png',
+    's_warm':  'warm-beige.png',
+    's_honey': 'honey.png',
+    's_brown': 'brown-sugar.png',
+    's_deep':  'deep.png',
   };
 
   String get _currentAvatarFile =>
-      _skinAvatarMap[_activeSkinId] ?? 'fair.avif';
+      _skinAvatarMap[_activeSkinId] ?? 'fair.png';
 
   static const _kBlack  = Color(0xFF111111);
   static const _kYellow = Color(0xFFF2EA05);
@@ -174,6 +174,7 @@ class _ShopScreenState extends State<ShopScreen> {
         _totalCoins = (body['remainingCoins'] as num?)?.toInt() ?? _totalCoins;
         if (item.outfitPart == OutfitPart.skin) {
           _activeSkinId = item.id;
+          _saveActiveSkin(item.id);
         }
       });
       if (mounted) {
@@ -186,11 +187,20 @@ class _ShopScreenState extends State<ShopScreen> {
         );
       }
     } catch (e) {
+      // Kalau 409 (sudah owned), cukup equip aja tanpa error
+      if (e.toString().contains('CONFLICT') || e.toString().contains('409')) {
+        setState(() {
+          _ownedIds.add(item.id);
+          if (item.outfitPart == OutfitPart.skin) {
+            _activeSkinId = item.id;
+            _saveActiveSkin(item.id);
+          }
+        });
+        return;
+      }
       final msg = e.toString().contains('PAYMENT_REQUIRED') || e.toString().contains('402')
           ? 'Coin tidak cukup!'
-          : e.toString().contains('CONFLICT') || e.toString().contains('409')
-              ? 'Item sudah dimiliki'
-              : 'Gagal membeli item';
+          : 'Gagal membeli item';
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
@@ -242,9 +252,13 @@ class _ShopScreenState extends State<ShopScreen> {
                     _buildOutfitPartTabs(),
                   ],
                   const SizedBox(height: 12),
+                  // ── Avatar preview selalu tampil di semua tab ──
+                  _buildAvatarPreview(),
+                  const SizedBox(height: 12),
+                  // ── Item picker di bawah avatar ──
                   Expanded(
                     child: _selectedCategory == ShopCategory.outfit && _selectedPart == OutfitPart.skin
-                        ? _buildSkinPicker()
+                        ? _buildSkinSwatches()
                         : _buildGrid(),
                   ),
                 ],
@@ -320,7 +334,7 @@ class _ShopScreenState extends State<ShopScreen> {
           Container(
             width: 52, height: 52,
             decoration: BoxDecoration(
-              color: Colors.transparent,
+              color: Colors.white,
               shape: BoxShape.circle,
               border: Border.all(color: _kBlack, width: 2),
             ),
@@ -441,102 +455,109 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-  Widget _buildSkinPicker() {
+  // ── Avatar preview — selalu tampil di semua tab ──
+  Widget _buildAvatarPreview() {
     final skinItems = kShopItems.where((e) => e.outfitPart == OutfitPart.skin).toList();
+    final activeName = skinItems.firstWhere((e) => e.id == _activeSkinId, orElse: () => skinItems.first).name;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Avatar preview besar ──
-        Expanded(
-          child: Center(
-            child: Container(
-                width: 220, height: 220,
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _kBlack, width: 3),
-                  boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(4, 4), blurRadius: 0)],
-                ),
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/images/avatars/$_currentAvatarFile',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Center(
-                      child: Icon(Icons.face_rounded, size: 100, color: _kBlack),
-                    ),
-                  ),
+        Center(
+          child: Container(
+            width: 180, height: 180,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: _kBlack, width: 3),
+              boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(4, 4), blurRadius: 0)],
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/avatars/$_currentAvatarFile',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Icon(Icons.face_rounded, size: 80, color: _kBlack),
                 ),
               ),
+            ),
           ),
         ),
-        // ── Label nama skin aktif ──
-        Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 4),
-          child: Text(
-            skinItems.firstWhere((e) => e.id == _activeSkinId, orElse: () => skinItems.first).name,
-            style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 18, color: _kBlack),
+        if (_selectedCategory == ShopCategory.outfit && _selectedPart == OutfitPart.skin) ...[
+          const SizedBox(height: 6),
+          Text(
+            activeName,
+            style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 16, color: _kBlack),
           ),
-        ),
-        // ── Color swatches ──
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            alignment: WrapAlignment.center,
-            children: skinItems.map((item) {
-              final owned = _ownedIds.contains(item.id);
-              final isActive = _activeSkinId == item.id;
-              return GestureDetector(
-                onTap: () {
-                  if (owned || item.price == 0) {
-                    _ownedIds.add(item.id);
-                    _equipSkin(item);
-                  } else {
-                    _showBuyDialog(item);
-                  }
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 54, height: 54,
-                  decoration: BoxDecoration(
-                    color: item.bgColor,
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isActive ? _kBlack : (owned ? _kGreen : const Color(0xFFCCCCCC)),
-                      width: isActive ? 3 : 2,
-                    ),
-                    boxShadow: isActive
-                        ? const [BoxShadow(color: _kBlack, offset: Offset(3, 3), blurRadius: 0)]
-                        : owned
-                            ? [const BoxShadow(color: _kGreen, offset: Offset(3, 3), blurRadius: 0)]
-                            : null,
-                  ),
-                  child: Stack(
-                    children: [
-                      if (isActive)
-                        const Center(child: Icon(Icons.check_rounded, size: 22, color: _kBlack)),
-                      if (!owned)
-                        Positioned(
-                          bottom: 2, right: 2,
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: _kYellow,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: _kBlack, width: 1),
-                            ),
-                            child: const Text('🆓', style: TextStyle(fontSize: 8)),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
+        ],
       ],
+    );
+  }
+
+  // ── Skin color swatches — hanya untuk tab Skin ──
+  Widget _buildSkinSwatches() {
+    final skinItems = kShopItems.where((e) => e.outfitPart == OutfitPart.skin).toList();
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        alignment: WrapAlignment.center,
+        children: skinItems.map((item) {
+          final owned = _ownedIds.contains(item.id);
+          final isActive = _activeSkinId == item.id;
+          return GestureDetector(
+            onTap: () {
+              if (owned || item.price == 0) {
+                if (!owned && item.price == 0) {
+                  // Auto-claim free item ke backend
+                  _buyItem(item);
+                } else {
+                  _equipSkin(item);
+                }
+              } else {
+                _showBuyDialog(item);
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 54, height: 54,
+              decoration: BoxDecoration(
+                color: item.bgColor,
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isActive ? _kBlack : (owned ? _kGreen : const Color(0xFFCCCCCC)),
+                  width: isActive ? 3 : 2,
+                ),
+                boxShadow: isActive
+                    ? const [BoxShadow(color: _kBlack, offset: Offset(3, 3), blurRadius: 0)]
+                    : owned
+                        ? [const BoxShadow(color: _kGreen, offset: Offset(3, 3), blurRadius: 0)]
+                        : null,
+              ),
+              child: Stack(
+                children: [
+                  if (isActive)
+                    const Center(child: Icon(Icons.check_rounded, size: 22, color: _kBlack)),
+                  if (!owned)
+                    Positioned(
+                      bottom: 2, right: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: _kYellow,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _kBlack, width: 1),
+                        ),
+                        child: const Text('🆓', style: TextStyle(fontSize: 8)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
