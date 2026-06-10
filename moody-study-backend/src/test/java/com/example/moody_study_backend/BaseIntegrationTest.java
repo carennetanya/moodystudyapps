@@ -32,7 +32,7 @@ import com.example.moody_study_backend.entity.StudyMaterial;
 import com.example.moody_study_backend.entity.StudySession;
 import com.example.moody_study_backend.entity.SubjectPlan;
 import com.example.moody_study_backend.entity.User;
-import com.example.moody_study_backend.entity.UserXp;
+import com.example.moody_study_backend.entity.UserCoin;
 import com.example.moody_study_backend.repository.AwardLevelUpRepository;
 import com.example.moody_study_backend.repository.DailyQuestRepository;
 import com.example.moody_study_backend.repository.GeneratedQuizRepository;
@@ -45,7 +45,7 @@ import com.example.moody_study_backend.repository.StudySessionRepository;
 import com.example.moody_study_backend.repository.SubjectPlanRepository;
 import com.example.moody_study_backend.repository.UserProfileRepository;
 import com.example.moody_study_backend.repository.UserRepository;
-import com.example.moody_study_backend.repository.UserXpRepository;
+import com.example.moody_study_backend.repository.UserCoinRepository;
 import com.example.moody_study_backend.services.GeminiService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -101,7 +101,7 @@ public abstract class BaseIntegrationTest {
     protected UserProfileRepository userProfileRepository;
 
     @Autowired
-    protected UserXpRepository userXpRepository;
+    protected UserCoinRepository userCoinRepository;
 
     public static PostgreSQLContainer<?> postgres;
 
@@ -181,7 +181,7 @@ public abstract class BaseIntegrationTest {
 
         generatedQuizRepository.deleteAllInBatch();
         userProfileRepository.deleteAllInBatch();
-        userXpRepository.deleteAllInBatch();
+        userCoinRepository.deleteAllInBatch();
         awardLevelUpRepository.deleteAllInBatch();
         savedFileRepository.deleteAllInBatch();
         studyMaterialRepository.deleteAllInBatch();
@@ -299,15 +299,15 @@ public abstract class BaseIntegrationTest {
         award.setUser(testUser());
         award.setLevel(level);
         award.setSummaryCountThreshold(6);
-        award.setXpPoints(50);
+        award.setCoinPoints(50);
         award.setAwardedAt(LocalDateTime.now());
         return awardLevelUpRepository.save(award);
     }
 
-    protected UserXp seedUserXp(int totalXp) {
-        return userXpRepository.save(UserXp.builder()
+    protected UserCoin seedUserCoin(int totalCoins) {
+        return userCoinRepository.save(UserCoin.builder()
                 .user(testUser())
-                .totalXp(totalXp)
+                .totalCoins(totalCoins)
                 .build());
     }
 

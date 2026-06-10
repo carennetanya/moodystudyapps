@@ -86,7 +86,7 @@ void main() {
       };
       final model = DailyQuestModel.fromJson(json);
       expect(model.quests.length, 3);
-      expect(model.maxXp, 90);
+      expect(model.maxCoins, 90);
     });
   });
 

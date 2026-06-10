@@ -4,15 +4,16 @@ import jakarta.persistence.*;
 import lombok.*;
 
 /**
- * Menyimpan total XP yang dimiliki setiap user.
+ * Menyimpan total Coin yang dimiliki setiap user.
+ * Coin didapat dari menyelesaikan Daily Quest dan bisa digunakan di Shop.
  */
 @Entity
-@Table(name = "user_xp")
+@Table(name = "user_coins")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserXp {
+public class UserCoin {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,5 +25,5 @@ public class UserXp {
 
     @Column(nullable = false)
     @Builder.Default
-    private int totalXp = 0;
+    private int totalCoins = 0;
 }

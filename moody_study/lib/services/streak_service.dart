@@ -84,10 +84,10 @@ class StreakService {
       final newLevel = StreakInfo.parseLevel(body['level']);
       final leveledUp = body['leveledUp'] == true || newLevel > prevLevel;
 
-      final totalXpInLevel = body['totalXpInLevel'] is int
-          ? body['totalXpInLevel'] as int
-          : (body['totalXpInLevel'] is num
-              ? (body['totalXpInLevel'] as num).toInt()
+      final totalCoins = body['totalCoins'] is int
+          ? body['totalCoins'] as int
+          : (body['totalCoins'] is num
+              ? (body['totalCoins'] as num).toInt()
               : 0);
 
       final cs = body['currentStreak'];
@@ -100,7 +100,7 @@ class StreakService {
         newLevel: newLevel,
         newLevelName:
             body['levelName'] is String ? body['levelName'] : null,
-        xpEarnedInLevel: totalXpInLevel,
+        coinsEarned: totalCoins,
         currentStreak: currentStreak,
       );
     }
@@ -109,7 +109,7 @@ class StreakService {
       leveledUp: false,
       previousLevel: 1,
       newLevel: 1,
-      xpEarnedInLevel: 0,
+      coinsEarned: 0,
       currentStreak: 0,
     );
   }
@@ -121,7 +121,7 @@ class SessionResult {
   final int previousLevel;
   final int newLevel;
   final String? newLevelName;
-  final int xpEarnedInLevel;
+  final int coinsEarned;
   final int currentStreak;
 
   SessionResult({
@@ -130,7 +130,7 @@ class SessionResult {
     required this.previousLevel,
     required this.newLevel,
     this.newLevelName,
-    required this.xpEarnedInLevel,
+    required this.coinsEarned,
     this.currentStreak = 0,
   });
 }

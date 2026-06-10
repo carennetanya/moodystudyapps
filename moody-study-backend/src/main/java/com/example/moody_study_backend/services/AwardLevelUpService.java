@@ -23,7 +23,7 @@ public class AwardLevelUpService {
     // Level 3 (Practitioner) : 13–21 sesi  → naik ke Level 4 saat sesi ke-22
     // Level 4 (Expert)       : 22–32 sesi  → naik ke Level 5 saat sesi ke-33
     private static final int[] SESSION_THRESHOLDS = {6, 13, 22, 33};
-    private static final int[] XP_REWARDS        = {50, 100, 200, 400};
+    private static final int[] COIN_REWARDS       = {50, 100, 200, 400};
 
     private final AwardLevelUpRepository awardLevelUpRepository;
     private final StudySessionRepository studySessionRepository;
@@ -47,26 +47,26 @@ public class AwardLevelUpService {
     public AwardProgressResponse getProgress(String email) {
         User user = findUserByEmail(email);
         long currentSessionCount = studySessionRepository.countByUser(user);
-        int totalXp = awardLevelUpRepository.findByUserOrderByLevelAsc(user).stream()
-                .mapToInt(AwardLevelUp::getXpPoints)
+        int totalCoins = awardLevelUpRepository.findByUserOrderByLevelAsc(user).stream()
+                .mapToInt(AwardLevelUp::getCoinPoints)
                 .sum();
 
         int nextLevelIndex = getNextLevelIndex(user);
         if (nextLevelIndex < 0) {
-            return new AwardProgressResponse(currentSessionCount, 0, 0, 0, false, totalXp);
+            return new AwardProgressResponse(currentSessionCount, 0, 0, 0, false, totalCoins);
         }
 
-        int nextThreshold = SESSION_THRESHOLDS[nextLevelIndex];
-        int nextXpPoints  = XP_REWARDS[nextLevelIndex];
-        boolean eligible  = currentSessionCount >= nextThreshold;
+        int nextThreshold  = SESSION_THRESHOLDS[nextLevelIndex];
+        int nextCoinPoints = COIN_REWARDS[nextLevelIndex];
+        boolean eligible   = currentSessionCount >= nextThreshold;
 
         return new AwardProgressResponse(
                 currentSessionCount,
                 nextLevelIndex + 1,
                 nextThreshold,
-                nextXpPoints,
+                nextCoinPoints,
                 eligible,
-                totalXp
+                totalCoins
         );
     }
 
@@ -91,7 +91,7 @@ public class AwardLevelUpService {
         award.setUser(user);
         award.setLevel(nextLevelIndex + 1);
         award.setSummaryCountThreshold(requiredThreshold);
-        award.setXpPoints(XP_REWARDS[nextLevelIndex]);
+        award.setCoinPoints(COIN_REWARDS[nextLevelIndex]);
         award.setAwardedAt(LocalDateTime.now());
 
         return toResponse(awardLevelUpRepository.save(award));
@@ -106,7 +106,7 @@ public class AwardLevelUpService {
         return new AwardLevelUpResponse(
                 awardLevelUp.getLevel(),
                 awardLevelUp.getSummaryCountThreshold(),
-                awardLevelUp.getXpPoints(),
+                awardLevelUp.getCoinPoints(),
                 awardLevelUp.getAwardedAt()
         );
     }

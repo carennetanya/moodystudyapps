@@ -196,7 +196,7 @@ void main() {
           title: '',
           description: '',
           xpReward: 0,
-          completed: true, // sudah selesai sebelumnya — skip
+          completed: true, 
         ),
       );
 

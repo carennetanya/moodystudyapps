@@ -6,7 +6,7 @@ import '../models/daily_quest_model.dart';
 import '../services/daily_quest_service.dart';
 import '../utils/app_localizations.dart';
 
-/// Layar Daily Quest — menampilkan 3 quest harian dan total XP user.
+/// Layar Daily Quest — menampilkan 3 quest harian dan total Coin user.
 /// Tambahkan navigasi ke screen ini dari home/character_intro dengan:
 ///   Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyQuestScreen()));
 class DailyQuestScreen extends StatefulWidget {
@@ -97,7 +97,7 @@ class _DailyQuestScreenState extends State<DailyQuestScreen> {
                 ),
               ),
               const Spacer(),
-              // XP Badge
+              // Coin Badge
               if (_data != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -111,7 +111,7 @@ class _DailyQuestScreenState extends State<DailyQuestScreen> {
                       const Text('⚡', style: TextStyle(fontSize: 14)),
                       const SizedBox(width: 4),
                       Text(
-                        '${_data!.todayXp} / ${_data!.maxXp} XP',
+                        '${_data!.todayCoins} / ${_data!.maxCoins} Coins',
                         style: const TextStyle(
                           fontFamily: 'BlackHanSans',
                           fontSize: 14,
@@ -337,7 +337,7 @@ class _QuestCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // XP chip
+                    // Coin chip
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
@@ -346,7 +346,7 @@ class _QuestCard extends StatelessWidget {
                         border: Border.all(color: const Color(0xFF111111), width: 1.5),
                       ),
                       child: Text(
-                        '+${quest.xpReward} XP',
+                        '+${quest.coinReward} Coins',
                         style: const TextStyle(
                           fontFamily: 'BlackHanSans',
                           fontSize: 11,

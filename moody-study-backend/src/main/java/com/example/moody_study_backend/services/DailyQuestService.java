@@ -18,15 +18,15 @@ import java.util.stream.Collectors;
 public class DailyQuestService {
 
     private final DailyQuestRepository dailyQuestRepository;
-    private final UserXpRepository userXpRepository;
+    private final UserCoinRepository userCoinRepository;
     private final UserRepository userRepository;
     private final StudySessionRepository studySessionRepository;
 
     // ──────────────────────────────────────────────
-    //  Quest metadata: title, description, XP reward
+    //  Quest metadata: title, description, Coin reward
     // ──────────────────────────────────────────────
 
-    record QuestMeta(String title, String description, int xp) {}
+    record QuestMeta(String title, String description, int coins) {}
 
     private static final Map<QuestKey, QuestMeta> QUEST_META = Map.of(
         QuestKey.FIRST_SESSION,
@@ -104,7 +104,7 @@ public class DailyQuestService {
             if (fulfilled) {
                 quest.setCompleted(true);
                 dailyQuestRepository.save(quest);
-                addXp(user, quest.getXpReward());
+                addCoins(user, quest.getCoinReward());
             }
         }
 
@@ -129,7 +129,7 @@ public class DailyQuestService {
             if (quest.getQuestKey() == QuestKey.REVIEW_STATS && !quest.isCompleted()) {
                 quest.setCompleted(true);
                 dailyQuestRepository.save(quest);
-                addXp(user, quest.getXpReward());
+                addCoins(user, quest.getCoinReward());
                 break;
             }
         }
@@ -166,7 +166,6 @@ public class DailyQuestService {
 
             case TOLERANCE_LIMIT ->
                 // Distraksi maks 2 kali. 1 distraksi ≈ 30 detik away timer
-                // Backend menyimpan distractionSeconds; 1 kejadian = min 30 detik
                 countDistractionEvents(latest.getDistractionSeconds()) <= 2;
 
             case MORNING_WARRIOR ->
@@ -202,7 +201,6 @@ public class DailyQuestService {
 
     private boolean hasDoubleSession(List<StudySession> sessions) {
         if (sessions.size() < 2) return false;
-        // Urutkan berdasarkan endTime
         List<StudySession> sorted = sessions.stream()
             .filter(s -> s.getEndTime() != null)
             .sorted(Comparator.comparing(StudySession::getEndTime))
@@ -229,7 +227,6 @@ public class DailyQuestService {
 
         if (yesterdaySessions.isEmpty()) return false;
 
-        // Ambil jam sesi pertama kemarin
         LocalTime yesterdayFirstStart = yesterdaySessions.get(0).getStartTime().toLocalTime();
         LocalTime todayStart = latest.getStartTime().toLocalTime();
 
@@ -255,7 +252,7 @@ public class DailyQuestService {
                 .user(user)
                 .questDate(date)
                 .questKey(key)
-                .xpReward(meta.xp())
+                .coinReward(meta.coins())
                 .completed(false)
                 .build();
             created.add(dailyQuestRepository.save(q));
@@ -271,11 +268,11 @@ public class DailyQuestService {
         );
     }
 
-    private void addXp(User user, int xp) {
-        UserXp userXp = userXpRepository.findByUser(user)
-            .orElse(UserXp.builder().user(user).totalXp(0).build());
-        userXp.setTotalXp(userXp.getTotalXp() + xp);
-        userXpRepository.save(userXp);
+    private void addCoins(User user, int coins) {
+        UserCoin userCoin = userCoinRepository.findByUser(user)
+            .orElse(UserCoin.builder().user(user).totalCoins(0).build());
+        userCoin.setTotalCoins(userCoin.getTotalCoins() + coins);
+        userCoinRepository.save(userCoin);
     }
 
     private User getUser(String email) {
@@ -292,27 +289,27 @@ public class DailyQuestService {
                     .questKey(q.getQuestKey())
                     .title(meta.title())
                     .description(meta.description())
-                    .xpReward(q.getXpReward())
+                    .coinReward(q.getCoinReward())
                     .completed(q.isCompleted())
                     .build();
             })
             .collect(Collectors.toList());
 
-        // XP yang sudah dikumpul hari ini dari quest yang completed
-        int todayXp = quests.stream()
+        // Coin yang sudah dikumpul hari ini dari quest yang completed
+        int todayCoins = quests.stream()
             .filter(DailyQuest::isCompleted)
-            .mapToInt(DailyQuest::getXpReward)
+            .mapToInt(DailyQuest::getCoinReward)
             .sum();
 
-        // Max XP = total semua xpReward dari 3 quest hari ini
-        int maxXp = quests.stream()
-            .mapToInt(DailyQuest::getXpReward)
+        // Max Coins = total semua coinReward dari 3 quest hari ini
+        int maxCoins = quests.stream()
+            .mapToInt(DailyQuest::getCoinReward)
             .sum();
 
         return DailyQuestResponse.builder()
             .questDate(date.toString())
-            .todayXp(todayXp)
-            .maxXp(maxXp)
+            .todayCoins(todayCoins)
+            .maxCoins(maxCoins)
             .quests(items)
             .build();
     }

@@ -24,7 +24,7 @@ public class DailyQuestController {
     /**
      * GET /api/quest/daily
      * Ambil 3 quest harian user (auto-generate jika belum ada).
-     * Response sudah include totalXp user.
+     * Response sudah include totalCoins user.
      */
     @GetMapping("/daily")
     public ResponseEntity<DailyQuestResponse> getDailyQuests(Authentication authentication) {

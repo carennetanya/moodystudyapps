@@ -32,7 +32,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
   String _favoriteLocation = '-';
 
   // Data dari /api/streak
-  int _totalXp = 0;
+  int _totalCoins = 0;
   int _currentStreak = 0;
   int _life = 3;
   String _levelName = 'Beginner';
@@ -43,9 +43,9 @@ class _StatistikScreenState extends State<StatistikScreen> {
   // Data dari /api/award
   List<Map<String, dynamic>> _awards = [];
 
-  // Data dari /api/quest/daily (total XP hari ini)
-  int _todayXp = 0;
-  int _maxXp = 0;
+  // Data dari /api/quest/daily (total Coin hari ini)
+  int _todayCoins = 0;
+  int _maxCoins = 0;
 
   static String get baseUrl => ApiConfig.baseUrl;
 
@@ -124,14 +124,14 @@ class _StatistikScreenState extends State<StatistikScreen> {
         _currentLevel = _levelNameToInt(_levelName);
       });
     }
-    // Ambil total XP dari /api/user/xp atau hitung dari award
+    // Ambil total XP dari /api/user/coins atau hitung dari award
     final xpRes = await http.get(
-      Uri.parse('$baseUrl/api/user/xp'),
+      Uri.parse('$baseUrl/api/user/coins'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
     );
     if (xpRes.statusCode == 200) {
       final xd = jsonDecode(xpRes.body) as Map<String, dynamic>;
-      setState(() => _totalXp = (xd['totalXp'] as num?)?.toInt() ?? 0);
+      setState(() => _totalCoins = (xd['totalCoins'] as num?)?.toInt() ?? 0);
     }
   }
 
@@ -160,8 +160,8 @@ class _StatistikScreenState extends State<StatistikScreen> {
     if (res.statusCode == 200) {
       final d = jsonDecode(res.body) as Map<String, dynamic>;
       setState(() {
-        _todayXp = (d['todayXp'] as num?)?.toInt() ?? 0;
-        _maxXp = (d['maxXp'] as num?)?.toInt() ?? 0;
+        _todayCoins = (d['todayCoins'] as num?)?.toInt() ?? 0;
+        _maxCoins = (d['maxCoins'] as num?)?.toInt() ?? 0;
       });
     }
   }
@@ -176,17 +176,17 @@ class _StatistikScreenState extends State<StatistikScreen> {
     Color(0xFF00CEC9), // Teal
     Color(0xFFA29BFE), // Purple
   ];
-  static const _levelXpRewards = [0, 50, 100, 200, 400];
+  static const _levelCoinRewards = [0, 50, 100, 200, 400];
 
-  // Hitung XP yang dikumpul di tiap level dari awards
-  int _xpAtLevel(int level) {
+  // Hitung Coin yang dikumpul di tiap level dari awards
+  int _coinAtLevel(int level) {
     // level 1 = index 0, dst
     final award = _awards.firstWhere(
       (a) => (a['level'] as num?)?.toInt() == level,
       orElse: () => {},
     );
     if (award.isEmpty) return 0;
-    return (award['xpPoints'] as num?)?.toInt() ?? 0;
+    return (award['coinPoints'] as num?)?.toInt() ?? 0;
   }
 
   String _formatMinutes(int minutes) {
@@ -242,7 +242,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
             ),
           ),
           const Spacer(),
-          // XP hari ini badge
+          // Coin hari ini badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -255,7 +255,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
                 const Text('⚡', style: TextStyle(fontSize: 13)),
                 const SizedBox(width: 4),
                 Text(
-                  '$_todayXp / $_maxXp XP',
+                  '$_todayCoins / $_maxCoins XP',
                   style: const TextStyle(
                     fontFamily: 'BlackHanSans',
                     fontSize: 13,
@@ -311,7 +311,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
           const SizedBox(height: 12),
           _buildLevelCard(),
           const SizedBox(height: 8),
-          _buildXpPerLevelList(),
+          _buildCoinPerLevelList(),
 
           const SizedBox(height: 24),
 
@@ -469,8 +469,8 @@ class _StatistikScreenState extends State<StatistikScreen> {
     );
   }
 
-  // ── XP per level list ───────────────────────────────────
-  Widget _buildXpPerLevelList() {
+  // ── Coin per level list ───────────────────────────────────
+  Widget _buildCoinPerLevelList() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -483,7 +483,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'XP Bonus per Level',
+            'Coin Bonus per Level',
             style: TextStyle(fontFamily: 'BlackHanSans', fontSize: 14, color: Color(0xFF111111)),
           ),
           const SizedBox(height: 12),
@@ -492,8 +492,8 @@ class _StatistikScreenState extends State<StatistikScreen> {
             final color = _levelColors[i];
             final isUnlocked = levelNum <= _currentLevel;
             final isEarned = levelNum > 1 && levelNum <= _currentLevel;
-            final xpReward = levelNum > 1 ? _levelXpRewards[i] : 0;
-            final awardXp = _xpAtLevel(levelNum);
+            final coinReward = levelNum > 1 ? _levelCoinRewards[i] : 0;
+            final awardCoins = _coinAtLevel(levelNum);
             final isTappable = isUnlocked && levelNum < _currentLevel;
 
             return GestureDetector(
@@ -549,8 +549,8 @@ class _StatistikScreenState extends State<StatistikScreen> {
                             levelNum == 1
                                 ? 'Level awal'
                                 : isEarned
-                                    ? 'Bonus +$awardXp XP diterima ✓'
-                                    : 'Bonus +$xpReward XP saat naik level',
+                                    ? 'Bonus +$awardCoins Coin diterima ✓'
+                                    : 'Bonus +$coinReward Coin saat naik level',
                             style: TextStyle(
                               fontFamily: 'Nunito',
                               fontSize: 11,
@@ -1099,7 +1099,7 @@ class _LevelHistorySheetState extends State<_LevelHistorySheet> {
               Container(width: 1, height: 40, color: const Color(0xFFDDDDDD)),
               _summaryItem('⏱️', _formatMinutes((_data!['totalMinutes'] as num).toInt()), 'Total Belajar'),
               Container(width: 1, height: 40, color: const Color(0xFFDDDDDD)),
-              _summaryItem('⚡', '+${_data!['xpBonus']} XP', 'Bonus'),
+              _summaryItem('⚡', '+${_data!["coinBonus"]} Coins', 'Bonus'),
             ],
           ),
         ),

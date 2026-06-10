@@ -15,8 +15,8 @@ import java.util.List;
 public class DailyQuestResponse {
 
     private String questDate;
-    private int todayXp;  // XP yang sudah dikumpul dari quest completed hari ini
-    private int maxXp;    // Total XP maksimal yang bisa didapat hari ini
+    private int todayCoins;   // Coin yang sudah dikumpul dari quest completed hari ini
+    private int maxCoins;     // Total Coin maksimal yang bisa didapat hari ini
     private List<QuestItem> quests;
 
     @Data
@@ -28,7 +28,7 @@ public class DailyQuestResponse {
         private QuestKey questKey;
         private String title;
         private String description;
-        private int xpReward;
+        private int coinReward;
         private boolean completed;
     }
 }

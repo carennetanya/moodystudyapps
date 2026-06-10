@@ -158,8 +158,8 @@ void main() {
       final result = DailyQuestModel.fromJson(json);
 
       expect(result.questDate, '2025-05-01');
-      expect(result.todayXp, 30);
-      expect(result.maxXp, 90);
+      expect(result.todayCoins, 30);
+      expect(result.maxCoins, 90);
       expect(result.quests.length, 3);
       expect(result.quests.first.questKey, 'UPLOAD_MATERIAL');
       expect(result.quests.first.completed, isTrue);
@@ -181,8 +181,8 @@ void main() {
       final json = <String, dynamic>{};
       final result = DailyQuestModel.fromJson(json);
       expect(result.questDate, '');
-      expect(result.todayXp, 0);
-      expect(result.maxXp, 0);
+      expect(result.todayCoins, 0);
+      expect(result.maxCoins, 0);
       expect(result.quests, isEmpty);
     });
   });
@@ -197,11 +197,11 @@ void main() {
         'questKey': 'UPLOAD_MATERIAL',
         'title': 'Upload materi',
         'description': 'Upload 1 materi',
-        'xpReward': 50,
+        'coinReward': 50,
         'completed': false,
       };
       final item = QuestItem.fromJson(json);
-      expect(item.xpReward, 50);
+      expect(item.coinReward, 50);
       expect(item.completed, isFalse);
     });
   });

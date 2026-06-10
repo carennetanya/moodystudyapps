@@ -22,7 +22,7 @@ public class AwardLevelUp {
     private int summaryCountThreshold;
 
     @Column(nullable = false)
-    private int xpPoints;
+    private int coinPoints;
 
     @Column(nullable = false)
     private LocalDateTime awardedAt;
@@ -30,60 +30,30 @@ public class AwardLevelUp {
     public AwardLevelUp() {
     }
 
-    public AwardLevelUp(Long id, User user, int level, int summaryCountThreshold, int xpPoints, LocalDateTime awardedAt) {
+    public AwardLevelUp(Long id, User user, int level, int summaryCountThreshold, int coinPoints, LocalDateTime awardedAt) {
         this.id = id;
         this.user = user;
         this.level = level;
         this.summaryCountThreshold = summaryCountThreshold;
-        this.xpPoints = xpPoints;
+        this.coinPoints = coinPoints;
         this.awardedAt = awardedAt;
     }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 
-    public User getUser() {
-        return user;
-    }
+    public int getLevel() { return level; }
+    public void setLevel(int level) { this.level = level; }
 
-    public void setUser(User user) {
-        this.user = user;
-    }
+    public int getSummaryCountThreshold() { return summaryCountThreshold; }
+    public void setSummaryCountThreshold(int summaryCountThreshold) { this.summaryCountThreshold = summaryCountThreshold; }
 
-    public int getLevel() {
-        return level;
-    }
+    public int getCoinPoints() { return coinPoints; }
+    public void setCoinPoints(int coinPoints) { this.coinPoints = coinPoints; }
 
-    public void setLevel(int level) {
-        this.level = level;
-    }
-
-    public int getSummaryCountThreshold() {
-        return summaryCountThreshold;
-    }
-
-    public void setSummaryCountThreshold(int summaryCountThreshold) {
-        this.summaryCountThreshold = summaryCountThreshold;
-    }
-
-    public int getXpPoints() {
-        return xpPoints;
-    }
-
-    public void setXpPoints(int xpPoints) {
-        this.xpPoints = xpPoints;
-    }
-
-    public LocalDateTime getAwardedAt() {
-        return awardedAt;
-    }
-
-    public void setAwardedAt(LocalDateTime awardedAt) {
-        this.awardedAt = awardedAt;
-    }
+    public LocalDateTime getAwardedAt() { return awardedAt; }
+    public void setAwardedAt(LocalDateTime awardedAt) { this.awardedAt = awardedAt; }
 }

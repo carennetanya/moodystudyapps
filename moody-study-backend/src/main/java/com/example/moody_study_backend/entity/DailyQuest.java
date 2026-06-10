@@ -42,7 +42,7 @@ public class DailyQuest {
     @Builder.Default
     private boolean completed = false;
 
-    /** XP yang diberikan saat quest selesai. */
+    /** Coin yang diberikan saat quest selesai. */
     @Column(nullable = false)
-    private int xpReward;
+    private int coinReward;
 }

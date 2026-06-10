@@ -14,6 +14,8 @@ import 'statistik_screen.dart';
 import 'daily_quest_screen.dart';
 import 'kuis_screen.dart';
 import 'profile_screen.dart';
+import 'shop_screen.dart';
+import 'collection_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:moody_study/services/streak_service.dart';
@@ -484,6 +486,26 @@ class _LandingPageState extends State<_LandingPage> {
           ),
         ).then((_) => setState(() => _selectedNav = 0));
         break;
+      case 6: // Shop
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const ShopScreen(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        ).then((_) => setState(() => _selectedNav = 0));
+        break;
+      case 7: // Collection
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const CollectionScreen(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        ).then((_) => setState(() => _selectedNav = 0));
+        break;
     }
   }
 
@@ -562,11 +584,146 @@ class _LandingPageState extends State<_LandingPage> {
 }
 
 // ── Bottom Navigation Bar ─────────────────────────────────────────
-class _BottomNavBar extends StatelessWidget {
+class _BottomNavBar extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onTap;
 
   const _BottomNavBar({required this.selectedIndex, required this.onTap});
+
+  @override
+  State<_BottomNavBar> createState() => _BottomNavBarState();
+}
+
+class _BottomNavBarState extends State<_BottomNavBar>
+    with SingleTickerProviderStateMixin {
+  bool _dropupOpen = false;
+  OverlayEntry? _overlayEntry;
+  late AnimationController _animCtrl;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _removeOverlay();
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _showOverlay(BuildContext context) {
+    _removeOverlay();
+    final overlay = Overlay.of(context);
+    final renderBox = context.findRenderObject() as RenderBox?;
+    final size = renderBox?.size ?? Size.zero;
+    final offset = renderBox?.localToGlobal(Offset.zero) ?? Offset.zero;
+
+    _overlayEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          // tap outside to close
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _closeDropup,
+              behavior: HitTestBehavior.translucent,
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          // dropup menu positioned above the "..." button
+          Positioned(
+            bottom: MediaQuery.of(context).size.height - offset.dy + 8,
+            right: MediaQuery.of(context).size.width - (offset.dx + size.width),
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF111111), width: 2),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0xFF111111),
+                          offset: Offset(3, 3),
+                          blurRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _DropupItem(
+                          icon: Icons.person_rounded,
+                          label: 'Profile',
+                          onTap: () => _onDropupItem(context, 5),
+                          showDivider: true,
+                        ),
+                        _DropupItem(
+                          icon: Icons.storefront_rounded,
+                          label: 'Shop',
+                          onTap: () => _onDropupItem(context, 6),
+                          showDivider: true,
+                        ),
+                        _DropupItem(
+                          icon: Icons.auto_awesome_rounded,
+                          label: 'Collection',
+                          onTap: () => _onDropupItem(context, 7),
+                          showDivider: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    overlay.insert(_overlayEntry!);
+    _animCtrl.forward(from: 0);
+  }
+
+  void _toggleDropup() {
+    if (_dropupOpen) {
+      _closeDropup();
+    } else {
+      setState(() => _dropupOpen = true);
+      _showOverlay(context);
+    }
+  }
+
+  void _closeDropup() {
+    _animCtrl.reverse().then((_) {
+      _removeOverlay();
+      if (mounted) setState(() => _dropupOpen = false);
+    });
+  }
+
+  void _onDropupItem(BuildContext context, int index) {
+    _closeDropup();
+    widget.onTap(index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -577,8 +734,8 @@ class _BottomNavBar extends StatelessWidget {
       _NavItem(icon: Icons.folder_rounded, label: l.navFiles),
       _NavItem(icon: Icons.quiz_rounded, label: l.navQuiz),
       _NavItem(icon: Icons.bar_chart_rounded, label: l.navStats),
-      _NavItem(icon: Icons.person_rounded, label: l.navProfile),
     ];
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -599,19 +756,127 @@ class _BottomNavBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (i) {
-              final item = items[i];
-              final selected = selectedIndex == i;
-              return _NavButton(
-                icon: item.icon,
-                label: item.label,
-                selected: selected,
-                onTap: () => onTap(i),
-                showQuestBadge: i == 1,
-                isProfile: i == 5,
-              );
-            }),
+            children: [
+              ...List.generate(items.length, (i) {
+                final item = items[i];
+                final selected = widget.selectedIndex == i;
+                return _NavButton(
+                  icon: item.icon,
+                  label: item.label,
+                  selected: selected,
+                  onTap: () => widget.onTap(i),
+                  showQuestBadge: i == 1,
+                );
+              }),
+              _MoreNavButton(
+                isOpen: _dropupOpen,
+                onTap: _toggleDropup,
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Dropup item ───────────────────────────────────────────────────
+class _DropupItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool showDivider;
+
+  const _DropupItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.showDivider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 20, color: const Color(0xFF111111)),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111111),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (showDivider)
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+      ],
+    );
+  }
+}
+
+// ── "..." More button ─────────────────────────────────────────────
+class _MoreNavButton extends StatelessWidget {
+  final bool isOpen;
+  final VoidCallback onTap;
+
+  const _MoreNavButton({required this.isOpen, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: isOpen
+            ? BoxDecoration(
+                color: const Color(0xFFF2EA05),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF111111), width: 2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0xFF111111),
+                    offset: Offset(2, 2),
+                    blurRadius: 0,
+                  ),
+                ],
+              )
+            : null,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.more_horiz_rounded,
+              size: 24,
+              color: isOpen ? const Color(0xFF111111) : const Color(0xFF888888),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              'more',
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: isOpen ? const Color(0xFF111111) : const Color(0xFF888888),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -661,7 +926,6 @@ class _NavButton extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final bool showQuestBadge;
-  final bool isProfile;
 
   const _NavButton({
     required this.icon,
@@ -669,7 +933,6 @@ class _NavButton extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.showQuestBadge = false,
-    this.isProfile = false,
   });
 
   @override
@@ -700,43 +963,12 @@ class _NavButton extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                // ── Profile icon: pakai Consumer<ProfileImageProvider> ──
-                if (isProfile)
-                  Consumer<ProfileImageProvider>(
-                    builder: (_, profileImg, __) {
-                      final bytes = profileImg.imageBytes;
-                      return Container(
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: selected
-                                ? const Color(0xFF111111)
-                                : const Color(0xFF888888),
-                            width: 1.5,
-                          ),
-                          color: const Color(0xFFE0E0E0),
-                        ),
-                        child: ClipOval(
-                          child: bytes != null
-                              ? Image.memory(
-                                  bytes,
-                                  fit: BoxFit.cover,
-                                  width: 26,
-                                  height: 26,
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                      );
-                    },
-                  )
-                else
-                  Icon(
-                    icon,
-                    size: 24,
-                    color: selected ? const Color(0xFF111111) : const Color(0xFF888888),
-                  ),
+                // ── Icon ──
+                Icon(
+                  icon,
+                  size: 24,
+                  color: selected ? const Color(0xFF111111) : const Color(0xFF888888),
+                ),
                 // Quest badge: titik merah jika belum semua selesai
                 if (showQuestBadge && !selected)
                   Positioned(

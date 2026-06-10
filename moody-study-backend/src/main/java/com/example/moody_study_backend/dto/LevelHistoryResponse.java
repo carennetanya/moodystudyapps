@@ -17,7 +17,7 @@ public class LevelHistoryResponse {
     private String levelName;
     private int totalSessions;
     private int totalMinutes;
-    private int xpBonus;
+    private int coinBonus;
     private String startedAt;
     private String completedAt;
     private List<SessionItem> sessions;

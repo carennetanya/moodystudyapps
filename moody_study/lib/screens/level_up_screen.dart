@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 
 /// Shown when a user levels up after completing a session.
 /// [newLevel] 1–5, [newLevelName] e.g. "Learner",
-/// [xpEarnedInLevel] total XP accumulated during the completed level.
+/// [coinsEarned] total Coin yang dikumpul during the completed level.
 class LevelUpScreen extends StatefulWidget {
   final int newLevel;
   final String newLevelName;
-  final int xpEarnedInLevel;
+  final int coinsEarned;
   final String userName;
   final VoidCallback onContinue;
 
@@ -15,7 +15,7 @@ class LevelUpScreen extends StatefulWidget {
     super.key,
     required this.newLevel,
     required this.newLevelName,
-    required this.xpEarnedInLevel,
+    required this.coinsEarned,
     required this.userName,
     required this.onContinue,
   });
@@ -180,7 +180,7 @@ class _LevelUpScreenState extends State<LevelUpScreen>
                   const SizedBox(height: 10),
 
                   Text(
-                    'You earned ${widget.xpEarnedInLevel} points and\nunlocked Level ${widget.newLevel} (${widget.newLevelName})',
+                    'You earned ${widget.coinsEarned} points and\nunlocked Level ${widget.newLevel} (${widget.newLevelName})',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontFamily: 'Nunito',
@@ -192,7 +192,7 @@ class _LevelUpScreenState extends State<LevelUpScreen>
 
                   const SizedBox(height: 32),
 
-                  // XP detail card
+                  // Coin detail card
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 40),
                     child: Container(
@@ -215,7 +215,7 @@ class _LevelUpScreenState extends State<LevelUpScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            '⚡',
+                            '🪙',
                             style: TextStyle(fontSize: 22),
                           ),
                           const SizedBox(width: 10),
@@ -223,7 +223,7 @@ class _LevelUpScreenState extends State<LevelUpScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${widget.xpEarnedInLevel} points',
+                                '${widget.coinsEarned} points',
                                 style: TextStyle(
                                   fontFamily: 'BlackHanSans',
                                   fontSize: 20,
@@ -234,7 +234,7 @@ class _LevelUpScreenState extends State<LevelUpScreen>
                                 ),
                               ),
                               Text(
-                                'earned in Level ${widget.newLevel - 1}',
+                                'coins earned in Level ${widget.newLevel - 1}',
                                 style: const TextStyle(
                                   fontFamily: 'Nunito',
                                   fontSize: 12,

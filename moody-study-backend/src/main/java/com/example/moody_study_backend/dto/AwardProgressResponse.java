@@ -2,68 +2,38 @@ package com.example.moody_study_backend.dto;
 
 public class AwardProgressResponse {
 
-    private long currentSessionCount; // total sesi belajar user saat ini
+    private long currentSessionCount;
     private int nextLevel;
-    private int nextThreshold;        // jumlah sesi yang dibutuhkan untuk award berikutnya
-    private int nextXpPoints;
+    private int nextThreshold;
+    private int nextCoinPoints;
     private boolean eligible;
-    private int totalXp;
+    private int totalCoins;
 
     public AwardProgressResponse(long currentSessionCount, int nextLevel, int nextThreshold,
-                                  int nextXpPoints, boolean eligible, int totalXp) {
+                                  int nextCoinPoints, boolean eligible, int totalCoins) {
         this.currentSessionCount = currentSessionCount;
         this.nextLevel = nextLevel;
         this.nextThreshold = nextThreshold;
-        this.nextXpPoints = nextXpPoints;
+        this.nextCoinPoints = nextCoinPoints;
         this.eligible = eligible;
-        this.totalXp = totalXp;
+        this.totalCoins = totalCoins;
     }
 
-    public long getCurrentSessionCount() {
-        return currentSessionCount;
-    }
+    public long getCurrentSessionCount() { return currentSessionCount; }
+    public void setCurrentSessionCount(long currentSessionCount) { this.currentSessionCount = currentSessionCount; }
 
-    public void setCurrentSessionCount(long currentSessionCount) {
-        this.currentSessionCount = currentSessionCount;
-    }
+    public int getNextLevel() { return nextLevel; }
+    public void setNextLevel(int nextLevel) { this.nextLevel = nextLevel; }
 
-    public int getNextLevel() {
-        return nextLevel;
-    }
+    public int getNextThreshold() { return nextThreshold; }
+    public void setNextThreshold(int nextThreshold) { this.nextThreshold = nextThreshold; }
 
-    public void setNextLevel(int nextLevel) {
-        this.nextLevel = nextLevel;
-    }
+    public int getNextCoinPoints() { return nextCoinPoints; }
+    public void setNextCoinPoints(int nextCoinPoints) { this.nextCoinPoints = nextCoinPoints; }
 
-    public int getNextThreshold() {
-        return nextThreshold;
-    }
+    public boolean isEligible() { return eligible; }
+    public void setEligible(boolean eligible) { this.eligible = eligible; }
 
-    public void setNextThreshold(int nextThreshold) {
-        this.nextThreshold = nextThreshold;
-    }
-
-    public int getNextXpPoints() {
-        return nextXpPoints;
-    }
-
-    public void setNextXpPoints(int nextXpPoints) {
-        this.nextXpPoints = nextXpPoints;
-    }
-
-    public boolean isEligible() {
-        return eligible;
-    }
-
-    public void setEligible(boolean eligible) {
-        this.eligible = eligible;
-    }
-
-    public int getTotalXp() {
-        return totalXp;
-    }
-
-    public void setTotalXp(int totalXp) {
-        this.totalXp = totalXp;
-    }
+    public int getTotalCoins() { return totalCoins; }
+    public void setTotalCoins(int totalCoins) { this.totalCoins = totalCoins; }
 }

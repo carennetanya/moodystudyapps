@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.example.moody_study_backend.entity.AwardLevelUp;
@@ -41,7 +41,7 @@ class AwardLevelUpServiceTest {
         AwardLevelUp award = new AwardLevelUp();
         award.setLevel(1);
         award.setSummaryCountThreshold(6);
-        award.setXpPoints(50);
+        award.setCoinPoints(50);
         when(awardLevelUpRepository.findByUserOrderByLevelAsc(user)).thenReturn(List.of(award));
 
         assertEquals(1, awardLevelUpService.getAwards("test@gmail.com").size());

@@ -19,5 +19,5 @@ public class StreakResponse {
     // Level-up info (only meaningful after completeSession)
     private StreakLevel previousLevel;
     private boolean leveledUp;
-    private int totalXpInLevel; // Total XP earned by user (maps to "points" in UI)
+    private int totalCoins; // Total Coin yang dimiliki user (bisa dipakai di Shop)
 }

@@ -924,7 +924,7 @@ class _ActiveStudySessionState extends State<ActiveStudySession>
           pageBuilder: (_, __, ___) => LevelUpScreen(
             newLevel: sr.newLevel,
             newLevelName: sr.newLevelName ?? _levelName(sr.newLevel),
-            xpEarnedInLevel: sr.xpEarnedInLevel,
+            coinsEarned: sr.coinsEarned,
             userName: widget.userName,
             onContinue: () => Navigator.of(context).pop(),
           ),

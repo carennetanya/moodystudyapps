@@ -26,9 +26,9 @@ public class LevelHistoryService {
     private final StudyMaterialRepository studyMaterialRepository;
     private final AwardLevelUpRepository awardLevelUpRepository;
 
-    private static final int[] LEVEL_START = {1, 6, 13, 22, 33};
-    private static final int[] LEVEL_END   = {5, 12, 21, 32, Integer.MAX_VALUE};
-    private static final int[] XP_REWARDS  = {0, 50, 100, 200, 400};
+    private static final int[] LEVEL_START    = {1, 6, 13, 22, 33};
+    private static final int[] LEVEL_END      = {5, 12, 21, 32, Integer.MAX_VALUE};
+    private static final int[] COIN_REWARDS   = {0, 50, 100, 200, 400};
     private static final String[] LEVEL_NAMES = {"Beginner", "Learner", "Practitioner", "Expert", "Master"};
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -38,11 +38,10 @@ public class LevelHistoryService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User tidak ditemukan"));
 
-        int idx = level - 1;
+        int idx       = level - 1;
         int fromIndex = LEVEL_START[idx] - 1;
         int toIndex   = LEVEL_END[idx];
 
-        // Ambil semua sesi urut dari awal
         List<StudySession> allSessions = studySessionRepository.findByUserOrderByStartTimeAsc(user);
 
         List<StudySession> levelSessions = fromIndex >= allSessions.size()
@@ -58,10 +57,8 @@ public class LevelHistoryService {
                 .map(a -> a.getAwardedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
                 .orElse(null);
 
-        // Build session items dengan file-nya masing-masing
         List<LevelHistoryResponse.SessionItem> sessionItems = levelSessions.stream()
                 .map(s -> {
-                    // Ambil file yang diupload dalam sesi ini
                     List<StudyMaterial> materials = studyMaterialRepository.findByStudySession(s);
                     List<LevelHistoryResponse.FileItem> files = materials.stream()
                             .map(m -> LevelHistoryResponse.FileItem.builder()
@@ -88,7 +85,7 @@ public class LevelHistoryService {
                 .levelName(LEVEL_NAMES[idx])
                 .totalSessions(levelSessions.size())
                 .totalMinutes(totalMinutes)
-                .xpBonus(XP_REWARDS[idx])
+                .coinBonus(COIN_REWARDS[idx])
                 .startedAt(startedAt)
                 .completedAt(completedAt)
                 .sessions(sessionItems)

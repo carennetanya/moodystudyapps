@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.moody_study_backend.entity.User;
-import com.example.moody_study_backend.entity.UserXp;
+import com.example.moody_study_backend.entity.UserCoin;
 import com.example.moody_study_backend.repository.UserRepository;
-import com.example.moody_study_backend.repository.UserXpRepository;
+import com.example.moody_study_backend.repository.UserCoinRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,20 +20,24 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
-public class UserXpController {
+public class UserCoinController {
 
-    private final UserXpRepository userXpRepository;
+    private final UserCoinRepository userCoinRepository;
     private final UserRepository userRepository;
 
-    @GetMapping("/xp")
-    public ResponseEntity<Map<String, Integer>> getTotalXp(Authentication authentication) {
+    /**
+     * GET /api/user/coins
+     * Ambil total coin user yang terkumpul dari daily quest.
+     */
+    @GetMapping("/coins")
+    public ResponseEntity<Map<String, Integer>> getTotalCoins(Authentication authentication) {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User tidak ditemukan"));
 
-        int totalXp = userXpRepository.findByUser(user)
-                .map(UserXp::getTotalXp)
+        int totalCoins = userCoinRepository.findByUser(user)
+                .map(UserCoin::getTotalCoins)
                 .orElse(0);
 
-        return ResponseEntity.ok(Map.of("totalXp", totalXp));
+        return ResponseEntity.ok(Map.of("totalCoins", totalCoins));
     }
 }
