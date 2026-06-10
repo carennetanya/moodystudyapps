@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:moody_study/services/api_client.dart';
 import 'package:moody_study/screens/collection_screen.dart';
+import 'package:moody_study/utils/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,9 +179,10 @@ class _ShopScreenState extends State<ShopScreen> {
         }
       });
       if (mounted) {
+        final l = AppLocalizations.of(context, listen: false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(item.price == 0 ? '${item.name} berhasil didapatkan! 🎉' : '${item.name} berhasil dibeli! 🪙'),
+            content: Text(item.price == 0 ? '${item.name} ${l.shopObtainSuccess}' : '${item.name} ${l.shopPurchaseSuccess}'),
             backgroundColor: _kGreen,
             behavior: SnackBarBehavior.floating,
           ),
@@ -198,9 +200,10 @@ class _ShopScreenState extends State<ShopScreen> {
         });
         return;
       }
+      final l = AppLocalizations.of(context, listen: false);
       final msg = e.toString().contains('PAYMENT_REQUIRED') || e.toString().contains('402')
-          ? 'Coin tidak cukup!'
-          : 'Gagal membeli item';
+          ? l.shopNotEnoughCoins
+          : l.shopPurchaseFailed;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
@@ -268,6 +271,7 @@ class _ShopScreenState extends State<ShopScreen> {
   }
 
   Widget _buildTopBar(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
@@ -289,7 +293,7 @@ class _ShopScreenState extends State<ShopScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          const Text('Shop', style: TextStyle(fontFamily: 'BlackHanSans', fontSize: 22, color: _kBlack)),
+          Text(l.shopTitle, style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 22, color: _kBlack)),
           const Spacer(),
           // Tombol ke Collection
           GestureDetector(
@@ -305,11 +309,11 @@ class _ShopScreenState extends State<ShopScreen> {
                 border: Border.all(color: _kBlack, width: 2),
                 boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)],
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.inventory_2_rounded, size: 14, color: _kBlack),
-                  SizedBox(width: 4),
-                  Text('Koleksi', style: TextStyle(fontFamily: 'Nunito', fontSize: 12, fontWeight: FontWeight.w800, color: _kBlack)),
+                  const Icon(Icons.inventory_2_rounded, size: 14, color: _kBlack),
+                  const SizedBox(width: 4),
+                  Text(l.shopCollection, style: const TextStyle(fontFamily: 'Nunito', fontSize: 12, fontWeight: FontWeight.w800, color: _kBlack)),
                 ],
               ),
             ),
@@ -320,6 +324,7 @@ class _ShopScreenState extends State<ShopScreen> {
   }
 
   Widget _buildCurrencyRow() {
+    final l = AppLocalizations.of(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -361,11 +366,11 @@ class _ShopScreenState extends State<ShopScreen> {
                     child: const Center(child: Text('🪙', style: TextStyle(fontSize: 10))),
                   ),
                   const SizedBox(width: 6),
-                  Text('$_totalCoins Coins', style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 16, color: _kBlack)),
+                  Text('$_totalCoins ${l.shopCoins}', style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 16, color: _kBlack)),
                 ],
               ),
               const SizedBox(height: 2),
-              Text('${_ownedIds.length} item dimiliki', style: const TextStyle(fontFamily: 'Nunito', fontSize: 11, color: Color(0xFF888888))),
+              Text('${_ownedIds.length} ${l.shopItemsOwned}', style: const TextStyle(fontFamily: 'Nunito', fontSize: 11, color: Color(0xFF888888))),
             ],
           ),
         ],
@@ -374,10 +379,11 @@ class _ShopScreenState extends State<ShopScreen> {
   }
 
   Widget _buildCategoryTabs() {
+    final l = AppLocalizations.of(context);
     final cats = [
-      (ShopCategory.outfit,    Icons.style_rounded,        'Outfit'),
-      (ShopCategory.accessory, Icons.auto_awesome_rounded, 'Accessory'),
-      (ShopCategory.theme,     Icons.palette_rounded,      'Theme'),
+      (ShopCategory.outfit,    Icons.style_rounded,        l.shopOutfit),
+      (ShopCategory.accessory, Icons.auto_awesome_rounded, l.shopAccessory),
+      (ShopCategory.theme,     Icons.palette_rounded,      l.shopTheme),
     ];
     return SizedBox(
       height: 44,

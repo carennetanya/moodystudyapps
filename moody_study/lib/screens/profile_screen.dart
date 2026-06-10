@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:moody_study/services/api_client.dart';
 import 'package:moody_study/services/user_provider.dart';
+import 'package:moody_study/utils/app_localizations.dart';
 import 'edit_profile_screen.dart';
 import 'collection_screen.dart';
 
@@ -72,13 +73,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (_) {}
   }
 
-  String _levelLabel(String level) {
+  String _levelLabel(String level, AppLocalizations l) {
     switch (level.toUpperCase()) {
-      case 'LEARNER':      return 'Learner';
-      case 'PRACTITIONER': return 'Practitioner';
-      case 'EXPERT':       return 'Expert';
-      case 'MASTER':       return 'Master';
-      default:             return 'Beginner';
+      case 'LEARNER':      return l.levelLearner;
+      case 'PRACTITIONER': return l.levelPractitioner;
+      case 'EXPERT':       return l.levelExpert;
+      case 'MASTER':       return l.levelMaster;
+      default:             return l.levelBeginner;
     }
   }
 
@@ -206,14 +207,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         color: _kBlack,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
-                                      child: const Row(
+                                      child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.edit_rounded, color: _kYellow, size: 10),
-                                          SizedBox(width: 4),
+                                          const Icon(Icons.edit_rounded, color: _kYellow, size: 10),
+                                          const SizedBox(width: 4),
                                           Text(
-                                            'Edit Avatar',
-                                            style: TextStyle(
+                                            AppLocalizations.of(context).profileEditAvatar,
+                                            style: const TextStyle(
                                               fontFamily: 'Nunito',
                                               fontSize: 9,
                                               color: Colors.white,
@@ -248,33 +249,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // ── Name + email block ──────────────────────────
                           _InfoBlock(
                             children: [
-                              _InfoRow(label: 'NAMA LENGKAP', value: name),
+                              _InfoRow(label: AppLocalizations.of(context).profileFullName, value: name),
                               const _Divider(),
-                              _InfoRow(label: 'EMAIL', value: email),
+                              _InfoRow(label: AppLocalizations.of(context).profileEmailLabel, value: email),
                             ],
                           ),
                           const SizedBox(height: 16),
 
                           // ── Ringkasan block ─────────────────────────────
-                          _SectionLabel(label: 'RINGKASAN'),
+                          _SectionLabel(label: AppLocalizations.of(context).profileSummary),
                           const SizedBox(height: 10),
                           _InfoBlock(
                             children: [
                               _StatRow(
                                 emoji: '🔥',
-                                value: '$_currentStreak hari',
-                                label: 'Streak belajar',
+                                value: '$_currentStreak ${AppLocalizations.of(context).profileStreakDays}',
+                                label: AppLocalizations.of(context).profileStreakLabel,
                               ),
                               const _Divider(),
                               _StatRow(
                                 emoji: '🪙',
                                 value: '$_totalCoins',
-                                label: 'Coins dimiliki',
+                                label: AppLocalizations.of(context).profileCoinsOwned,
                               ),
                               const _Divider(),
                               _LevelRow(
                                 level: _levelNumber(_streakLevel),
-                                label: _levelLabel(_streakLevel),
+                                label: _levelLabel(_streakLevel, AppLocalizations.of(context)),
                                 color: _levelColor(_streakLevel),
                               ),
                             ],
@@ -291,9 +292,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ),
                               icon: const Icon(Icons.edit_rounded, size: 16),
-                              label: const Text(
-                                'Edit Profil',
-                                style: TextStyle(
+                              label: Text(
+                                AppLocalizations.of(context).profileEditButton,
+                                style: const TextStyle(
                                   fontFamily: 'BlackHanSans',
                                   fontSize: 14,
                                 ),
@@ -518,9 +519,9 @@ class _LevelRow extends StatelessWidget {
                   color: Color(0xFF111111),
                 ),
               ),
-              const Text(
-                'Streak level',
-                style: TextStyle(
+              Text(
+                AppLocalizations.of(context).profileStreakLevel,
+                style: const TextStyle(
                   fontFamily: 'Nunito',
                   fontSize: 11,
                   color: Color(0xFF888888),

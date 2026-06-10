@@ -3,6 +3,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:dartz/dartz.dart' hide State;
 import 'package:moody_study/core/failure.dart';
 import 'package:moody_study/core/exception_handler.dart';
+import 'package:moody_study/utils/app_localizations.dart';
 import 'loading_screen.dart';
 import 'register_screen.dart';
 import 'login_screen.dart';
@@ -61,6 +62,7 @@ class _ThemeSelectorScreenState extends State<ThemeSelectorScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFF1EE86F),
       body: SafeArea(
@@ -78,7 +80,7 @@ class _ThemeSelectorScreenState extends State<ThemeSelectorScreen>
                     Stack(
                       children: [
                         Text(
-                          'Choose your\nTheme',
+                          l.themeChooseTitle,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'BlackHanSans',
@@ -91,10 +93,10 @@ class _ThemeSelectorScreenState extends State<ThemeSelectorScreen>
                               ..color = const Color(0xFF111111),
                           ),
                         ),
-                        const Text(
-                          'Choose your\nTheme',
+                        Text(
+                          l.themeChooseTitle,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'BlackHanSans',
                             fontSize: 38,
                             color: Colors.white,
@@ -115,7 +117,7 @@ class _ThemeSelectorScreenState extends State<ThemeSelectorScreen>
 
                     // Green Theme Button
                     _ThemeButton(
-                      label: 'Light Mode',
+                      label: l.themeLightMode,
                       dotColor: const Color(0xFF1EE86F),
                       bgColor: Colors.white,
                       textColor: const Color(0xFF111111),
@@ -128,7 +130,7 @@ class _ThemeSelectorScreenState extends State<ThemeSelectorScreen>
 
                     // Dark Theme Button
                     _ThemeButton(
-                      label: 'Dark Mode',
+                      label: l.themeDarkMode,
                       dotColor: const Color(0xFF1a1a2e),
                       bgColor: const Color(0xFF1a1a2e),
                       textColor: const Color(0xFFE2E8F0),
@@ -327,6 +329,7 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final isDark = widget.theme == AppTheme.dark;
     final bgColor = isDark ? const Color(0xFF1a1a2e) : const Color(0xFF1EE86F);
 
@@ -349,7 +352,7 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen>
                     Stack(
                       children: [
                         Text(
-                          'Welcome to\nMoody Study',
+                          l.authWelcomeTitle,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'BlackHanSans',
@@ -365,7 +368,7 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen>
                           ),
                         ),
                         Text(
-                          'Welcome to\nMoody Study',
+                          l.authWelcomeTitle,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'BlackHanSans',
@@ -390,7 +393,7 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen>
 
                     // Sign Up Button
                     _AuthButton(
-                      label: 'Sign Up',
+                      label: l.authSignUp,
                       bgColor: Colors.white,
                       textColor: const Color(0xFF111111),
                       borderColor: const Color(0xFF111111),
@@ -402,7 +405,7 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen>
 
                     // Login Button
                     _AuthButton(
-                      label: 'Login',
+                      label: l.authLogin,
                       bgColor: isDark ? const Color(0xFF2a2a4e) : Colors.white,
                       textColor: isDark
                           ? const Color(0xFFE2E8F0)

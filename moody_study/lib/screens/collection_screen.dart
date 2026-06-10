@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:moody_study/services/api_client.dart';
 import 'package:moody_study/screens/shop_screen.dart';
+import 'package:moody_study/utils/app_localizations.dart';
 
 /// Edit Avatar screen — preview avatar di atas, tab kategori, grid item owned.
 /// Tap item → equip (simpan ke SharedPreferences).
@@ -55,7 +56,6 @@ class _CollectionScreenState extends State<CollectionScreen>
     Icons.palette_rounded,
   ];
 
-  static const _tabLabels = ['Skin', 'Hair', 'Top', 'Jacket', 'Accessory', 'Theme'];
   static const _totalTabs = 6;
 
   String get _currentAvatarFile =>
@@ -204,9 +204,9 @@ class _CollectionScreenState extends State<CollectionScreen>
                       ),
                     ),
                     const Spacer(),
-                    const Text(
-                      'Edit Avatar',
-                      style: TextStyle(
+                    Text(
+                      AppLocalizations.of(context).collectionTitle,
+                      style: const TextStyle(
                         fontFamily: 'BlackHanSans',
                         fontSize: 18,
                         color: _kBlack,
@@ -223,9 +223,9 @@ class _CollectionScreenState extends State<CollectionScreen>
                           color: _kBlack,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Text(
-                          'DONE',
-                          style: TextStyle(
+                        child: Text(
+                          AppLocalizations.of(context).collectionDone,
+                          style: const TextStyle(
                             fontFamily: 'BlackHanSans',
                             fontSize: 13,
                             color: _kYellow,
@@ -261,6 +261,8 @@ class _CollectionScreenState extends State<CollectionScreen>
   // ─── Tab bar ─────────────────────────────────────────────────────────────────
 
   Widget _buildTabBar() {
+    final l = AppLocalizations.of(context);
+    final tabLabels = [l.shopSkin, l.shopHair, l.shopTop, l.shopJacket, l.shopAccessory, l.shopTheme];
     return Container(
       color: Colors.white,
       child: TabBar(
@@ -283,7 +285,7 @@ class _CollectionScreenState extends State<CollectionScreen>
                   Icon(_tabIcons[i], size: 20),
                   const SizedBox(height: 3),
                   Text(
-                    _tabLabels[i],
+                    tabLabels[i],
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontFamily: 'Nunito',
@@ -373,18 +375,18 @@ class _CollectionScreenState extends State<CollectionScreen>
         children: [
           const Text('🛍️', style: TextStyle(fontSize: 48)),
           const SizedBox(height: 12),
-          const Text(
-            'Belum ada item',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).shopNoItems,
+            style: const TextStyle(
               fontFamily: 'BlackHanSans',
               fontSize: 16,
               color: _kBlack,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Beli di Shop untuk membuka item ini!',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).shopBuyToUnlock,
+            style: const TextStyle(
               fontFamily: 'Nunito',
               fontSize: 12,
               color: Color(0xFF888888),
@@ -407,9 +409,9 @@ class _CollectionScreenState extends State<CollectionScreen>
                       color: _kBlack, offset: Offset(3, 3), blurRadius: 0)
                 ],
               ),
-              child: const Text(
-                'Ke Shop',
-                style: TextStyle(
+              child: Text(
+                AppLocalizations.of(context).shopGoToShop,
+                style: const TextStyle(
                     fontFamily: 'BlackHanSans',
                     fontSize: 13,
                     color: _kBlack),

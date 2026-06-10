@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:moody_study/utils/app_localizations.dart';
 import 'package:dartz/dartz.dart' hide State, OpenFile;
 import 'package:moody_study/core/error/exception_mapper.dart';
 import 'package:moody_study/core/error/failures.dart';
@@ -64,8 +65,9 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
   Future<void> _openFile(SavedFile file) async {
     if (kIsWeb) {
       if (!mounted) return;
+      final l = AppLocalizations.of(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Membuka file tidak didukung pada web.')),
+        SnackBar(content: Text(l.filesOpenUnsupportedWeb)),
       );
       return;
     }
@@ -102,19 +104,20 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
   }
 
   Future<void> _confirmDelete(SavedFile file) async {
+    final l = AppLocalizations.of(context, listen: false);
     final ok = await showDialog<bool?>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Hapus file'),
-        content: Text('Hapus "${file.fileName}" dari Your Files?'),
+        title: Text(l.filesDeleteDialogTitle),
+        content: Text(l.filesDeleteDialogContent(file.fileName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(c).pop(false),
-            child: const Text('Batal'),
+            child: Text(l.filesDeleteCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(c).pop(true),
-            child: const Text('Hapus'),
+            child: Text(l.filesDeleteConfirm),
           ),
         ],
       ),
@@ -131,7 +134,7 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
         ),
         (_) async {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('File dihapus.')),
+            SnackBar(content: Text(l.filesDeleteSuccess)),
           );
           await _loadFiles();
         },
@@ -150,22 +153,23 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
 
   Future<void> _renameFile(SavedFile file) async {
     final controller = TextEditingController(text: file.fileName);
+    final l = AppLocalizations.of(context, listen: false);
     final ok = await showDialog<bool?>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Ganti nama file'),
+        title: Text(l.filesRenameTitle),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(labelText: 'Nama file'),
+          decoration: InputDecoration(labelText: l.filesRenameLabel),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(c).pop(false),
-            child: const Text('Batal'),
+            child: Text(l.filesRenameCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(c).pop(true),
-            child: const Text('Simpan'),
+            child: Text(l.filesRenameSave),
           ),
         ],
       ),
@@ -184,7 +188,7 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
         ),
         (_) async {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Nama file diperbarui.')),
+            SnackBar(content: Text(l.filesRenameSuccess)),
           );
           await _loadFiles();
         },
@@ -207,9 +211,9 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
       backgroundColor: const Color(0xFFF7F7F7),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF2EA05),
-        title: const Text(
-          'Your Files',
-          style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w700),
+        title: Text(
+          AppLocalizations.of(context).filesTitle,
+          style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.w700),
         ),
         centerTitle: true,
         elevation: 0,
@@ -225,7 +229,7 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
               ] else if (_error != null) ...[
                 const SizedBox(height: 24),
                 Text(
-                  _error ?? 'Gagal memuat file. Silakan coba lagi.',
+                  _error ?? AppLocalizations.of(context).filesLoadError,
                   style: const TextStyle(color: Colors.red),
                   textAlign: TextAlign.center,
                 ),
@@ -235,14 +239,14 @@ class _YourFilesScreenState extends State<YourFilesScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF111111),
                   ),
-                  child: const Text('Muat ulang'),
+                  child: Text(AppLocalizations.of(context).filesReload),
                 ),
               ] else if (_files.isEmpty) ...[
                 const SizedBox(height: 24),
-                const Text(
-                  'Belum ada file yang disimpan. Simpan PDF terlebih dahulu.',
+                Text(
+                  AppLocalizations.of(context).filesEmpty,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: 16),
                 ),
               ] else ...[
                 Expanded(

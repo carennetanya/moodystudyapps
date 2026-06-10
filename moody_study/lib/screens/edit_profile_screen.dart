@@ -16,6 +16,7 @@ import 'package:moody_study/services/profile_service.dart';
 import 'package:moody_study/services/profile_image_provider.dart';
 import 'package:moody_study/services/user_provider.dart';
 import 'package:moody_study/services/validation_service.dart';
+import 'package:moody_study/utils/app_localizations.dart';
 import 'theme_selector_screen.dart';
 import '../services/patrol_pin_service.dart';
 import '../widgets/patrol_pin_dialog.dart';
@@ -641,16 +642,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     await Future.delayed(const Duration(milliseconds: 100));
     if (!mounted) return;
 
+    final l = AppLocalizations.of(context, listen: false);
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Apakah Anda yakin ingin keluar?'),
+        title: Text(l.logout),
+        content: Text(l.logoutPrompt),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Batal'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -670,7 +672,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               }
             },
             child:
-                const Text('Keluar', style: TextStyle(color: Colors.red)),
+                Text(l.logout, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -717,7 +719,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: const Icon(Icons.arrow_back, color: Color(0xFF111111)),
         ),
         title: Text(
-          'Edit Profil',
+          l.editProfileTitle,
           style: const TextStyle(
             fontFamily: 'BlackHanSans',
             fontSize: 18,
@@ -743,7 +745,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   message: _successMessage!, isError: false),
 
             // ── Avatar card ───────────────────────────────────────────────
-            _buildAvatarCard(displayImageBytes),
+            _buildAvatarCard(displayImageBytes, l),
             const SizedBox(height: 20),
 
             // ── Profile card (name + username) ────────────────────────────
@@ -765,7 +767,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   // ─── Avatar card ─────────────────────────────────────────────────────────────
 
-  Widget _buildAvatarCard(Uint8List? displayImageBytes) {
+  Widget _buildAvatarCard(Uint8List? displayImageBytes, AppLocalizations l) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -804,15 +806,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
-              child: const Text('Pilih Foto',
-                  style: TextStyle(
+              child: Text(l.profilePickPhoto,
+                  style: const TextStyle(
                       fontFamily: 'Nunito',
                       fontSize: 12,
                       fontWeight: FontWeight.w600)),
             ),
             const SizedBox(height: 8),
-            const Text('Gambar rasio 1:1, maks 2MB',
-                style: TextStyle(
+            Text(l.profilePhotoHint,
+                style: const TextStyle(
                     fontFamily: 'Nunito',
                     fontSize: 11,
                     color: Color(0xFF999999))),
@@ -837,8 +839,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation(
                                   Color(0xFF111111))))
-                      : const Text('Upload Foto',
-                          style: TextStyle(
+                      : Text(l.profileUploadPhoto,
+                          style: const TextStyle(
                               fontFamily: 'BlackHanSans',
                               fontSize: 11,
                               fontWeight: FontWeight.w700)),
@@ -865,8 +867,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         children: [
           _buildTextField(
             controller: _nameController,
-            label: 'Nama Lengkap',
-            hint: 'Masukkan nama Anda',
+            label: AppLocalizations.of(context).registerFullName,
+            hint: l.enterYourName,
             enabled: !_isOffline,
             errorText: _nameError,
             onChanged: _onNameChanged,
@@ -874,8 +876,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           const SizedBox(height: 12),
           _buildTextField(
             controller: _usernameController,
-            label: 'Username',
-            hint: 'Masukkan username Anda',
+            label: AppLocalizations.of(context).registerUsername,
+            hint: l.enterYourUsername,
             enabled: !_isOffline,
             errorText: _usernameError,
             isChecking: _isUsernameChecking,
@@ -913,7 +915,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           strokeWidth: 2,
                           valueColor:
                               AlwaysStoppedAnimation(Color(0xFF111111))))
-                  : const Text('Simpan Perubahan',
+                  : Text(l.editProfileSaveChanges,
                       style: TextStyle(
                           fontFamily: 'BlackHanSans',
                           fontSize: 12,
@@ -945,8 +947,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Ubah Email',
-              style: TextStyle(
+          Text(l.editEmailTitle,
+              style: const TextStyle(
                   fontFamily: 'BlackHanSans',
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -954,9 +956,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           const SizedBox(height: 12),
           _buildTextField(
             controller: _emailController,
-            label: 'Email Baru',
+            label: l.newEmail,
             keyboardType: TextInputType.emailAddress,
-            hint: 'Masukkan email baru',
+            hint: l.enterNewEmailHint,
             enabled: !_isOffline,
             errorText: _emailError,
             isChecking: _isEmailChecking,
@@ -966,9 +968,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           const SizedBox(height: 12),
           _buildTextField(
             controller: _emailPasswordController,
-            label: 'Password',
+            label: l.loginPassword,
             obscureText: true,
-            hint: 'Masukkan password Anda',
+            hint: l.enterPasswordHint,
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -998,8 +1000,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           strokeWidth: 2,
                           valueColor:
                               AlwaysStoppedAnimation(Color(0xFF111111))))
-                  : const Text('Ubah Email',
-                      style: TextStyle(
+                  : Text(l.editEmailTitle,
+                      style: const TextStyle(
                           fontFamily: 'BlackHanSans',
                           fontSize: 12,
                           fontWeight: FontWeight.w700)),
@@ -1023,7 +1025,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Ubah Password',
+          Text(l.editPasswordTitle,
               style: TextStyle(
                   fontFamily: 'BlackHanSans',
                   fontSize: 13,
@@ -1032,9 +1034,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           const SizedBox(height: 12),
           _buildTextField(
             controller: _currentPasswordController,
-            label: 'Password Saat Ini',
+            label: l.currentPassword,
             obscureText: !_showCurrentPassword,
-            hint: 'Masukkan password saat ini',
+            hint: l.enterCurrentPasswordHint,
             suffixIcon: GestureDetector(
               onTap: () =>
                   setState(() => _showCurrentPassword = !_showCurrentPassword),
@@ -1049,9 +1051,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           const SizedBox(height: 12),
           _buildTextField(
             controller: _newPasswordController,
-            label: 'Password Baru',
+            label: l.newPassword,
             obscureText: !_showNewPassword,
-            hint: 'Minimal 6 karakter',
+            hint: l.enterNewPasswordHint,
             suffixIcon: GestureDetector(
               onTap: () =>
                   setState(() => _showNewPassword = !_showNewPassword),
@@ -1064,9 +1066,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           const SizedBox(height: 12),
           _buildTextField(
             controller: _confirmPasswordController,
-            label: 'Konfirmasi Password',
+            label: l.confirmPassword,
             obscureText: !_showConfirmPassword,
-            hint: 'Ulangi password baru',
+            hint: l.enterConfirmPasswordHint,
             suffixIcon: GestureDetector(
               onTap: () =>
                   setState(() => _showConfirmPassword = !_showConfirmPassword),
@@ -1102,7 +1104,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           strokeWidth: 2,
                           valueColor:
                               AlwaysStoppedAnimation(Color(0xFF111111))))
-                  : const Text('Simpan Password',
+                  : Text(l.savePassword,
                       style: TextStyle(
                           fontFamily: 'BlackHanSans',
                           fontSize: 12,
@@ -1137,7 +1139,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           size: 16, color: Color(0xFF111111)),
                     ),
                     const SizedBox(width: 10),
-                    const Text('Patrol Mode PIN',
+                    Text(l.patrolModePin,
                         style: TextStyle(
                             fontFamily: 'BlackHanSans',
                             fontSize: 14,
@@ -1157,7 +1159,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                       ),
                       child: Text(
-                        _hasPin ? 'Aktif' : 'Belum diset',
+                        _hasPin ? l.profileStatusActive : l.profileStatusNotSet,
                         style: TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: 11,
@@ -1171,9 +1173,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'PIN ini dipakai kalau kamu perlu keluar darurat saat patrol mode aktif (3x distraksi).',
-                  style: TextStyle(
+                Text(
+                  l.patrolPinDescription,
+                  style: const TextStyle(
                       fontFamily: 'Nunito',
                       fontSize: 12,
                       color: Color(0xFF888888)),
@@ -1187,7 +1189,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         _hasPin ? Icons.edit_rounded : Icons.add_rounded,
                         size: 16),
                     label: Text(
-                        _hasPin ? 'Ganti PIN' : 'Set PIN Sekarang',
+                        _hasPin ? l.changePin : l.setPinNow,
                         style: const TextStyle(
                             fontFamily: 'BlackHanSans', fontSize: 12)),
                     style: OutlinedButton.styleFrom(
@@ -1214,8 +1216,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
-              child: const Text('Keluar',
-                  style: TextStyle(
+                child: Text(l.logout,
+                    style: TextStyle(
                       fontFamily: 'BlackHanSans',
                       fontSize: 12,
                       fontWeight: FontWeight.w700,

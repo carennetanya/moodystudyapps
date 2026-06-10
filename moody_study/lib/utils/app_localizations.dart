@@ -82,6 +82,14 @@ class AppLocalizations {
   String get homeSchedule => isId ? 'atur jadwal' : 'schedule';
   String get homeStreak => isId ? 'Streak' : 'Streak';
 
+  // ─── Theme / Auth ──────────────────────────────────────────────────
+  String get themeChooseTitle => isId ? 'Pilih Tema Kamu' : 'Choose your Theme';
+  String get themeLightMode => isId ? 'Light Mode' : 'Light Mode';
+  String get themeDarkMode => isId ? 'Dark Mode' : 'Dark Mode';
+  String get authWelcomeTitle => isId ? 'Selamat datang di Moody Study' : 'Welcome to Moody Study';
+  String get authSignUp => isId ? 'Daftar' : 'Sign Up';
+  String get authLogin => isId ? 'Masuk' : 'Login';
+
   // ─── Bottom Nav ───────────────────────────────────────────────────
   String get navHome => isId ? 'Beranda' : 'Home';
   String get navQuest => isId ? 'Quest' : 'Quest';
@@ -159,9 +167,19 @@ class AppLocalizations {
   String get filesTitle => isId ? 'File Kamu' : 'Your Files';
   String get filesEmpty => isId ? 'Belum ada file yang disimpan. Simpan PDF terlebih dahulu.' : 'No files saved yet. Save a PDF first.';
   String get filesLoadError => isId ? 'Gagal memuat file' : 'Failed to load files';
-  String get filesDeleteConfirm => isId ? 'Hapus file ini?' : 'Delete this file?';
+  String get filesOpenUnsupportedWeb => isId ? 'Membuka file tidak didukung pada web.' : 'Opening files is not supported on the web.';
+  String get filesDeleteDialogTitle => isId ? 'Hapus file' : 'Delete file';
+  String filesDeleteDialogContent(String fileName) => isId ? 'Hapus "$fileName" dari File Kamu?' : 'Delete "$fileName" from Your Files?';
+  String get filesDeleteConfirm => isId ? 'Hapus' : 'Delete';
+  String get filesDeleteCancel => isId ? 'Batal' : 'Cancel';
   String get filesDeleteSuccess => isId ? 'File berhasil dihapus.' : 'File deleted successfully.';
-  String get filesOpenError => isId ? 'Gagal membuka file.' : 'Failed to open file.';
+  String get filesRenameTitle => isId ? 'Ganti nama file' : 'Rename file';
+  String get filesRenameLabel => isId ? 'Nama file' : 'File name';
+  String get filesRenameCancel => isId ? 'Batal' : 'Cancel';
+  String get filesRenameSave => isId ? 'Simpan' : 'Save';
+  String get filesRenameSuccess => isId ? 'Nama file diperbarui.' : 'File name updated.';
+  String get filesReload => isId ? 'Muat ulang' : 'Reload';
+  String get filesOpen => isId ? 'Buka' : 'Open';
 
   // ─── Daily Quest ──────────────────────────────────────────────────
   String get questTitle => isId ? 'Quest Harian' : 'Daily Quest';
@@ -208,6 +226,36 @@ class AppLocalizations {
   String get ok => 'OK';
   String get loading => isId ? 'Memuat...' : 'Loading...';
   String get error => isId ? 'Terjadi kesalahan' : 'Something went wrong';
+  String get logout => isId ? 'Keluar' : 'Logout';
+  String get logoutPrompt => isId ? 'Apakah Anda yakin ingin keluar?' : 'Are you sure you want to logout?';
+  String get profilePinSaved => isId ? '✅ PIN patrol berhasil disimpan!' : '✅ Patrol PIN saved successfully!';
+  String get profilePickPhoto => isId ? 'Pilih Foto' : 'Choose Photo';
+  String get profilePhotoHint => isId ? 'Gambar rasio 1:1, maks 2MB' : '1:1 ratio image, max 2MB';
+  String get profileUploadPhoto => isId ? 'Upload Foto' : 'Upload Photo';
+  String get enterNewEmailHint => isId ? 'Masukkan email baru' : 'Enter new email';
+  String get enterPasswordHint => isId ? 'Masukkan password Anda' : 'Enter your password';
+  String get enterCurrentPasswordHint => isId ? 'Masukkan password saat ini' : 'Enter current password';
+  String get enterNewPasswordHint => isId ? 'Minimal 6 karakter' : 'At least 6 characters';
+  String get enterConfirmPasswordHint => isId ? 'Ulangi password baru' : 'Repeat new password';
+  String get enterYourName => isId ? 'Masukkan nama Anda' : 'Enter your name';
+  String get enterYourUsername => isId ? 'Masukkan username Anda' : 'Enter your username';
+  String get profileStatusActive => isId ? 'Aktif' : 'Active';
+  String get profileStatusNotSet => isId ? 'Belum diset' : 'Not set';
+  String get patrolPinDescription => isId
+      ? 'PIN ini dipakai kalau kamu perlu keluar darurat saat patrol mode aktif (3x distraksi).'
+      : 'This PIN is used if you need to exit emergency while patrol mode is active (3x distractions).';
+  String get changePin => isId ? 'Ganti PIN' : 'Change PIN';
+  String get setPinNow => isId ? 'Set PIN Sekarang' : 'Set PIN Now';
+  String get editProfileTitle => isId ? 'Edit Profil' : 'Edit Profile';
+  String get editProfileSaveChanges => isId ? 'Simpan Perubahan' : 'Save Changes';
+  String get editEmailTitle => isId ? 'Ubah Email' : 'Change Email';
+  String get newEmail => isId ? 'Email Baru' : 'New Email';
+  String get editPasswordTitle => isId ? 'Ubah Password' : 'Change Password';
+  String get currentPassword => isId ? 'Password Saat Ini' : 'Current Password';
+  String get newPassword => isId ? 'Password Baru' : 'New Password';
+  String get confirmPassword => isId ? 'Konfirmasi Password' : 'Confirm Password';
+  String get savePassword => isId ? 'Simpan Password' : 'Save Password';
+  String get patrolModePin => isId ? 'Patrol Mode PIN' : 'Patrol Mode PIN';
   String get retry => isId ? 'Coba Lagi' : 'Retry';
   String get back => isId ? 'Kembali' : 'Back';
   String get langButtonLabel => isId ? 'EN' : 'ID';
@@ -344,6 +392,45 @@ class AppLocalizations {
   String get bannerOffline => isId
       ? 'Kamu sedang offline. Verifikasi tidak tersedia.'
       : "You're offline. Verification is unavailable.";
+
+  // ─── Shop & Collection Screen ─────────────────────────────────────
+  String get shopTitle => isId ? 'Toko' : 'Shop';
+  String get shopCollection => isId ? 'Koleksi' : 'Collection';
+  String get shopCoins => isId ? 'Koin' : 'Coins';
+  String get shopItemsOwned => isId ? 'item dimiliki' : 'items owned';
+  String get shopOutfit => isId ? 'Outfit' : 'Outfit';
+  String get shopAccessory => isId ? 'Aksesori' : 'Accessory';
+  String get shopTheme => isId ? 'Tema' : 'Theme';
+  String get shopSkin => isId ? 'Kulit' : 'Skin';
+  String get shopHair => isId ? 'Rambut' : 'Hair';
+  String get shopTop => isId ? 'Atas' : 'Top';
+  String get shopJacket => isId ? 'Jaket' : 'Jacket';
+  String get shopPurchaseSuccess => isId ? 'berhasil dibeli! 🪙' : 'purchased successfully! 🪙';
+  String get shopObtainSuccess => isId ? 'berhasil didapatkan! 🎉' : 'obtained successfully! 🎉';
+  String get shopNotEnoughCoins => isId ? 'Koin tidak cukup!' : 'Not enough coins!';
+  String get shopPurchaseFailed => isId ? 'Gagal membeli item' : 'Failed to buy item';
+  String get shopNoItems => isId ? 'Belum ada item' : 'No items';
+  String get shopBuyToUnlock => isId ? 'Beli di Toko untuk membuka item ini!' : 'Buy in Shop to unlock items!';
+  String get shopGoToShop => isId ? 'Ke Toko' : 'Go to Shop';
+  String get collectionTitle => isId ? 'Edit Avatar' : 'Edit Avatar';
+  String get collectionDone => isId ? 'SELESAI' : 'DONE';
+  String get collectionEmptyMessage => isId ? 'Belum ada item yang dimiliki di kategori ini.' : 'No items owned in this category.';
+
+  // ─── Profile Screen ────────────────────────────────────────────────
+  String get profileEditAvatar => isId ? 'Edit Avatar' : 'Edit Avatar';
+  String get profileFullName => isId ? 'NAMA LENGKAP' : 'FULL NAME';
+  String get profileEmailLabel => isId ? 'EMAIL' : 'EMAIL';
+  String get profileSummary => isId ? 'RINGKASAN' : 'SUMMARY';
+  String get profileStreakDays => isId ? 'hari' : 'days';
+  String get profileStreakLabel => isId ? 'Streak belajar' : 'Study streak';
+  String get profileCoinsOwned => isId ? 'Coins dimiliki' : 'Coins owned';
+  String get profileEditButton => isId ? 'Edit Profil' : 'Edit Profile';
+  String get profileStreakLevel => isId ? 'Streak level' : 'Streak level';
+  String get levelBeginner => isId ? 'Pemula' : 'Beginner';
+  String get levelLearner => isId ? 'Pelajar' : 'Learner';
+  String get levelPractitioner => isId ? 'Praktisi' : 'Practitioner';
+  String get levelExpert => isId ? 'Ahli' : 'Expert';
+  String get levelMaster => isId ? 'Master' : 'Master';
 
   /// Lookup by i18n key — dipakai oleh AppFailure.localizedMessage().
   String errorForKey(String key) => switch (key) {
