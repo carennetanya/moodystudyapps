@@ -52,6 +52,8 @@ flutter:
     - assets/audio/alarm.mp3
     - assets/images/avatars/
     - assets/translations/
+    - assets/images/hair/
+    - assets/images/clothes/
 
   fonts:
     - family: BlackHanSans

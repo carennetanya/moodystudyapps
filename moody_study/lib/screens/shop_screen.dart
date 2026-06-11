@@ -43,7 +43,9 @@ class ShopItem {
   final ShopCategory category;
   final OutfitPart? outfitPart;
   final Color bgColor;
-  final String? avatarFile;
+  final String? avatarFile;    // assets/images/avatars/
+  final String? hairFile;      // assets/images/hair/
+  final String? clothesFile;   // assets/images/clothes/
 
   const ShopItem({
     required this.id,
@@ -54,6 +56,8 @@ class ShopItem {
     this.outfitPart,
     required this.bgColor,
     this.avatarFile,
+    this.hairFile,
+    this.clothesFile,
   });
 }
 
@@ -69,25 +73,25 @@ const kShopItems = [
   ShopItem(id: 's_brown',  name: 'Brown Sugar', icon: Icons.face_5_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFE8C49A), avatarFile: 'brown-sugar.png'),
   ShopItem(id: 's_deep',   name: 'Deep',        icon: Icons.face_6_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.skin, bgColor: Color(0xFFD4956A), avatarFile: 'deep.png'),
   // ── HAIR ──
-  ShopItem(id: 'h_black',   name: 'Jet Black',   icon: Icons.person_rounded,        price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFE8E8E8)),
-  ShopItem(id: 'h_brown',   name: 'Choco Brown', icon: Icons.person_2_rounded,      price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFF5E6D3)),
-  ShopItem(id: 'h_blonde',  name: 'Blonde',      icon: Icons.person_3_rounded,      price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFFFF4D6)),
-  ShopItem(id: 'h_pink',    name: 'Sakura Pink', icon: Icons.person_4_rounded,      price: 800,  category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFFFF0F8)),
-  ShopItem(id: 'h_blue',    name: 'Ocean Blue',  icon: Icons.person_pin_rounded,    price: 800,  category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFE8F4FF)),
-  ShopItem(id: 'h_green',   name: 'Matcha',      icon: Icons.person_outline_rounded,price: 1000, category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFDFF5E3)),
+  ShopItem(id: 'h_black',  name: 'Jet Black',   icon: Icons.person_rounded,         price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFE8E8E8), hairFile: 'jet-black.png'),
+  ShopItem(id: 'h_brown',  name: 'Choco Brown', icon: Icons.person_2_rounded,       price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFF5E6D3), hairFile: 'choco-brown.png'),
+  ShopItem(id: 'h_blonde', name: 'Blonde',      icon: Icons.person_3_rounded,       price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFFFF4D6), hairFile: 'blonde.png'),
+  ShopItem(id: 'h_pink',   name: 'Sakura Pink', icon: Icons.person_4_rounded,       price: 800,  category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFFFF0F8), hairFile: 'sakura-pink.png'),
+  ShopItem(id: 'h_blue',   name: 'Ocean Blue',  icon: Icons.person_pin_rounded,     price: 800,  category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFE8F4FF), hairFile: 'ocean-blue.png'),
+  ShopItem(id: 'h_green',  name: 'Matcha',      icon: Icons.person_outline_rounded, price: 1000, category: ShopCategory.outfit, outfitPart: OutfitPart.hair, bgColor: Color(0xFFDFF5E3), hairFile: 'matcha.png'),
   // ── TOP ──
-  ShopItem(id: 't_uniform', name: 'School Shirt', icon: Icons.checkroom_rounded,     price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFE8F4FF)),
-  ShopItem(id: 't_hoodie',  name: 'Cozy Hoodie',  icon: Icons.dry_cleaning_rounded,  price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFEDE8FF)),
-  ShopItem(id: 't_crop',    name: 'Crop Tee',     icon: Icons.style_rounded,         price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFFFF0F8)),
-  ShopItem(id: 't_polo',    name: 'Polo Shirt',   icon: Icons.badge_rounded,         price: 30,   category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFDFF5E3)),
-  ShopItem(id: 't_lab',     name: 'Lab Coat',     icon: Icons.science_rounded,       price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFF5F5F5)),
-  ShopItem(id: 't_astro',   name: 'Astro Suit',   icon: Icons.rocket_launch_rounded, price: 2000, category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFE8F4FF)),
+  ShopItem(id: 't_uniform', name: 'School Shirt', icon: Icons.checkroom_rounded,     price: 0,    category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFE8F4FF), clothesFile: 'school-shirt.png'),
+  ShopItem(id: 't_hoodie',  name: 'Cozy Hoodie',  icon: Icons.dry_cleaning_rounded,  price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFEDE8FF), clothesFile: 'cozy-hoodie.png'),
+  ShopItem(id: 't_crop',    name: 'Crop Tee',     icon: Icons.style_rounded,         price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFFFF0F8), clothesFile: 'crop-tee.png'),
+  ShopItem(id: 't_polo',    name: 'Polo Shirt',   icon: Icons.badge_rounded,         price: 30,   category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFDFF5E3), clothesFile: 'polo-shirt.png'),
+  ShopItem(id: 't_lab',     name: 'Lab Coat',     icon: Icons.science_rounded,       price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFF5F5F5), clothesFile: 'lab-coat.png'),
+  ShopItem(id: 't_astro',   name: 'Astro Suit',   icon: Icons.rocket_launch_rounded, price: 2000, category: ShopCategory.outfit, outfitPart: OutfitPart.top, bgColor: Color(0xFFE8F4FF), clothesFile: 'astro-suit.png'),
   // ── JACKET ──
-  ShopItem(id: 'j_denim',    name: 'Denim',       icon: Icons.layers_rounded,        price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.jacket, bgColor: Color(0xFFE8F4FF)),
-  ShopItem(id: 'j_bomber',   name: 'Bomber',      icon: Icons.flight_rounded,        price: 800,  category: ShopCategory.outfit, outfitPart: OutfitPart.jacket, bgColor: Color(0xFFDFF5E3)),
-  ShopItem(id: 'j_cardigan', name: 'Cardigan',    icon: Icons.grain_rounded,         price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.jacket, bgColor: Color(0xFFFFF4D6)),
-  ShopItem(id: 'j_varsity',  name: 'Varsity',     icon: Icons.sports_rounded,        price: 800,  category: ShopCategory.outfit, outfitPart: OutfitPart.jacket, bgColor: Color(0xFFFFEBEB)),
-  ShopItem(id: 'j_trench',   name: 'Trench Coat', icon: Icons.umbrella_rounded,      price: 1500, category: ShopCategory.outfit, outfitPart: OutfitPart.jacket, bgColor: Color(0xFFF5E6D3)),
+  ShopItem(id: 'j_denim',    name: 'Denim',       icon: Icons.layers_rounded,        price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.jacket, bgColor: Color(0xFFE8F4FF), clothesFile: 'denim.png'),
+  ShopItem(id: 'j_bomber',   name: 'Bomber',      icon: Icons.flight_rounded,        price: 800,  category: ShopCategory.outfit, outfitPart: OutfitPart.jacket, bgColor: Color(0xFFDFF5E3), clothesFile: 'bomber.png'),
+  ShopItem(id: 'j_cardigan', name: 'Cardigan',    icon: Icons.grain_rounded,         price: 40,   category: ShopCategory.outfit, outfitPart: OutfitPart.jacket, bgColor: Color(0xFFFFF4D6), clothesFile: 'cardigan.png'),
+  ShopItem(id: 'j_varsity',  name: 'Varsity',     icon: Icons.sports_rounded,        price: 800,  category: ShopCategory.outfit, outfitPart: OutfitPart.jacket, bgColor: Color(0xFFFFEBEB), clothesFile: 'varsity.png'),
+  ShopItem(id: 'j_trench',   name: 'Trench Coat', icon: Icons.umbrella_rounded,      price: 1500, category: ShopCategory.outfit, outfitPart: OutfitPart.jacket, bgColor: Color(0xFFF5E6D3), clothesFile: 'trench-coat.png'),
   // ── ACCESSORY ──
   ShopItem(id: 'acc_headphone', name: 'Headphones',    icon: Icons.headphones_rounded,      price: 800, category: ShopCategory.accessory, bgColor: Color(0xFFDFF5E3)),
   ShopItem(id: 'acc_glasses',   name: 'Study Glasses', icon: Icons.visibility_rounded,      price: 30,  category: ShopCategory.accessory, bgColor: Color(0xFFFFF4D6)),
@@ -121,6 +125,18 @@ class _ShopScreenState extends State<ShopScreen> {
   bool _loading = true;
   String _activeSkinId = 's_fair';
 
+  // Hair
+  String? _tryOnHairId;
+  String _activeHairId = 'h_black';
+
+  // Top
+  String? _tryOnTopId;
+  String _activeTopId = 't_uniform';
+
+  // Jacket — null berarti tidak pakai jacket
+  String? _tryOnJacketId;
+  String? _activeJacketId; // null = no jacket
+
   static const _skinAvatarMap = {
     's_fair':  'fair.png',
     's_warm':  'warm-beige.png',
@@ -129,8 +145,26 @@ class _ShopScreenState extends State<ShopScreen> {
     's_deep':  'deep.png',
   };
 
-  String get _currentAvatarFile =>
-      _skinAvatarMap[_activeSkinId] ?? 'fair.png';
+  String get _currentAvatarFile => _skinAvatarMap[_activeSkinId] ?? 'fair.png';
+
+  String? get _displayedHairFile {
+    final id = _tryOnHairId ?? _activeHairId;
+    final item = kShopItems.firstWhere((e) => e.id == id, orElse: () => kShopItems.firstWhere((e) => e.id == 'h_black'));
+    return item.hairFile;
+  }
+
+  String? get _displayedTopFile {
+    final id = _tryOnTopId ?? _activeTopId;
+    final item = kShopItems.firstWhere((e) => e.id == id, orElse: () => kShopItems.firstWhere((e) => e.id == 't_uniform'));
+    return item.clothesFile;
+  }
+
+  String? get _displayedJacketFile {
+    final id = _tryOnJacketId ?? _activeJacketId;
+    if (id == null) return null;
+    final item = kShopItems.firstWhere((e) => e.id == id, orElse: () => kShopItems.firstWhere((e) => e.id == 'j_denim'));
+    return item.clothesFile;
+  }
 
   static const _kBlack  = Color(0xFF111111);
   static const _kYellow = Color(0xFFF2EA05);
@@ -142,6 +176,9 @@ class _ShopScreenState extends State<ShopScreen> {
     super.initState();
     _loadCollection();
     _loadActiveSkin();
+    _loadActiveHair();
+    _loadActiveTop();
+    _loadActiveJacket();
   }
 
   Future<void> _loadCollection() async {
@@ -173,37 +210,32 @@ class _ShopScreenState extends State<ShopScreen> {
       setState(() {
         _ownedIds.add(item.id);
         _totalCoins = (body['remainingCoins'] as num?)?.toInt() ?? _totalCoins;
-        if (item.outfitPart == OutfitPart.skin) {
-          _activeSkinId = item.id;
-          _saveActiveSkin(item.id);
-        }
+        if (item.outfitPart == OutfitPart.skin) { _activeSkinId = item.id; _saveActiveSkin(item.id); }
+        if (item.outfitPart == OutfitPart.hair)    { _activeHairId = item.id;    _tryOnHairId = null;    _saveActiveHair(item.id); }
+        if (item.outfitPart == OutfitPart.top)     { _activeTopId = item.id;     _tryOnTopId = null;     _saveActiveTop(item.id); }
+        if (item.outfitPart == OutfitPart.jacket)  { _activeJacketId = item.id;  _tryOnJacketId = null;  _saveActiveJacket(item.id); }
       });
       if (mounted) {
         final l = AppLocalizations.of(context, listen: false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(item.price == 0 ? '${item.name} ${l.shopObtainSuccess}' : '${item.name} ${l.shopPurchaseSuccess}'),
-            backgroundColor: _kGreen,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(item.price == 0 ? '${item.name} ${l.shopObtainSuccess}' : '${item.name} ${l.shopPurchaseSuccess}'),
+          backgroundColor: _kGreen, behavior: SnackBarBehavior.floating,
+        ));
       }
     } catch (e) {
-      // Kalau 409 (sudah owned), cukup equip aja tanpa error
       if (e.toString().contains('CONFLICT') || e.toString().contains('409')) {
         setState(() {
           _ownedIds.add(item.id);
-          if (item.outfitPart == OutfitPart.skin) {
-            _activeSkinId = item.id;
-            _saveActiveSkin(item.id);
-          }
+          if (item.outfitPart == OutfitPart.skin)    { _activeSkinId = item.id;   _saveActiveSkin(item.id); }
+          if (item.outfitPart == OutfitPart.hair)    { _activeHairId = item.id;    _tryOnHairId = null;    _saveActiveHair(item.id); }
+          if (item.outfitPart == OutfitPart.top)     { _activeTopId = item.id;     _tryOnTopId = null;     _saveActiveTop(item.id); }
+          if (item.outfitPart == OutfitPart.jacket)  { _activeJacketId = item.id;  _tryOnJacketId = null;  _saveActiveJacket(item.id); }
         });
         return;
       }
       final l = AppLocalizations.of(context, listen: false);
       final msg = e.toString().contains('PAYMENT_REQUIRED') || e.toString().contains('402')
-          ? l.shopNotEnoughCoins
-          : l.shopPurchaseFailed;
+          ? l.shopNotEnoughCoins : l.shopPurchaseFailed;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
@@ -212,23 +244,44 @@ class _ShopScreenState extends State<ShopScreen> {
     }
   }
 
-  void _equipSkin(ShopItem item) {
-    setState(() => _activeSkinId = item.id);
-    _saveActiveSkin(item.id);
+  void _equipSkin(ShopItem item)    { setState(() => _activeSkinId = item.id);   _saveActiveSkin(item.id); }
+  void _equipHair(ShopItem item)    { setState(() { _activeHairId = item.id;   _tryOnHairId = null; });   _saveActiveHair(item.id); }
+  void _equipTop(ShopItem item)     { setState(() { _activeTopId = item.id;    _tryOnTopId = null; });    _saveActiveTop(item.id); }
+  void _equipJacket(ShopItem item)  { setState(() { _activeJacketId = item.id; _tryOnJacketId = null; }); _saveActiveJacket(item.id); }
+  void _removeJacket()              { setState(() { _activeJacketId = null;   _tryOnJacketId = null; }); _saveActiveJacket('none'); }
+
+  void _tryOn(ShopItem item) {
+    setState(() {
+      if (item.outfitPart == OutfitPart.hair)   _tryOnHairId = item.id;
+      if (item.outfitPart == OutfitPart.top)    _tryOnTopId = item.id;
+      if (item.outfitPart == OutfitPart.jacket) _tryOnJacketId = item.id;
+    });
   }
 
-  Future<void> _saveActiveSkin(String skinId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('active_skin_id', skinId);
+  void _cancelTryOn(OutfitPart part) {
+    setState(() {
+      if (part == OutfitPart.hair)   _tryOnHairId = null;
+      if (part == OutfitPart.top)    _tryOnTopId = null;
+      if (part == OutfitPart.jacket) _tryOnJacketId = null;
+    });
   }
 
-  Future<void> _loadActiveSkin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('active_skin_id');
-    if (saved != null && _skinAvatarMap.containsKey(saved)) {
-      setState(() => _activeSkinId = saved);
-    }
+  String? get _activeTryOnId {
+    if (_selectedPart == OutfitPart.hair)   return _tryOnHairId;
+    if (_selectedPart == OutfitPart.top)    return _tryOnTopId;
+    if (_selectedPart == OutfitPart.jacket) return _tryOnJacketId;
+    return null;
   }
+
+  // SharedPreferences helpers
+  Future<void> _saveActiveSkin(String id)    async { final p = await SharedPreferences.getInstance(); await p.setString('active_skin_id', id); }
+  Future<void> _loadActiveSkin()             async { final p = await SharedPreferences.getInstance(); final s = p.getString('active_skin_id'); if (s != null && _skinAvatarMap.containsKey(s)) setState(() => _activeSkinId = s); }
+  Future<void> _saveActiveHair(String id)    async { final p = await SharedPreferences.getInstance(); await p.setString('active_hair_id', id); }
+  Future<void> _loadActiveHair()             async { final p = await SharedPreferences.getInstance(); final s = p.getString('active_hair_id'); if (s != null) setState(() => _activeHairId = s); }
+  Future<void> _saveActiveTop(String id)     async { final p = await SharedPreferences.getInstance(); await p.setString('active_top_id', id); }
+  Future<void> _loadActiveTop()              async { final p = await SharedPreferences.getInstance(); final s = p.getString('active_top_id'); if (s != null) setState(() => _activeTopId = s); }
+  Future<void> _saveActiveJacket(String id)  async { final p = await SharedPreferences.getInstance(); await p.setString('active_jacket_id', id); }
+  Future<void> _loadActiveJacket()           async { final p = await SharedPreferences.getInstance(); final s = p.getString('active_jacket_id'); if (s != null) setState(() => _activeJacketId = s == 'none' ? null : s); }
 
   List<ShopItem> get _filteredItems {
     if (_selectedCategory == ShopCategory.outfit) {
@@ -255,10 +308,8 @@ class _ShopScreenState extends State<ShopScreen> {
                     _buildOutfitPartTabs(),
                   ],
                   const SizedBox(height: 12),
-                  // ── Avatar preview selalu tampil di semua tab ──
                   _buildAvatarPreview(),
                   const SizedBox(height: 12),
-                  // ── Item picker di bawah avatar ──
                   Expanded(
                     child: _selectedCategory == ShopCategory.outfit && _selectedPart == OutfitPart.skin
                         ? _buildSkinSwatches()
@@ -274,48 +325,30 @@ class _ShopScreenState extends State<ShopScreen> {
     final l = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: _kBlack, width: 2)),
-      ),
+      decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: _kBlack, width: 2))),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
             child: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _kYellow, borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _kBlack, width: 2),
-                boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)],
-              ),
+              decoration: BoxDecoration(color: _kYellow, borderRadius: BorderRadius.circular(10), border: Border.all(color: _kBlack, width: 2), boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)]),
               child: const Icon(Icons.arrow_back, color: _kBlack, size: 18),
             ),
           ),
           const SizedBox(width: 12),
           Text(l.shopTitle, style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 22, color: _kBlack)),
           const Spacer(),
-          // Tombol ke Collection
           GestureDetector(
-            onTap: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => CollectionScreen(ownedIds: _ownedIds)),
-              );
-            },
+            onTap: () async { await Navigator.of(context).push(MaterialPageRoute(builder: (_) => CollectionScreen(ownedIds: _ownedIds))); },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: _kGreen, borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _kBlack, width: 2),
-                boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)],
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.inventory_2_rounded, size: 14, color: _kBlack),
-                  const SizedBox(width: 4),
-                  Text(l.shopCollection, style: const TextStyle(fontFamily: 'Nunito', fontSize: 12, fontWeight: FontWeight.w800, color: _kBlack)),
-                ],
-              ),
+              decoration: BoxDecoration(color: _kGreen, borderRadius: BorderRadius.circular(20), border: Border.all(color: _kBlack, width: 2), boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)]),
+              child: Row(children: [
+                const Icon(Icons.inventory_2_rounded, size: 14, color: _kBlack),
+                const SizedBox(width: 4),
+                Text(l.shopCollection, style: const TextStyle(fontFamily: 'Nunito', fontSize: 12, fontWeight: FontWeight.w800, color: _kBlack)),
+              ]),
             ),
           ),
         ],
@@ -328,51 +361,24 @@ class _ShopScreenState extends State<ShopScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _kBlack, width: 2),
-        boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(3, 3), blurRadius: 0)],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: _kBlack, width: 2), boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(3, 3), blurRadius: 0)]),
       child: Row(
         children: [
-          // Avatar preview
           Container(
             width: 52, height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: _kBlack, width: 2),
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/avatars/$_currentAvatarFile',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.face_rounded, size: 28, color: _kBlack),
-                ),
-              ),
-            ),
+            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: _kBlack, width: 2)),
+            child: ClipOval(child: Image.asset('assets/images/avatars/$_currentAvatarFile', fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.face_rounded, size: 28, color: _kBlack)))),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 20, height: 20,
-                    decoration: BoxDecoration(color: _kYellow, shape: BoxShape.circle, border: Border.all(color: _kBlack, width: 1.5)),
-                    child: const Center(child: Text('🪙', style: TextStyle(fontSize: 10))),
-                  ),
-                  const SizedBox(width: 6),
-                  Text('$_totalCoins ${l.shopCoins}', style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 16, color: _kBlack)),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text('${_ownedIds.length} ${l.shopItemsOwned}', style: const TextStyle(fontFamily: 'Nunito', fontSize: 11, color: Color(0xFF888888))),
-            ],
-          ),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Row(children: [
+              Container(width: 20, height: 20, decoration: BoxDecoration(color: _kYellow, shape: BoxShape.circle, border: Border.all(color: _kBlack, width: 1.5)), child: const Center(child: Text('🪙', style: TextStyle(fontSize: 10)))),
+              const SizedBox(width: 6),
+              Text('$_totalCoins ${l.shopCoins}', style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 16, color: _kBlack)),
+            ]),
+            const SizedBox(height: 2),
+            Text('${_ownedIds.length} ${l.shopItemsOwned}', style: const TextStyle(fontFamily: 'Nunito', fontSize: 11, color: Color(0xFF888888))),
+          ]),
         ],
       ),
     );
@@ -381,9 +387,7 @@ class _ShopScreenState extends State<ShopScreen> {
   Widget _buildCategoryTabs() {
     final l = AppLocalizations.of(context);
     final cats = [
-      (ShopCategory.outfit,    Icons.style_rounded,        l.shopOutfit),
-      (ShopCategory.accessory, Icons.auto_awesome_rounded, l.shopAccessory),
-      (ShopCategory.theme,     Icons.palette_rounded,      l.shopTheme),
+      (ShopCategory.outfit, Icons.style_rounded, l.shopOutfit),
     ];
     return SizedBox(
       height: 44,
@@ -396,27 +400,19 @@ class _ShopScreenState extends State<ShopScreen> {
           final (cat, icon, label) = cats[i];
           final sel = _selectedCategory == cat;
           return GestureDetector(
-            onTap: () => setState(() {
-              _selectedCategory = cat;
-              if (cat == ShopCategory.outfit) _selectedPart = OutfitPart.skin;
-            }),
+            onTap: () => setState(() { _selectedCategory = cat; if (cat == ShopCategory.outfit) _selectedPart = OutfitPart.skin; }),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: sel ? _kYellow : Colors.white,
-                borderRadius: BorderRadius.circular(22),
+                color: sel ? _kYellow : Colors.white, borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: _kBlack, width: 2),
                 boxShadow: sel ? const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)] : null,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 16, color: _kBlack),
-                  const SizedBox(width: 6),
-                  Text(label, style: const TextStyle(fontFamily: 'Nunito', fontSize: 13, fontWeight: FontWeight.w800, color: _kBlack)),
-                ],
-              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 16, color: _kBlack), const SizedBox(width: 6),
+                Text(label, style: const TextStyle(fontFamily: 'Nunito', fontSize: 13, fontWeight: FontWeight.w800, color: _kBlack)),
+              ]),
             ),
           );
         },
@@ -441,19 +437,15 @@ class _ShopScreenState extends State<ShopScreen> {
               duration: const Duration(milliseconds: 180),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: sel ? _kGreen : const Color(0xFFEEEEEE),
-                borderRadius: BorderRadius.circular(20),
+                color: sel ? _kGreen : const Color(0xFFEEEEEE), borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: sel ? _kBlack : const Color(0xFFCCCCCC), width: sel ? 2 : 1.5),
                 boxShadow: sel ? const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)] : null,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(part.icon, size: 14, color: sel ? _kBlack : const Color(0xFF666666)),
-                  const SizedBox(width: 5),
-                  Text(part.label, style: TextStyle(fontFamily: 'Nunito', fontSize: 12, fontWeight: FontWeight.w700, color: sel ? _kBlack : const Color(0xFF666666))),
-                ],
-              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(part.icon, size: 14, color: sel ? _kBlack : const Color(0xFF666666)),
+                const SizedBox(width: 5),
+                Text(part.label, style: TextStyle(fontFamily: 'Nunito', fontSize: 12, fontWeight: FontWeight.w700, color: sel ? _kBlack : const Color(0xFF666666))),
+              ]),
             ),
           );
         },
@@ -461,105 +453,93 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-  // ── Avatar preview — selalu tampil di semua tab ──
   Widget _buildAvatarPreview() {
-    final skinItems = kShopItems.where((e) => e.outfitPart == OutfitPart.skin).toList();
-    final activeName = skinItems.firstWhere((e) => e.id == _activeSkinId, orElse: () => skinItems.first).name;
+    final tryOnId = _activeTryOnId;
+    final isTryingOn = tryOnId != null;
+    final tryOnItem = isTryingOn
+        ? kShopItems.firstWhere((e) => e.id == tryOnId, orElse: () => kShopItems.first)
+        : null;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Center(
-          child: Container(
-            width: 180, height: 180,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: _kBlack, width: 3),
-              boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(4, 4), blurRadius: 0)],
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/avatars/$_currentAvatarFile',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.face_rounded, size: 80, color: _kBlack),
-                ),
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            // Base skin avatar
+            Container(
+              width: 150, height: 150,
+              decoration: BoxDecoration(
+                color: Colors.white, shape: BoxShape.circle,
+                border: Border.all(color: isTryingOn ? _kYellow : _kBlack, width: isTryingOn ? 4 : 3),
+                boxShadow: [BoxShadow(color: isTryingOn ? _kYellow : _kBlack, offset: const Offset(4, 4), blurRadius: 0)],
               ),
+              child: ClipOval(child: Image.asset('assets/images/avatars/$_currentAvatarFile', fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.face_rounded, size: 72, color: _kBlack)))),
             ),
-          ),
+            // Top layer
+            if (_displayedTopFile != null)
+              SizedBox(width: 150, height: 150, child: ClipOval(child: Image.asset('assets/images/clothes/${_displayedTopFile!}', fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()))),
+            // Jacket layer (di atas top)
+            if (_displayedJacketFile != null)
+              SizedBox(width: 150, height: 150, child: ClipOval(child: Image.asset('assets/images/clothes/${_displayedJacketFile!}', fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()))),
+            // Hair layer (paling atas)
+            if (_displayedHairFile != null)
+              SizedBox(width: 150, height: 150, child: ClipOval(child: Image.asset('assets/images/hair/${_displayedHairFile!}', fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()))),
+          ],
         ),
-        if (_selectedCategory == ShopCategory.outfit && _selectedPart == OutfitPart.skin) ...[
-          const SizedBox(height: 6),
-          Text(
-            activeName,
-            style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 16, color: _kBlack),
+        if (isTryingOn && tryOnItem != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(color: _kYellow, borderRadius: BorderRadius.circular(20), border: Border.all(color: _kBlack, width: 2), boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)]),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Text('👁️', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 4),
+              Text('Try On: ${tryOnItem.name}', style: const TextStyle(fontFamily: 'Nunito', fontSize: 12, fontWeight: FontWeight.w800, color: _kBlack)),
+            ]),
           ),
+        ] else if (_selectedCategory == ShopCategory.outfit && _selectedPart == OutfitPart.skin) ...[
+          const SizedBox(height: 6),
+          Text(kShopItems.firstWhere((e) => e.id == _activeSkinId, orElse: () => kShopItems.first).name,
+            style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 16, color: _kBlack)),
         ],
       ],
     );
   }
 
-  // ── Skin color swatches — hanya untuk tab Skin ──
   Widget _buildSkinSwatches() {
     final skinItems = kShopItems.where((e) => e.outfitPart == OutfitPart.skin).toList();
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        alignment: WrapAlignment.center,
+        spacing: 12, runSpacing: 12, alignment: WrapAlignment.center,
         children: skinItems.map((item) {
           final owned = _ownedIds.contains(item.id);
           final isActive = _activeSkinId == item.id;
           return GestureDetector(
             onTap: () {
               if (owned || item.price == 0) {
-                if (!owned && item.price == 0) {
-                  // Auto-claim free item ke backend
-                  _buyItem(item);
-                } else {
-                  _equipSkin(item);
-                }
-              } else {
-                _showBuyDialog(item);
-              }
+                if (!owned && item.price == 0) { _buyItem(item); } else { _equipSkin(item); }
+              } else { _showBuyDialog(item); }
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               width: 54, height: 54,
               decoration: BoxDecoration(
-                color: item.bgColor,
-                shape: BoxShape.rectangle,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isActive ? _kBlack : (owned ? _kGreen : const Color(0xFFCCCCCC)),
-                  width: isActive ? 3 : 2,
-                ),
+                color: item.bgColor, borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: isActive ? _kBlack : (owned ? _kGreen : const Color(0xFFCCCCCC)), width: isActive ? 3 : 2),
                 boxShadow: isActive
                     ? const [BoxShadow(color: _kBlack, offset: Offset(3, 3), blurRadius: 0)]
-                    : owned
-                        ? [const BoxShadow(color: _kGreen, offset: Offset(3, 3), blurRadius: 0)]
-                        : null,
+                    : owned ? [const BoxShadow(color: _kGreen, offset: Offset(3, 3), blurRadius: 0)] : null,
               ),
-              child: Stack(
-                children: [
-                  if (isActive)
-                    const Center(child: Icon(Icons.check_rounded, size: 22, color: _kBlack)),
-                  if (!owned)
-                    Positioned(
-                      bottom: 2, right: 2,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: _kYellow,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: _kBlack, width: 1),
-                        ),
-                        child: const Text('🆓', style: TextStyle(fontSize: 8)),
-                      ),
-                    ),
-                ],
-              ),
+              child: Stack(children: [
+                if (isActive) const Center(child: Icon(Icons.check_rounded, size: 22, color: _kBlack)),
+                if (!owned) Positioned(bottom: 2, right: 2, child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(color: _kYellow, shape: BoxShape.circle, border: Border.all(color: _kBlack, width: 1)),
+                  child: const Text('🆓', style: TextStyle(fontSize: 8)),
+                )),
+              ]),
             ),
           );
         }).toList(),
@@ -569,37 +549,139 @@ class _ShopScreenState extends State<ShopScreen> {
 
   Widget _buildGrid() {
     final items = _filteredItems;
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.82,
+    final tryOnId = _activeTryOnId;
+    final isTryingOnTab = tryOnId != null;
+
+    return Column(
+      children: [
+        if (isTryingOnTab) _buildTryOnActionBar(),
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.78,
+            ),
+            itemCount: items.length,
+            itemBuilder: (_, i) {
+              final item = items[i];
+              final owned = _ownedIds.contains(item.id);
+              final isActive = (item.outfitPart == OutfitPart.skin && _activeSkinId == item.id)
+                  || (item.outfitPart == OutfitPart.jacket && _activeJacketId == item.id);
+              final isTryingOn = tryOnId == item.id;
+
+              return _ShopItemCard(
+                item: item,
+                owned: owned,
+                isActive: isActive,
+                isTryingOn: isTryingOn,
+                canAfford: _totalCoins >= item.price,
+                onTap: () {
+                  final part = item.outfitPart;
+                  if (part == OutfitPart.hair || part == OutfitPart.top || part == OutfitPart.jacket) {
+                    if (owned) {
+                      if (part == OutfitPart.hair)   _equipHair(item);
+                      if (part == OutfitPart.top)    _equipTop(item);
+                      if (part == OutfitPart.jacket) {
+                        // Kalau sudah aktif → lepas jacket
+                        if (_activeJacketId == item.id) _removeJacket();
+                        else _equipJacket(item);
+                      }
+                    } else {
+                      _tryOn(item);
+                    }
+                  } else if (owned) {
+                    if (part == OutfitPart.skin) _equipSkin(item);
+                  } else {
+                    _showBuyDialog(item);
+                  }
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTryOnActionBar() {
+    final tryOnId = _activeTryOnId!;
+    final item = kShopItems.firstWhere((e) => e.id == tryOnId, orElse: () => kShopItems.first);
+    final canAfford = _totalCoins >= item.price;
+    final previewFile = item.hairFile != null
+        ? 'assets/images/hair/${item.hairFile!}'
+        : item.clothesFile != null
+            ? 'assets/images/clothes/${item.clothesFile!}'
+            : null;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: _kYellow, borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBlack, width: 2.5),
+        boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(3, 3), blurRadius: 0)],
       ),
-      itemCount: items.length,
-      itemBuilder: (_, i) {
-        final item = items[i];
-        final owned = _ownedIds.contains(item.id);
-        final isActive = item.outfitPart == OutfitPart.skin && _activeSkinId == item.id;
-        return _ShopItemCard(
-          item: item,
-          owned: owned,
-          isActive: isActive,
-          canAfford: _totalCoins >= item.price,
-          onBuy: owned
-              ? (item.outfitPart == OutfitPart.skin ? () => _equipSkin(item) : null)
-              : () => _showBuyDialog(item),
-        );
-      },
+      child: Row(
+        children: [
+          // Thumbnail
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(color: item.bgColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: _kBlack, width: 1.5)),
+            clipBehavior: Clip.antiAlias,
+            child: previewFile != null
+                ? Image.asset(previewFile, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(item.icon, size: 18, color: _kBlack))
+                : Icon(item.icon, size: 18, color: _kBlack),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(item.name, style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 13, color: _kBlack)),
+              Row(children: [
+                const Text('🪙', style: TextStyle(fontSize: 11)),
+                const SizedBox(width: 3),
+                Text(item.price == 0 ? 'Free!' : '${item.price} Coins',
+                  style: const TextStyle(fontFamily: 'Nunito', fontSize: 11, fontWeight: FontWeight.w700, color: _kBlack)),
+              ]),
+            ]),
+          ),
+          // Cancel
+          GestureDetector(
+            onTap: () => _cancelTryOn(_selectedPart),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: _kBlack, width: 2)),
+              child: const Text('✕', style: TextStyle(fontFamily: 'Nunito', fontSize: 12, fontWeight: FontWeight.w800, color: _kBlack)),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Buy
+          GestureDetector(
+            onTap: canAfford ? () { _cancelTryOn(_selectedPart); _buyItem(item); } : null,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: canAfford ? _kGreen : const Color(0xFFCCCCCC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _kBlack, width: 2),
+                boxShadow: canAfford ? const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)] : null,
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Text('🪙', style: TextStyle(fontSize: 11)),
+                const SizedBox(width: 4),
+                Text(item.price == 0 ? 'Get it!' : 'Buy!',
+                  style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 13, color: _kBlack)),
+              ]),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   void _showBuyDialog(ShopItem item) {
     showDialog(
       context: context,
-      builder: (_) => _BuyDialog(
-        item: item,
-        currentCoins: _totalCoins,
-        onConfirm: () => _buyItem(item),
-      ),
+      builder: (_) => _BuyDialog(item: item, currentCoins: _totalCoins, onConfirm: () => _buyItem(item)),
     );
   }
 }
@@ -612,118 +694,103 @@ class _ShopItemCard extends StatelessWidget {
   final ShopItem item;
   final bool owned;
   final bool isActive;
+  final bool isTryingOn;
   final bool canAfford;
-  final VoidCallback? onBuy;
+  final VoidCallback? onTap;
 
   static const _kBlack  = Color(0xFF111111);
   static const _kYellow = Color(0xFFF2EA05);
   static const _kGreen  = Color(0xFF1EE86F);
 
-  const _ShopItemCard({required this.item, required this.owned, required this.isActive, required this.canAfford, this.onBuy});
+  const _ShopItemCard({required this.item, required this.owned, required this.isActive, required this.isTryingOn, required this.canAfford, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final isDark = item.bgColor.computeLuminance() < 0.2;
-    final dimmed = !owned && !canAfford;
+    final dimmed = !owned && !canAfford && !isTryingOn;
+
+    Color borderColor; Color shadowColor; double borderWidth;
+    if (isTryingOn || isActive) { borderColor = _kYellow; shadowColor = _kYellow; borderWidth = 3; }
+    else if (owned)             { borderColor = _kGreen;  shadowColor = _kGreen;  borderWidth = 2.5; }
+    else                        { borderColor = _kBlack;  shadowColor = _kBlack;  borderWidth = 2; }
 
     return GestureDetector(
-      onTap: onBuy,
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
           color: dimmed ? item.bgColor.withOpacity(0.5) : item.bgColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isActive ? _kYellow : (owned ? _kGreen : _kBlack), width: isActive ? 3 : (owned ? 2.5 : 2)),
-          boxShadow: [BoxShadow(color: isActive ? _kYellow : (owned ? _kGreen : _kBlack), offset: const Offset(3, 3), blurRadius: 0)],
+          border: Border.all(color: borderColor, width: borderWidth),
+          boxShadow: [BoxShadow(color: shadowColor, offset: const Offset(3, 3), blurRadius: 0)],
         ),
         child: Stack(
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 8),
-                Center(
-                  child: Container(
-                    width: 52, height: 52,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(isDark ? 0.15 : 0.6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: item.outfitPart == OutfitPart.skin && item.avatarFile != null
-                        ? Image.asset(
-                            'assets/images/avatars/${item.avatarFile}',
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(child: Icon(item.icon, size: 28, color: isDark ? Colors.white : _kBlack)),
-                          )
-                        : Center(
-                            child: Icon(item.icon, size: 28, color: isDark ? Colors.white : _kBlack),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Text(item.name, maxLines: 2, textAlign: TextAlign.center,
-                    style: TextStyle(fontFamily: 'Nunito', fontSize: 10, fontWeight: FontWeight.w700, color: isDark ? Colors.white : _kBlack)),
-                ),
-                const SizedBox(height: 4),
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isActive ? _kYellow : (owned ? _kGreen : (canAfford ? _kYellow : const Color(0xFFDDDDDD))),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _kBlack, width: 1.5),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(isActive ? '✓' : (owned ? '✓' : '🪙'), style: const TextStyle(fontSize: 10)),
-                        const SizedBox(width: 3),
-                        Text(
-                          isActive ? 'Equipped' : (owned ? 'Owned' : (item.price == 0 ? 'Free' : item.price.toString())),
-                          style: const TextStyle(fontFamily: 'Nunito', fontSize: 10, fontWeight: FontWeight.w800, color: _kBlack),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-            if (isActive)
-              Positioned(
-                top: 6, right: 6,
+            Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.center, children: [
+              const SizedBox(height: 8),
+              Center(
                 child: Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(color: _kYellow, shape: BoxShape.circle),
-                  child: const Icon(Icons.check, size: 10, color: _kBlack),
+                  width: 52, height: 52,
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(isDark ? 0.15 : 0.6), borderRadius: BorderRadius.circular(12)),
+                  clipBehavior: Clip.antiAlias,
+                  child: _buildPreview(isDark),
                 ),
-              )
+              ),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(item.name, maxLines: 2, textAlign: TextAlign.center,
+                  style: TextStyle(fontFamily: 'Nunito', fontSize: 10, fontWeight: FontWeight.w700, color: isDark ? Colors.white : _kBlack)),
+              ),
+              const SizedBox(height: 4),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isTryingOn || isActive ? _kYellow : owned ? _kGreen : canAfford ? _kYellow : const Color(0xFFDDDDDD),
+                    borderRadius: BorderRadius.circular(20), border: Border.all(color: _kBlack, width: 1.5),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Text(isTryingOn ? '👁️' : (isActive || owned ? '✓' : '🪙'), style: const TextStyle(fontSize: 10)),
+                    const SizedBox(width: 3),
+                    Text(
+                      isTryingOn ? 'Try On' : isActive ? 'Equipped' : owned ? 'Owned' : item.price == 0 ? 'Free' : item.price.toString(),
+                      style: const TextStyle(fontFamily: 'Nunito', fontSize: 10, fontWeight: FontWeight.w800, color: _kBlack),
+                    ),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ]),
+            // Badge
+            if (isTryingOn)
+              Positioned(top: 6, right: 6, child: Container(padding: const EdgeInsets.all(3), decoration: const BoxDecoration(color: _kYellow, shape: BoxShape.circle), child: const Text('👁️', style: TextStyle(fontSize: 9))))
+            else if (isActive)
+              Positioned(top: 6, right: 6, child: Container(padding: const EdgeInsets.all(3), decoration: const BoxDecoration(color: _kYellow, shape: BoxShape.circle), child: const Icon(Icons.check, size: 10, color: _kBlack)))
             else if (owned)
-              Positioned(
-                top: 6, right: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(color: _kGreen, shape: BoxShape.circle),
-                  child: const Icon(Icons.check, size: 10, color: _kBlack),
-                ),
-              ),
+              Positioned(top: 6, right: 6, child: Container(padding: const EdgeInsets.all(3), decoration: const BoxDecoration(color: _kGreen, shape: BoxShape.circle), child: const Icon(Icons.check, size: 10, color: _kBlack))),
             if (dimmed)
-              Positioned(
-                top: 6, right: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
-                  child: const Icon(Icons.lock_rounded, size: 10, color: Colors.white),
-                ),
-              ),
+              Positioned(top: 6, left: 6, child: Container(padding: const EdgeInsets.all(3), decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle), child: const Icon(Icons.lock_rounded, size: 10, color: Colors.white))),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildPreview(bool isDark) {
+    if (item.outfitPart == OutfitPart.hair && item.hairFile != null) {
+      return Image.asset('assets/images/hair/${item.hairFile!}', fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Center(child: Icon(item.icon, size: 28, color: isDark ? Colors.white : _kBlack)));
+    }
+    if ((item.outfitPart == OutfitPart.top || item.outfitPart == OutfitPart.jacket) && item.clothesFile != null) {
+      return Image.asset('assets/images/clothes/${item.clothesFile!}', fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Center(child: Icon(item.icon, size: 28, color: isDark ? Colors.white : _kBlack)));
+    }
+    if (item.outfitPart == OutfitPart.skin && item.avatarFile != null) {
+      return Image.asset('assets/images/avatars/${item.avatarFile!}', fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Center(child: Icon(item.icon, size: 28, color: isDark ? Colors.white : _kBlack)));
+    }
+    return Center(child: Icon(item.icon, size: 28, color: isDark ? Colors.white : _kBlack));
   }
 }
 
@@ -737,7 +804,6 @@ class _BuyDialog extends StatelessWidget {
   final VoidCallback onConfirm;
 
   static const _kBlack  = Color(0xFF111111);
-  static const _kYellow = Color(0xFFF2EA05);
   static const _kGreen  = Color(0xFF1EE86F);
 
   const _BuyDialog({required this.item, required this.currentCoins, required this.onConfirm});
@@ -745,94 +811,65 @@ class _BuyDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canAfford = currentCoins >= item.price;
+    final previewFile = item.hairFile != null
+        ? 'assets/images/hair/${item.hairFile!}'
+        : item.clothesFile != null
+            ? 'assets/images/clothes/${item.clothesFile!}'
+            : item.avatarFile != null
+                ? 'assets/images/avatars/${item.avatarFile!}'
+                : null;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: _kBlack, width: 2.5)),
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64, height: 64,
-              decoration: BoxDecoration(color: item.bgColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: _kBlack, width: 2)),
-              clipBehavior: Clip.antiAlias,
-              child: item.outfitPart == OutfitPart.skin && item.avatarFile != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.asset(
-                        'assets/images/avatars/${item.avatarFile}',
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(item.icon, size: 32, color: _kBlack),
-                      ),
-                    )
-                  : Icon(item.icon, size: 32, color: _kBlack),
-            ),
-            const SizedBox(height: 12),
-            Text(item.name, style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 18, color: _kBlack)),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 64, height: 64,
+            decoration: BoxDecoration(color: item.bgColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: _kBlack, width: 2)),
+            clipBehavior: Clip.antiAlias,
+            child: previewFile != null
+                ? Image.asset(previewFile, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(item.icon, size: 32, color: _kBlack))
+                : Icon(item.icon, size: 32, color: _kBlack),
+          ),
+          const SizedBox(height: 12),
+          Text(item.name, style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 18, color: _kBlack)),
+          const SizedBox(height: 4),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            const Text('🪙', style: TextStyle(fontSize: 16)),
+            const SizedBox(width: 4),
+            Text(item.price == 0 ? 'Free!' : '${item.price} Coins',
+              style: const TextStyle(fontFamily: 'Nunito', fontSize: 14, fontWeight: FontWeight.w700, color: _kBlack)),
+          ]),
+          if (item.price > 0) ...[
             const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('🪙', style: TextStyle(fontSize: 16)),
-                const SizedBox(width: 4),
-                Text(
-                  item.price == 0 ? 'Free!' : '${item.price} Coins',
-                  style: const TextStyle(fontFamily: 'Nunito', fontSize: 14, fontWeight: FontWeight.w700, color: _kBlack),
-                ),
-              ],
-            ),
-            if (item.price > 0) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Saldo kamu: $currentCoins Coins',
-                style: TextStyle(fontFamily: 'Nunito', fontSize: 12, color: canAfford ? const Color(0xFF888888) : Colors.red),
-              ),
-              if (!canAfford)
-                const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: Text('Coin tidak cukup!', style: TextStyle(fontFamily: 'Nunito', fontSize: 12, color: Colors.red, fontWeight: FontWeight.w700)),
-                ),
-            ],
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white, borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _kBlack, width: 2),
-                        boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)],
-                      ),
-                      child: const Center(child: Text('Cancel', style: TextStyle(fontFamily: 'Nunito', fontSize: 13, fontWeight: FontWeight.w700, color: _kBlack))),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: canAfford ? () { Navigator.of(context).pop(); onConfirm(); } : null,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: canAfford ? _kGreen : const Color(0xFFCCCCCC),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _kBlack, width: 2),
-                        boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)],
-                      ),
-                      child: Center(child: Text(
-                        item.price == 0 ? 'Get it!' : 'Buy!',
-                        style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 14, color: _kBlack),
-                      )),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            Text('Saldo kamu: $currentCoins Coins',
+              style: TextStyle(fontFamily: 'Nunito', fontSize: 12, color: canAfford ? const Color(0xFF888888) : Colors.red)),
+            if (!canAfford)
+              const Padding(padding: EdgeInsets.only(top: 4),
+                child: Text('Coin tidak cukup!', style: TextStyle(fontFamily: 'Nunito', fontSize: 12, color: Colors.red, fontWeight: FontWeight.w700))),
           ],
-        ),
+          const SizedBox(height: 20),
+          Row(children: [
+            Expanded(child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: _kBlack, width: 2), boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)]),
+                child: const Center(child: Text('Cancel', style: TextStyle(fontFamily: 'Nunito', fontSize: 13, fontWeight: FontWeight.w700, color: _kBlack)))),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: GestureDetector(
+              onTap: canAfford ? () { Navigator.of(context).pop(); onConfirm(); } : null,
+              child: Container(padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: canAfford ? _kGreen : const Color(0xFFCCCCCC),
+                  borderRadius: BorderRadius.circular(12), border: Border.all(color: _kBlack, width: 2),
+                  boxShadow: const [BoxShadow(color: _kBlack, offset: Offset(2, 2), blurRadius: 0)]),
+                child: Center(child: Text(item.price == 0 ? 'Get it!' : 'Buy!',
+                  style: const TextStyle(fontFamily: 'BlackHanSans', fontSize: 14, color: _kBlack)))),
+            )),
+          ]),
+        ]),
       ),
     );
   }

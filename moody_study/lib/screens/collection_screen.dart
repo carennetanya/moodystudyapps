@@ -34,7 +34,10 @@ class _CollectionScreenState extends State<CollectionScreen>
   bool _loading = true;
 
   // Equip state — active per OutfitPart
-  String _activeSkinId = 's_fair';
+  String _activeSkinId    = 's_fair';
+  String _activeHairId    = 'h_black';
+  String _activeTopId     = 't_uniform';
+  String? _activeJacketId; // null = no jacket
 
   // Category tab
   late TabController _tabController;
@@ -52,14 +55,37 @@ class _CollectionScreenState extends State<CollectionScreen>
     Icons.air_rounded,
     Icons.checkroom_rounded,
     Icons.dry_cleaning_rounded,
-    Icons.auto_awesome_rounded,
-    Icons.palette_rounded,
   ];
 
-  static const _totalTabs = 6;
+  static const _totalTabs = 4;
 
   String get _currentAvatarFile =>
       _skinAvatarMap[_activeSkinId] ?? 'fair.png';
+
+  String? get _displayedHairFile {
+    final item = kShopItems.firstWhere(
+      (e) => e.id == _activeHairId,
+      orElse: () => kShopItems.firstWhere((e) => e.id == 'h_black'),
+    );
+    return item.hairFile;
+  }
+
+  String? get _displayedTopFile {
+    final item = kShopItems.firstWhere(
+      (e) => e.id == _activeTopId,
+      orElse: () => kShopItems.firstWhere((e) => e.id == 't_uniform'),
+    );
+    return item.clothesFile;
+  }
+
+  String? get _displayedJacketFile {
+    if (_activeJacketId == null) return null;
+    final item = kShopItems.firstWhere(
+      (e) => e.id == _activeJacketId,
+      orElse: () => kShopItems.firstWhere((e) => e.id == 'j_denim'),
+    );
+    return item.clothesFile;
+  }
 
   @override
   void initState() {
@@ -85,10 +111,16 @@ class _CollectionScreenState extends State<CollectionScreen>
 
   Future<void> _loadActiveSkin() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('active_skin_id');
-    if (saved != null && _skinAvatarMap.containsKey(saved)) {
-      if (mounted) setState(() => _activeSkinId = saved);
+    final skin = prefs.getString('active_skin_id');
+    if (skin != null && _skinAvatarMap.containsKey(skin)) {
+      if (mounted) setState(() => _activeSkinId = skin);
     }
+    final hair = prefs.getString('active_hair_id');
+    if (hair != null && mounted) setState(() => _activeHairId = hair);
+    final top = prefs.getString('active_top_id');
+    if (top != null && mounted) setState(() => _activeTopId = top);
+    final jacket = prefs.getString('active_jacket_id');
+    if (jacket != null && mounted) setState(() => _activeJacketId = jacket == 'none' ? null : jacket);
   }
 
   Future<void> _loadFromApi() async {
@@ -115,17 +147,35 @@ class _CollectionScreenState extends State<CollectionScreen>
   }
 
   bool _isEquipped(ShopItem item) {
-    if (item.outfitPart == OutfitPart.skin) {
-      return item.id == _activeSkinId;
+    switch (item.outfitPart) {
+      case OutfitPart.skin:   return item.id == _activeSkinId;
+      case OutfitPart.hair:   return item.id == _activeHairId;
+      case OutfitPart.top:    return item.id == _activeTopId;
+      case OutfitPart.jacket: return item.id == _activeJacketId;
+      default: return false;
     }
-    return false; // For other parts — extend when more equip state is added
   }
 
   Future<void> _equipItem(ShopItem item) async {
-    if (item.outfitPart == OutfitPart.skin) {
-      setState(() => _activeSkinId = item.id);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('active_skin_id', item.id);
+    final prefs = await SharedPreferences.getInstance();
+    switch (item.outfitPart) {
+      case OutfitPart.skin:
+        setState(() => _activeSkinId = item.id);
+        await prefs.setString('active_skin_id', item.id);
+        break;
+      case OutfitPart.hair:
+        setState(() => _activeHairId = item.id);
+        await prefs.setString('active_hair_id', item.id);
+        break;
+      case OutfitPart.top:
+        setState(() => _activeTopId = item.id);
+        await prefs.setString('active_top_id', item.id);
+        break;
+      case OutfitPart.jacket:
+        setState(() => _activeJacketId = item.id);
+        await prefs.setString('active_jacket_id', item.id);
+        break;
+      default: break;
     }
   }
 
@@ -151,8 +201,6 @@ class _CollectionScreenState extends State<CollectionScreen>
                     controller: _tabController,
                     children: [
                       ..._tabParts.map((part) => _buildItemGrid(part: part)),
-                      _buildCategoryGrid(ShopCategory.accessory),
-                      _buildCategoryGrid(ShopCategory.theme),
                     ],
                   ),
                 ),
@@ -239,16 +287,44 @@ class _CollectionScreenState extends State<CollectionScreen>
             ),
           ),
 
-          // Avatar image — centered bottom
+          // Avatar image — centered bottom (layered: skin → top → jacket → hair)
           Positioned(
             bottom: 0,
             left: 0, right: 0,
             child: Center(
               child: SizedBox(
                 height: 190,
-                child: Image.asset(
-                  'assets/images/avatars/$_currentAvatarFile',
-                  fit: BoxFit.contain,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Base skin
+                    Image.asset(
+                      'assets/images/avatars/$_currentAvatarFile',
+                      height: 190,
+                      fit: BoxFit.contain,
+                    ),
+                    // Top
+                    if (_displayedTopFile != null)
+                      Image.asset(
+                        'assets/images/clothes/$_displayedTopFile',
+                        height: 190,
+                        fit: BoxFit.contain,
+                      ),
+                    // Jacket (on top of top)
+                    if (_displayedJacketFile != null)
+                      Image.asset(
+                        'assets/images/clothes/$_displayedJacketFile',
+                        height: 190,
+                        fit: BoxFit.contain,
+                      ),
+                    // Hair (renders on top)
+                    if (_displayedHairFile != null)
+                      Image.asset(
+                        'assets/images/hair/$_displayedHairFile',
+                        height: 190,
+                        fit: BoxFit.contain,
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -262,7 +338,7 @@ class _CollectionScreenState extends State<CollectionScreen>
 
   Widget _buildTabBar() {
     final l = AppLocalizations.of(context);
-    final tabLabels = [l.shopSkin, l.shopHair, l.shopTop, l.shopJacket, l.shopAccessory, l.shopTheme];
+    final tabLabels = [l.shopSkin, l.shopHair, l.shopTop, l.shopJacket];
     return Container(
       color: Colors.white,
       child: TabBar(
@@ -480,8 +556,7 @@ class _ItemCard extends StatelessWidget {
                     color: Colors.white.withOpacity(isDark ? 0.15 : 0.55),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: item.outfitPart == OutfitPart.skin &&
-                          item.avatarFile != null
+                  child: item.outfitPart == OutfitPart.skin && item.avatarFile != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.asset(
@@ -489,9 +564,25 @@ class _ItemCard extends StatelessWidget {
                             fit: BoxFit.cover,
                           ),
                         )
-                      : Icon(item.icon,
-                          size: 28,
-                          color: isDark ? Colors.white : _kBlack),
+                      : item.outfitPart == OutfitPart.hair && item.hairFile != null
+                          ? Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Image.asset(
+                                'assets/images/hair/${item.hairFile}',
+                                fit: BoxFit.contain,
+                              ),
+                            )
+                          : (item.outfitPart == OutfitPart.top || item.outfitPart == OutfitPart.jacket) && item.clothesFile != null
+                              ? Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: Image.asset(
+                                    'assets/images/clothes/${item.clothesFile}',
+                                    fit: BoxFit.contain,
+                                  ),
+                                )
+                              : Icon(item.icon,
+                                  size: 28,
+                                  color: isDark ? Colors.white : _kBlack),
                 ),
                 const SizedBox(height: 6),
                 Padding(
