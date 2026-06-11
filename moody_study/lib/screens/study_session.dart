@@ -61,6 +61,155 @@ class _StudySessionState extends State<StudySession> {
     });
   }
 
+  void _showMinuteInputDialog() {
+    final controller = TextEditingController(text: '$_minutes');
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF111111), width: 3),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'SET DURATION',
+                style: TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFAAAAAA),
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'BlackHanSans',
+                  fontSize: 48,
+                  color: Color(0xFF111111),
+                  height: 1,
+                ),
+                decoration: InputDecoration(
+                  suffixText: 'min',
+                  suffixStyle: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111111),
+                  ),
+                  hintText: '0',
+                  hintStyle: const TextStyle(
+                    fontFamily: 'BlackHanSans',
+                    fontSize: 48,
+                    color: Color(0xFFCCCCCC),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF111111), width: 2.5),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFFE5E81E), width: 3),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFFAFAFA),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '1 – 180 menit',
+                style: TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 12,
+                  color: Color(0xFFAAAAAA),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: const Color(0xFF111111), width: 2.5),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Batal',
+                            style: TextStyle(
+                              fontFamily: 'BlackHanSans',
+                              fontSize: 14,
+                              color: Color(0xFF111111),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        final val = int.tryParse(controller.text.trim());
+                        if (val != null) {
+                          setState(() {
+                            _minutes = val.clamp(1, 180);
+                            if (!_running) {
+                              _remaining = Duration(minutes: _minutes);
+                            }
+                          });
+                        }
+                        Navigator.of(ctx).pop();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5E81E),
+                          border: Border.all(color: const Color(0xFF111111), width: 2.5),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0xFF111111),
+                              offset: Offset(3, 3),
+                              blurRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'OK',
+                            style: TextStyle(
+                              fontFamily: 'BlackHanSans',
+                              fontSize: 14,
+                              color: Color(0xFF111111),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   int _minutesForMood(String mood) {
     switch (mood) {
       case 'happy':
@@ -257,27 +406,42 @@ class _StudySessionState extends State<StudySession> {
                                 ),
                               ),
                               const SizedBox(width: 24),
-                              Column(
-                                children: [
-                                  Text(
-                                    '$_minutes',
-                                    style: const TextStyle(
-                                      fontFamily: 'BlackHanSans',
-                                      fontSize: 64,
-                                      color: Color(0xFF111111),
-                                      height: 1,
+                              GestureDetector(
+                                onTap: _showMinuteInputDialog,
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: const Color(0xFF111111).withOpacity(0.25),
+                                            width: 2,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '$_minutes',
+                                        style: const TextStyle(
+                                          fontFamily: 'BlackHanSans',
+                                          fontSize: 64,
+                                          color: Color(0xFF111111),
+                                          height: 1,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  const Text(
-                                    'min',
-                                    style: TextStyle(
-                                      fontFamily: 'Nunito',
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF111111),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'min',
+                                      style: TextStyle(
+                                        fontFamily: 'Nunito',
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF111111),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                               const SizedBox(width: 24),
                               GestureDetector(
