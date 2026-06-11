@@ -412,6 +412,11 @@ class AppLocalizations {
   String get shopNoItems => isId ? 'Belum ada item' : 'No items';
   String get shopBuyToUnlock => isId ? 'Beli di Toko untuk membuka item ini!' : 'Buy in Shop to unlock items!';
   String get shopGoToShop => isId ? 'Ke Toko' : 'Go to Shop';
+
+  // ── Study session duration dialog ──
+  String get durationMin => isId ? 'Minimal 1 menit' : 'Minimum 1 minute';
+  String get durationMax => isId ? 'Maksimal 180 menit' : 'Maximum 180 minutes';
+  String get durationHint => isId ? '1 – 180 menit' : '1 – 180 minutes';
   String get collectionTitle => isId ? 'Edit Avatar' : 'Edit Avatar';
   String get collectionDone => isId ? 'SELESAI' : 'DONE';
   String get collectionEmptyMessage => isId ? 'Belum ada item yang dimiliki di kategori ini.' : 'No items owned in this category.';

@@ -8,6 +8,7 @@ import 'package:dartz/dartz.dart' hide State;
 import 'package:moody_study/core/failure.dart';
 import 'package:moody_study/core/exception_handler.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:moody_study/utils/app_localizations.dart';
 import 'theme_selector_screen.dart';
 import 'active_study_session.dart';
 
@@ -37,6 +38,7 @@ class StudySession extends StatefulWidget {
 
 class _StudySessionState extends State<StudySession> {
   late int _minutes;
+  String? _dialogErrorText; // duration input validation
   late Duration _remaining;
   Timer? _timer;
   bool _running = false;
@@ -63,9 +65,13 @@ class _StudySessionState extends State<StudySession> {
 
   void _showMinuteInputDialog() {
     final controller = TextEditingController(text: '$_minutes');
+    setState(() => _dialogErrorText = null);
+
     showDialog<void>(
       context: context,
-      builder: (ctx) => Dialog(
+      builder: (ctx) {
+        final l = AppLocalizations.of(ctx);
+        return Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: Color(0xFF111111), width: 3),
@@ -97,6 +103,20 @@ class _StudySessionState extends State<StudySession> {
                   color: Color(0xFF111111),
                   height: 1,
                 ),
+                onChanged: (val) {
+                  final parsed = int.tryParse(val.trim());
+                  setState(() {
+                    if (val.trim().isEmpty || parsed == null) {
+                      _dialogErrorText = null;
+                    } else if (parsed < 1) {
+                      _dialogErrorText = l.durationMin;
+                    } else if (parsed > 180) {
+                      _dialogErrorText = l.durationMax;
+                    } else {
+                      _dialogErrorText = null;
+                    }
+                  });
+                },
                 decoration: InputDecoration(
                   suffixText: 'min',
                   suffixStyle: const TextStyle(
@@ -113,11 +133,17 @@ class _StudySessionState extends State<StudySession> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF111111), width: 2.5),
+                    borderSide: BorderSide(
+                      color: _dialogErrorText != null ? Colors.red : const Color(0xFF111111),
+                      width: 2.5,
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE5E81E), width: 3),
+                    borderSide: BorderSide(
+                      color: _dialogErrorText != null ? Colors.red : const Color(0xFFE5E81E),
+                      width: 3,
+                    ),
                   ),
                   filled: true,
                   fillColor: const Color(0xFFFAFAFA),
@@ -125,14 +151,25 @@ class _StudySessionState extends State<StudySession> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                '1 – 180 menit',
-                style: TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 12,
-                  color: Color(0xFFAAAAAA),
+              if (_dialogErrorText != null)
+                Text(
+                  _dialogErrorText!,
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.red,
+                  ),
+                )
+              else
+                Text(
+                  l.durationHint,
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 12,
+                    color: Color(0xFFAAAAAA),
+                  ),
                 ),
-              ),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -162,7 +199,7 @@ class _StudySessionState extends State<StudySession> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
+                      onTap: _dialogErrorText != null ? null : () {
                         final val = int.tryParse(controller.text.trim());
                         if (val != null) {
                           setState(() {
@@ -177,10 +214,10 @@ class _StudySessionState extends State<StudySession> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE5E81E),
+                          color: _dialogErrorText != null ? const Color(0xFFCCCCCC) : const Color(0xFFE5E81E),
                           border: Border.all(color: const Color(0xFF111111), width: 2.5),
                           borderRadius: BorderRadius.circular(14),
-                          boxShadow: const [
+                          boxShadow: _dialogErrorText != null ? null : const [
                             BoxShadow(
                               color: Color(0xFF111111),
                               offset: Offset(3, 3),
@@ -206,7 +243,8 @@ class _StudySessionState extends State<StudySession> {
             ],
           ),
         ),
-      ),
+      );
+      },
     );
   }
 
