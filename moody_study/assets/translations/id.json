@@ -1,0 +1,361 @@
+{
+  "login": {
+    "title": "Masuk ke Moody Study",
+    "signIn": "MASUK SEKARANG",
+    "button": "Masuk",
+    "welcomeBack": "Selamat datang kembali",
+    "email": "Email",
+    "password": "Kata Sandi",
+    "noAccount": "Belum punya akun? Daftar",
+    "emailRequired": "Email wajib diisi!",
+    "invalidEmail": "Email tidak valid!",
+    "passwordShort": "Password minimal 6 karakter!",
+    "emailHint": "email@example.com",
+    "passwordHint": "min. 6 karakter"
+  },
+  "register": {
+    "title": "Buat Akun",
+    "button": "Daftar",
+    "name": "Nama",
+    "username": "Username",
+    "fullName": "Nama Lengkap",
+    "nameHint": "Nama kamu",
+    "passwordHint": "min. 6 karakter",
+    "confirmHint": "ulangi password",
+    "confirmPassword": "Konfirmasi Password",
+    "haveAccount": "Sudah punya akun? Masuk",
+    "success": "Pendaftaran berhasil!",
+    "signUp": "DAFTAR SEKARANG",
+    "subtitle": "ke Moody Study",
+    "nameRequired": "Nama wajib diisi!",
+    "usernameRequired": "Username wajib diisi!",
+    "usernameInvalid": "Username minimal 3 karakter tanpa spasi!",
+    "passwordMismatch": "Password tidak cocok!"
+  },
+  "home": {
+    "tagline": "belajar kapan saja dan di mana saja",
+    "subtitle": "mood bagus atau tidak,\ntetap belajar bareng Oddy!",
+    "startNow": "mulai sekarang",
+    "schedule": "atur jadwal",
+    "streak": "Streak"
+  },
+  "theme": {
+    "chooseTitle": "Pilih Tema Kamu",
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode"
+  },
+  "auth": {
+    "welcomeTitle": "Selamat datang di Moody Study",
+    "signUp": "Daftar",
+    "login": "Masuk"
+  },
+  "nav": {
+    "home": "Beranda",
+    "quest": "Quest",
+    "files": "File",
+    "quiz": "Kuis",
+    "stats": "Statistik",
+    "settings": "Setelan",
+    "profile": "Profil"
+  },
+  "mood": {
+    "question": "Bagaimana mood kamu\nhari ini?",
+    "so": "Jadi...",
+    "happy": "Senang",
+    "okay": "Biasa saja",
+    "sad": "Sedih",
+    "tired": "Lelah"
+  },
+  "location": {
+    "question": "Di mana kamu\nbelajar sekarang?",
+    "home": "Rumah / Luar",
+    "library": "Perpustakaan",
+    "silent": "Mode senyap & notifikasi visual saja",
+    "sound": "Notifikasi suara & alarm aktif"
+  },
+  "session": {
+    "title": "SESI BELAJAR HARI INI",
+    "recommended": "DIREKOMENDASIKAN UNTUK MOOD KAMU",
+    "ready": "SIAP",
+    "startStudying": "Mulai Belajar",
+    "addMore": "Tambah file",
+    "close": "Tutup",
+    "min": "mnt"
+  },
+  "active": {
+    "keepGoing": "Terus semangat",
+    "remaining": "TERSISA",
+    "pause": "Jeda",
+    "resume": "Lanjut",
+    "doneEarly": "Selesai Awal",
+    "materialSummary": "Ringkasan Materi",
+    "summaryReady": "Siap",
+    "summaryError": "Error",
+    "saveAsPdf": "Simpan sebagai PDF",
+    "savingPdf": "Menyimpan PDF...",
+    "yourFiles": "File Kamu",
+    "testKnowledge": "Uji Pengetahuanmu",
+    "alarmBanner": "Alarm aktif karena kamu meninggalkan app lebih dari 30 detik.",
+    "heyBack": "Hei, kembali!",
+    "imBack": "Aku sudah kembali!",
+    "saveSummary": "Simpan Ringkasan",
+    "continueStudying": "Lanjut Belajar",
+    "exit": "Keluar",
+    "didIt": "Kamu berhasil",
+    "studiedFor": "Kamu belajar selama",
+    "summaryNotSaved": "Ringkasan belum disimpan!",
+    "summaryWarning": "Yakin tidak mau menyimpannya? Kamu mungkin butuh nanti."
+  },
+  "upload": {
+    "hello": "Halo",
+    "greeting": "Halo, {name}!",
+    "subtitle": "Upload atau seret materimu di sini dan kita rangkum bersama!",
+    "clickFiles": "Klik file di sini",
+    "formats": "PDF · DOCX · TXT",
+    "maxSize": "Maks 150 MB per file",
+    "offlineMode": "mode offline aktif secara otomatis.",
+    "done": "Selesai",
+    "doneCount": "Selesai ({n} file)",
+    "20ai": "20 ringkasan AI tersedia per hari. Jika melebihi, "
+  },
+  "files": {
+    "title": "File Kamu",
+    "empty": "Belum ada file yang disimpan. Simpan PDF terlebih dahulu.",
+    "loadError": "Gagal memuat file",
+    "openUnsupportedWeb": "Membuka file tidak didukung pada web.",
+    "deleteDialogTitle": "Hapus file",
+    "deleteDialogContent": "Hapus \"{fileName}\" dari File Kamu?",
+    "deleteConfirm": "Hapus",
+    "deleteCancel": "Batal",
+    "deleteSuccess": "File berhasil dihapus.",
+    "renameTitle": "Ganti nama file",
+    "renameLabel": "Nama file",
+    "renameCancel": "Batal",
+    "renameSave": "Simpan",
+    "renameSuccess": "Nama file diperbarui.",
+    "reload": "Muat ulang",
+    "open": "Buka"
+  },
+  "quest": {
+    "title": "Quest Harian",
+    "subtitle": "Selesaikan quest hari ini",
+    "completed": "Selesai!",
+    "allDone": "🎉 Semua quest selesai! Keren banget!",
+    "progress": "{done} dari {total} quest selesai",
+    "info": "Quest baru hadir setiap hari. Selesaikan sesi belajar untuk mengecek progresmu!",
+    "error": "Terjadi kesalahan.",
+    "retry": "Coba Lagi"
+  },
+  "stats": {
+    "title": "Statistik",
+    "comingSoon": "📊 Halaman statistik\nakan segera hadir!"
+  },
+  "schedule": {
+    "title": "Jadwal Belajar",
+    "subtitle": "Atur jadwal belajarmu di sini.",
+    "addButton": "Buat Jadwal",
+    "createNew": "Buat Jadwal Baru",
+    "subject": "Mata Pelajaran",
+    "studyDate": "Tanggal Belajar",
+    "startTime": "Jam Mulai",
+    "endTime": "Jam Selesai",
+    "location": "Lokasi (opsional)",
+    "mood": "Mood (opsional)",
+    "noSchedules": "Belum ada jadwal. Tambah jadwal baru dulu.",
+    "created": "Jadwal berhasil dibuat!",
+    "complete": "Tandai Selesai",
+    "delete": "Hapus jadwal",
+    "timeRangeError": "Waktu akhir harus setelah waktu mulai."
+  },
+  "quiz": {
+    "title": "Kuis",
+    "pickMaterial": "🧠 Pilih materi dulu\nuntuk mulai kuis!"
+  },
+  "general": {
+    "cancel": "Batal",
+    "save": "Simpan",
+    "ok": "OK",
+    "loading": "Memuat...",
+    "error": "Terjadi kesalahan",
+    "logout": "Keluar",
+    "logoutPrompt": "Apakah Anda yakin ingin keluar?",
+    "delete": "Hapus",
+    "retry": "Coba Lagi",
+    "back": "Kembali",
+    "changePin": "Ganti PIN",
+    "setPinNow": "Set PIN Sekarang",
+    "enterNewEmailHint": "Masukkan email baru",
+    "enterPasswordHint": "Masukkan password Anda",
+    "enterCurrentPasswordHint": "Masukkan password saat ini",
+    "enterNewPasswordHint": "Minimal 6 karakter",
+    "enterConfirmPasswordHint": "Ulangi password baru",
+    "enterYourName": "Masukkan nama Anda",
+    "enterYourUsername": "Masukkan username Anda"
+  },
+  "profile": {
+    "pinSaved": "✅ PIN patrol berhasil disimpan!",
+    "pickPhoto": "Pilih Foto",
+    "photoHint": "Gambar rasio 1:1, maks 2MB",
+    "uploadPhoto": "Upload Foto",
+    "statusActive": "Aktif",
+    "statusNotSet": "Belum diset",
+    "editAvatar": "Edit Avatar",
+    "fullName": "NAMA LENGKAP",
+    "emailLabel": "EMAIL",
+    "summary": "RINGKASAN",
+    "streakDays": "hari",
+    "streakLabel": "Streak belajar",
+    "coinsOwned": "Coins dimiliki",
+    "editButton": "Edit Profil",
+    "streakLevel": "Streak level"
+  },
+  "level": {
+    "beginner": "Pemula",
+    "learner": "Pelajar",
+    "practitioner": "Praktisi",
+    "expert": "Ahli",
+    "master": "Master"
+  },
+  "patrol": {
+    "pinDescription": "PIN ini dipakai kalau kamu perlu keluar darurat saat patrol mode aktif (3x distraksi).",
+    "modePin": "Patrol Mode PIN"
+  },
+  "editProfile": {
+    "title": "Edit Profil",
+    "saveChanges": "Simpan Perubahan"
+  },
+  "editEmail": {
+    "title": "Ubah Email",
+    "newEmail": "Email Baru"
+  },
+  "editPassword": {
+    "title": "Ubah Password",
+    "currentPassword": "Password Saat Ini",
+    "newPassword": "Password Baru",
+    "confirmPassword": "Konfirmasi Password",
+    "savePassword": "Simpan Password"
+  },
+  "lang": {
+    "buttonLabel": "EN",
+    "tooltip": "Ganti ke English"
+  },
+  "shop": {
+    "title": "Toko",
+    "collection": "Koleksi",
+    "coins": "Koin",
+    "itemsOwned": "item dimiliki",
+    "outfit": "Outfit",
+    "accessory": "Aksesori",
+    "theme": "Tema",
+    "skin": "Kulit",
+    "hair": "Rambut",
+    "top": "Atas",
+    "jacket": "Jaket",
+    "purchaseSuccess": "berhasil dibeli! 🪙",
+    "obtainSuccess": "berhasil didapatkan! 🎉",
+    "notEnoughCoins": "Koin tidak cukup!",
+    "purchaseFailed": "Gagal membeli item",
+    "noItems": "Belum ada item",
+    "buyToUnlock": "Beli di Toko untuk membuka item ini!",
+    "goToShop": "Ke Toko"
+  },
+  "collection": {
+    "title": "Edit Avatar",
+    "done": "SELESAI",
+    "emptyMessage": "Belum ada item yang dimiliki di kategori ini."
+  },
+  "err": {
+    "networkOffline": "Kamu sedang offline.",
+    "networkTimeout": "Koneksi timeout. Periksa jaringan kamu.",
+    "sessionExpired": "Sesi habis, silakan login ulang.",
+    "serverProblem": "Server sedang bermasalah. Coba lagi nanti.",
+    "unknown": "Terjadi kesalahan. Silakan coba lagi."
+  },
+  "errors": {
+    "spotify": {
+      "sdkNotInitialized": "Aplikasi Spotify tidak terdeteksi. Pastikan Spotify sudah terpasang.",
+      "connectionFailed": "Gagal terhubung ke Spotify. Silakan coba lagi.",
+      "cancelled": "Koneksi Spotify dibatalkan.",
+      "tokenExpired": "Sesi Spotify habis. Silakan hubungkan ulang."
+    },
+    "auth": {
+      "invalidCredentials": "Email atau kata sandi tidak sesuai.",
+      "userNotFound": "Akun tidak ditemukan.",
+      "emailAlreadyUsed": "Email ini sudah digunakan oleh akun lain.",
+      "weakPassword": "Kata sandi terlalu lemah. Gunakan minimal 6 karakter.",
+      "tooManyRequests": "Terlalu banyak percobaan. Tunggu beberapa saat.",
+      "sessionExpired": "Sesi kamu telah habis. Silakan masuk kembali."
+    },
+    "network": {
+      "offline": "Tidak dapat terhubung ke server.",
+      "timeout": "Koneksi timeout. Periksa jaringan kamu.",
+      "serverError": "Server sedang bermasalah. Coba lagi nanti."
+    },
+    "validation": {
+      "required": "Field ini wajib diisi.",
+      "invalidEmail": "Format email tidak valid.",
+      "passwordTooShort": "Kata sandi minimal 6 karakter.",
+      "offline": "Kamu sedang offline. Verifikasi tidak tersedia.",
+      "name": {
+        "empty": "Nama tidak boleh kosong.",
+        "tooLong": "Nama tidak boleh lebih dari 30 karakter."
+      },
+      "username": {
+        "tooShort": "Username harus terdiri dari 3 hingga 16 karakter.",
+        "tooLong": "Username harus terdiri dari 3 hingga 16 karakter.",
+        "format": "Username hanya boleh huruf kecil, angka, dan karakter . _ -",
+        "containsSpace": "Username tidak boleh mengandung spasi.",
+        "taken": "Username ini sudah terdaftar. Silakan gunakan username lain."
+      },
+      "email": {
+        "empty": "Email tidak boleh kosong.",
+        "format": "Format email tidak valid (contoh: nama@email.com)",
+        "containsSpace": "Email tidak boleh mengandung spasi.",
+        "taken": "Alamat email ini sudah terdaftar. Silakan masuk atau gunakan email lain."
+      },
+      "password": {
+        "tooShort": "Password minimal 6 karakter."
+      }
+    },
+    "pdf": {
+      "tooLarge": "Ukuran file PDF melebihi 10 MB. Coba kompres atau pisahkan dokumennya.",
+      "corrupted": "File PDF tidak dapat dibaca. File mungkin rusak atau tidak valid.",
+      "scannedNotSupported": "PDF ini tampaknya berupa gambar scan. Teks tidak dapat diekstrak secara otomatis.",
+      "passwordProtected": "PDF ini dilindungi kata sandi. Hapus proteksi terlebih dahulu, lalu coba lagi."
+    },
+    "unknown": "Terjadi kesalahan. Silakan coba lagi.",
+    "notFound": "Data tidak ditemukan.",
+    "session": {
+      "expired": "Sesi habis, silakan login ulang."
+    },
+    "server": {
+      "problem": "Server sedang bermasalah. Coba lagi nanti."
+    }
+  },
+  "validation": {
+    "username": {
+      "taken": "Username ini sudah digunakan. Silakan pilih nama lain.",
+      "tooShort": "Username minimal 3 karakter.",
+      "tooLong": "Username maksimal 16 karakter.",
+      "blank": "Username tidak boleh kosong.",
+      "pattern": "Username hanya boleh huruf kecil, angka, dan karakter . _ -"
+    },
+    "email": {
+      "taken": "Alamat email ini sudah terdaftar. Silakan masuk atau gunakan email lain.",
+      "invalid": "Format email tidak valid (contoh: nama@email.com).",
+      "blank": "Email tidak boleh kosong."
+    },
+    "name": {
+      "empty": "Nama tidak boleh kosong.",
+      "blank": "Nama tidak boleh kosong.",
+      "tooLong": "Nama maksimal 30 karakter."
+    },
+    "password": {
+      "tooShort": "Password minimal 6 karakter.",
+      "wrong": "Password saat ini salah."
+    },
+    "credentials": {
+      "invalid": "Email atau kata sandi tidak sesuai."
+    }
+  }
+}

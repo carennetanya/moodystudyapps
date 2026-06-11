@@ -8,6 +8,7 @@ import 'package:moody_study/services/profile_image_provider.dart';
 import 'package:moody_study/services/session_expired_notifier.dart';
 import 'package:moody_study/services/user_provider.dart';
 import 'package:moody_study/services/api_client.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:moody_study/utils/app_localizations.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/startup_screen.dart';
@@ -15,11 +16,20 @@ import 'screens/theme_selector_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await EasyLocalization.ensureInitialized();
   await NotificationService.instance.init();
   // Load foto profil yang tersimpan dari sesi sebelumnya
   await ProfileImageStore.instance.init();
   await ApiClient.init();
-  runApp(const MoodyStudyApp());
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [Locale('id'), Locale('en')],
+      path: 'assets/translations',
+      fallbackLocale: const Locale('id'),
+      startLocale: const Locale('id'),
+      child: const MoodyStudyApp(),
+    ),
+  );
 }
 
 class MoodyStudyApp extends StatefulWidget {
@@ -86,6 +96,9 @@ class _MoodyStudyAppState extends State<MoodyStudyApp> {
         debugShowCheckedModeBanner: false,
         navigatorKey: NotificationService.navigatorKey,
         scaffoldMessengerKey: _scaffoldMessengerKey,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
         theme: ThemeData(
           fontFamily: 'BlackHanSans',
           scaffoldBackgroundColor: const Color(0xFF1EE86F),

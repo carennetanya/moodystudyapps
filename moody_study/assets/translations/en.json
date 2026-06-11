@@ -1,0 +1,361 @@
+{
+  "login": {
+    "title": "Login to Moody Study",
+    "signIn": "SIGN IN NOW",
+    "button": "Login",
+    "welcomeBack": "Welcome back",
+    "email": "Email",
+    "password": "Password",
+    "noAccount": "Don't have an account? Sign up",
+    "emailRequired": "Email is required!",
+    "invalidEmail": "Invalid email!",
+    "passwordShort": "Password must be at least 6 characters!",
+    "emailHint": "email@example.com",
+    "passwordHint": "min. 6 characters"
+  },
+  "register": {
+    "title": "Create Account",
+    "button": "Register",
+    "name": "Name",
+    "username": "Username",
+    "fullName": "Full Name",
+    "nameHint": "Your name",
+    "passwordHint": "min. 6 characters",
+    "confirmHint": "repeat password",
+    "confirmPassword": "Confirm Password",
+    "haveAccount": "Already have an account? Login",
+    "success": "Registration successful!",
+    "signUp": "SIGN UP NOW",
+    "subtitle": "to Moody Study",
+    "nameRequired": "Name is required!",
+    "usernameRequired": "Username is required!",
+    "usernameInvalid": "Username must be at least 3 characters without spaces!",
+    "passwordMismatch": "Passwords do not match!"
+  },
+  "home": {
+    "tagline": "study anytime anywhere",
+    "subtitle": "good mood or not,\nlet's keep studying with oddy!",
+    "startNow": "start now",
+    "schedule": "schedule",
+    "streak": "Streak"
+  },
+  "theme": {
+    "chooseTitle": "Choose your Theme",
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode"
+  },
+  "auth": {
+    "welcomeTitle": "Welcome to Moody Study",
+    "signUp": "Sign Up",
+    "login": "Login"
+  },
+  "nav": {
+    "home": "Home",
+    "quest": "Quest",
+    "files": "Files",
+    "quiz": "Quiz",
+    "stats": "Stats",
+    "settings": "Settings",
+    "profile": "Profile"
+  },
+  "mood": {
+    "question": "How's your mood today?",
+    "so": "So...",
+    "happy": "Happy",
+    "okay": "Okay",
+    "sad": "Sad",
+    "tired": "Tired"
+  },
+  "location": {
+    "question": "Where are you\nstudying now?",
+    "home": "Home / Outside",
+    "library": "Library",
+    "silent": "Silent mode & visual alerts only",
+    "sound": "Sound alerts & notifications active"
+  },
+  "session": {
+    "title": "TODAY'S STUDY SESSION",
+    "recommended": "RECOMMENDED FOR YOUR MOOD",
+    "ready": "READY",
+    "startStudying": "Start Studying",
+    "addMore": "Add more",
+    "close": "Close",
+    "min": "min"
+  },
+  "active": {
+    "keepGoing": "Keep going",
+    "remaining": "REMAINING",
+    "pause": "Pause",
+    "resume": "Resume",
+    "doneEarly": "Done Early",
+    "materialSummary": "Material Summary",
+    "summaryReady": "Ready",
+    "summaryError": "Error",
+    "saveAsPdf": "Save as PDF",
+    "savingPdf": "Saving PDF...",
+    "yourFiles": "Your Files",
+    "testKnowledge": "Test Your Knowledge",
+    "alarmBanner": "Alarm is active because you left the app for more than 30 seconds.",
+    "heyBack": "Hey, come back!",
+    "imBack": "I'm back!",
+    "saveSummary": "Save Summary",
+    "continueStudying": "Continue Studying",
+    "exit": "Exit",
+    "didIt": "You did it",
+    "studiedFor": "You studied for",
+    "summaryNotSaved": "Your summary hasn't been saved!",
+    "summaryWarning": "Are you sure you don't want to save it? You might need it to study later."
+  },
+  "upload": {
+    "hello": "Hello",
+    "greeting": "Hello, {name}!",
+    "subtitle": "Upload or drag your materials here and let's summarize them together!",
+    "clickFiles": "Click files here",
+    "formats": "PDF · DOCX · TXT",
+    "maxSize": "Max 150 MB per file",
+    "offlineMode": "offline mode activates automatically.",
+    "done": "Done",
+    "doneCount": "Done ({n} files)",
+    "20ai": "20 AI summaries available per day. If exceeded, "
+  },
+  "files": {
+    "title": "Your Files",
+    "empty": "No files saved yet. Save a PDF first.",
+    "loadError": "Failed to load files",
+    "openUnsupportedWeb": "Opening files is not supported on the web.",
+    "deleteDialogTitle": "Delete file",
+    "deleteDialogContent": "Delete \"{fileName}\" from Your Files?",
+    "deleteConfirm": "Delete",
+    "deleteCancel": "Cancel",
+    "deleteSuccess": "File deleted successfully.",
+    "renameTitle": "Rename file",
+    "renameLabel": "File name",
+    "renameCancel": "Cancel",
+    "renameSave": "Save",
+    "renameSuccess": "File name updated.",
+    "reload": "Reload",
+    "open": "Open"
+  },
+  "quest": {
+    "title": "Daily Quest",
+    "subtitle": "Complete today's quests",
+    "completed": "Completed!",
+    "allDone": "🎉 All quests done! Amazing!",
+    "progress": "{done} of {total} quests completed",
+    "info": "New quests arrive every day. Complete a study session to check your progress!",
+    "error": "Something went wrong.",
+    "retry": "Try Again"
+  },
+  "stats": {
+    "title": "Statistics",
+    "comingSoon": "📊 Statistics page\ncoming soon!"
+  },
+  "schedule": {
+    "title": "Study Schedule",
+    "subtitle": "Set your study schedule here.",
+    "addButton": "Create",
+    "createNew": "Create New",
+    "subject": "Subject",
+    "studyDate": "Study Date",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "location": "Location (optional)",
+    "mood": "Mood (optional)",
+    "noSchedules": "No schedules yet. Add a new schedule.",
+    "created": "Schedule created successfully!",
+    "complete": "Mark Complete",
+    "delete": "Delete schedule",
+    "timeRangeError": "End time must be after start time."
+  },
+  "quiz": {
+    "title": "Quiz",
+    "pickMaterial": "🧠 Pick a material first\nto start the quiz!"
+  },
+  "general": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "ok": "OK",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "logout": "Logout",
+    "logoutPrompt": "Are you sure you want to logout?",
+    "delete": "Delete",
+    "retry": "Retry",
+    "back": "Back",
+    "changePin": "Change PIN",
+    "setPinNow": "Set PIN Now",
+    "enterNewEmailHint": "Enter new email",
+    "enterPasswordHint": "Enter your password",
+    "enterCurrentPasswordHint": "Enter current password",
+    "enterNewPasswordHint": "At least 6 characters",
+    "enterConfirmPasswordHint": "Repeat new password",
+    "enterYourName": "Enter your name",
+    "enterYourUsername": "Enter your username"
+  },
+  "profile": {
+    "pinSaved": "✅ Patrol PIN saved successfully!",
+    "pickPhoto": "Choose Photo",
+    "photoHint": "1:1 ratio image, max 2MB",
+    "uploadPhoto": "Upload Photo",
+    "statusActive": "Active",
+    "statusNotSet": "Not set",
+    "editAvatar": "Edit Avatar",
+    "fullName": "FULL NAME",
+    "emailLabel": "EMAIL",
+    "summary": "SUMMARY",
+    "streakDays": "days",
+    "streakLabel": "Study streak",
+    "coinsOwned": "Coins owned",
+    "editButton": "Edit Profile",
+    "streakLevel": "Streak level"
+  },
+  "level": {
+    "beginner": "Beginner",
+    "learner": "Learner",
+    "practitioner": "Practitioner",
+    "expert": "Expert",
+    "master": "Master"
+  },
+  "patrol": {
+    "pinDescription": "This PIN is used if you need to exit emergency while patrol mode is active (3x distractions).",
+    "modePin": "Patrol Mode PIN"
+  },
+  "editProfile": {
+    "title": "Edit Profile",
+    "saveChanges": "Save Changes"
+  },
+  "editEmail": {
+    "title": "Change Email",
+    "newEmail": "New Email"
+  },
+  "editPassword": {
+    "title": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "savePassword": "Save Password"
+  },
+  "lang": {
+    "buttonLabel": "ID",
+    "tooltip": "Switch to Indonesian"
+  },
+  "shop": {
+    "title": "Shop",
+    "collection": "Collection",
+    "coins": "Coins",
+    "itemsOwned": "items owned",
+    "outfit": "Outfit",
+    "accessory": "Accessory",
+    "theme": "Theme",
+    "skin": "Skin",
+    "hair": "Hair",
+    "top": "Top",
+    "jacket": "Jacket",
+    "purchaseSuccess": "purchased successfully! 🪙",
+    "obtainSuccess": "obtained successfully! 🎉",
+    "notEnoughCoins": "Not enough coins!",
+    "purchaseFailed": "Failed to buy item",
+    "noItems": "No items",
+    "buyToUnlock": "Buy in Shop to unlock items!",
+    "goToShop": "Go to Shop"
+  },
+  "collection": {
+    "title": "Edit Avatar",
+    "done": "DONE",
+    "emptyMessage": "No items owned in this category."
+  },
+  "err": {
+    "networkOffline": "You are offline.",
+    "networkTimeout": "Connection timed out. Check your network.",
+    "sessionExpired": "Session expired, please log in again.",
+    "serverProblem": "Server error. Please try again later.",
+    "unknown": "An error occurred. Please try again."
+  },
+  "errors": {
+    "spotify": {
+      "sdkNotInitialized": "Spotify app not found. Please make sure Spotify is installed.",
+      "connectionFailed": "Failed to connect to Spotify. Please try again.",
+      "cancelled": "Spotify connection was cancelled.",
+      "tokenExpired": "Spotify session expired. Please reconnect."
+    },
+    "auth": {
+      "invalidCredentials": "Incorrect email or password.",
+      "userNotFound": "Account not found.",
+      "emailAlreadyUsed": "This email is already in use.",
+      "weakPassword": "Password is too weak. Use at least 6 characters.",
+      "tooManyRequests": "Too many attempts. Please wait a moment.",
+      "sessionExpired": "Your session has expired. Please log in again."
+    },
+    "network": {
+      "offline": "Cannot connect to server.",
+      "timeout": "Connection timed out. Check your network.",
+      "serverError": "Server error. Please try again later."
+    },
+    "validation": {
+      "required": "This field is required.",
+      "invalidEmail": "Invalid email format.",
+      "passwordTooShort": "Password must be at least 6 characters.",
+      "offline": "You're offline. Verification is unavailable.",
+      "name": {
+        "empty": "Name cannot be empty.",
+        "tooLong": "Name must not exceed 30 characters."
+      },
+      "username": {
+        "tooShort": "Username must be between 3 and 16 characters.",
+        "tooLong": "Username must be between 3 and 16 characters.",
+        "format": "Username may only contain lowercase letters, numbers, and . _ -",
+        "containsSpace": "Username cannot contain spaces.",
+        "taken": "This username is already taken. Please choose a different one."
+      },
+      "email": {
+        "empty": "Email is required.",
+        "format": "Invalid email format (e.g. name@email.com)",
+        "containsSpace": "Email cannot contain spaces.",
+        "taken": "This email is already registered. Please sign in or use a different email."
+      },
+      "password": {
+        "tooShort": "Password must be at least 6 characters."
+      }
+    },
+    "pdf": {
+      "tooLarge": "PDF file exceeds 10 MB. Try compressing or splitting the document.",
+      "corrupted": "Could not read the PDF file. It may be corrupted or invalid.",
+      "scannedNotSupported": "This PDF appears to be a scanned image. Text cannot be extracted automatically.",
+      "passwordProtected": "This PDF is password-protected. Please remove the protection and try again."
+    },
+    "unknown": "An error occurred. Please try again.",
+    "notFound": "Data not found.",
+    "session": {
+      "expired": "Session expired, please log in again."
+    },
+    "server": {
+      "problem": "Server error. Please try again later."
+    }
+  },
+  "validation": {
+    "username": {
+      "taken": "This username is already taken. Please choose another.",
+      "tooShort": "Username must be at least 3 characters.",
+      "tooLong": "Username must be at most 16 characters.",
+      "blank": "Username is required.",
+      "pattern": "Username may only contain lowercase letters, numbers, and . _ -"
+    },
+    "email": {
+      "taken": "This email is already registered. Please sign in or use a different email.",
+      "invalid": "Invalid email format (example: name@email.com).",
+      "blank": "Email is required."
+    },
+    "name": {
+      "empty": "Name cannot be empty.",
+      "blank": "Name cannot be empty.",
+      "tooLong": "Name must be at most 30 characters."
+    },
+    "password": {
+      "tooShort": "Password must be at least 6 characters.",
+      "wrong": "Current password is incorrect."
+    },
+    "credentials": {
+      "invalid": "Incorrect email or password."
+    }
+  }
+}
